@@ -7,9 +7,9 @@ export const GAMES=[
  {id:'rush',title:'60-Second Rush',kind:'maze',views:['first','third']},
  {id:'daily',title:'Daily Run',kind:'maze',views:['first','third']},
  {id:'trade',title:'Street Hustle',kind:'trade',views:[]},
- {id:'flappy',title:'Flappy DAWG',kind:'pack',views:['third']},
+ {id:'flappy',title:'Flappy DAWG',kind:'pack',views:['first','third']},
  {id:'cross',title:'DAWG Cross',kind:'pack',views:['third']},
- {id:'snake',title:'Neon Snake',kind:'pack',views:['third']},
+ {id:'snake',title:'Neon Snake',kind:'pack',views:['first','third']},
  {id:'runner',title:'DAWG Dash',kind:'pack',views:['first','third']},
  {id:'turbo',title:'Turbo Pup',kind:'pack',views:['first','third']},
  {id:'story',title:'After Hours',kind:'pack',views:[]}

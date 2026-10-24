@@ -70,8 +70,8 @@ body.maze-3d.mobile-session #arcadePanel>*:not(.maze3d){position:relative;z-inde
 body.maze-3d.mobile-session .cabinet{background:transparent;border-color:transparent;box-shadow:none}
 body.maze-3d.mobile-session .cabinet-top{background:#0b0a16b8;backdrop-filter:blur(8px);border-radius:12px}
 #mazeView{min-width:44px}
-.maze3d .m3-map{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 64px);width:clamp(110px,22vmin,190px);height:auto;border-radius:12px;border:1px solid #b48cff66;box-shadow:0 0 24px #000a;image-rendering:pixelated;opacity:.92}
-.maze3d .m3-warn{position:absolute;left:50%;bottom:28%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#2a0a14d9;border:1px solid #ff4f6a;color:#ffd0d8;font:900 clamp(14px,2.6vw,20px)/1 var(--display);letter-spacing:1px;box-shadow:0 0 24px #ff4f6a88;animation:m3pulse .6s ease-in-out infinite alternate}
+.dash3d .m3-map{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 64px);width:clamp(110px,22vmin,190px);height:auto;border-radius:12px;border:1px solid #b48cff66;box-shadow:0 0 24px #000a;image-rendering:pixelated;opacity:.92}
+.dash3d .m3-warn{position:absolute;left:50%;bottom:28%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#2a0a14d9;border:1px solid #ff4f6a;color:#ffd0d8;font:900 clamp(14px,2.6vw,20px)/1 var(--display);letter-spacing:1px;box-shadow:0 0 24px #ff4f6a88;animation:m3pulse .6s ease-in-out infinite alternate}
 @keyframes m3pulse{from{opacity:.65}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.maze3d .m3-warn{animation:none}}
 body.maze-3d.mobile-session .board-wrap{background:transparent}

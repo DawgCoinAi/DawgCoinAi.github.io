@@ -18,7 +18,7 @@ test('Pack games in the registry all have quick-game checkpoints, except the sto
 });
 test('Camera choices fall back to each game’s default and only switch where supported',()=>{
  assert.equal(viewFor('runner',{}),'first','first person is the default');assert.equal(viewFor('runner',{runner:'third'}),'third');assert.equal(viewFor('runner',{runner:'sideways'}),'first');
- assert.equal(viewFor('flappy',{flappy:'first'}),'third');assert.equal(canSwitchView('runner'),true);assert.equal(canSwitchView('trade'),false);
+ assert.equal(viewFor('flappy',{}),'first');assert.equal(viewFor('cross',{cross:'first'}),'third');assert.equal(canSwitchView('runner'),true);assert.equal(canSwitchView('trade'),false);
 });
 test('Backups accept saved camera choices and reject unknown ones',()=>{
  const ok={format:'dawg-arcade-backup',version:1,saves:{settings:{controls:'stick',cameras:{runner:'first'}}}};assert.ok(parseBackup(JSON.stringify(ok)));

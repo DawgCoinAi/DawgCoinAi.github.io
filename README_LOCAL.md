@@ -154,6 +154,7 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/games.js` | Game registry: ids, kinds and supported camera views |
 | `dist/three-kit.js` | Shared 3D toolkit used by the 3D games |
 | `dist/maze-3d.js` | 3D Maze Munch / Rush / Daily: first-person corridors with minimap and rival warnings, or a tilted third-person view |
+| `dist/snake-3d.js` / `flappy-3d.js` | 3D Neon Snake (light-cycle first person with minimap) and Flappy DAWG (cockpit flight through tower gates) |
 | `dist/turbo-engine.js` / `turbo-3d.js` | Turbo Pup: seeded momentum platformer (loops, kickers, springs, bots) and its 3D track with side and chase cameras |
 | `dist/rankings.js` | Rankings, global stats, friends and challenge links |
 | `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |

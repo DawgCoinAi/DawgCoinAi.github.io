@@ -23,6 +23,8 @@ export class PackRenderer {
  gpuLoaders(kind){
   if(kind==='runner')return [async()=>new (await import('./dash-3d.js')).ThreeDash(this.canvas,()=>this.failGPU('runner')),async()=>new (await import('./dash-presentation.js')).PixiDash(this.canvas,()=>this.failGPU('runner'))];
   if(kind==='turbo')return [async()=>new (await import('./turbo-3d.js')).ThreeTurbo(this.canvas,()=>this.failGPU('turbo'))];
+  if(kind==='snake')return [async()=>new (await import('./snake-3d.js')).ThreeSnake(this.canvas,()=>this.failGPU('snake'))];
+  if(kind==='flappy')return [async()=>new (await import('./flappy-3d.js')).ThreeFlappy(this.canvas,()=>this.failGPU('flappy'))];
   return [];
  }
  get dashGPU(){return this.gpus.runner||null;}set dashGPU(v){this.gpus.runner=v;}

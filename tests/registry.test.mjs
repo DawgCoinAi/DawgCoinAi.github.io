@@ -24,3 +24,10 @@ test('Backups accept saved camera choices and reject unknown ones',()=>{
  const ok={format:'dawg-arcade-backup',version:1,saves:{settings:{controls:'stick',cameras:{runner:'first'}}}};assert.ok(parseBackup(JSON.stringify(ok)));
  for(const cameras of [{runner:'sideways'},{trade:'first'},[]])assert.throws(()=>parseBackup(JSON.stringify({...ok,saves:{settings:{cameras}}})),/invalid settings/);
 });
+test('First-person grid controls turn relative to the way the player faces',async()=>{
+ const {relativeTurn}=await import('../dist/games.js');
+ assert.equal(relativeTurn('up','left'),'left');assert.equal(relativeTurn('up','right'),'right');assert.equal(relativeTurn('right','left'),'up');assert.equal(relativeTurn('right','right'),'down');
+ assert.equal(relativeTurn('down','left'),'right');assert.equal(relativeTurn('left','right'),'up');assert.equal(relativeTurn('left','up'),'left','up keeps going forward');assert.equal(relativeTurn('down','down'),'up','down turns around');
+ for(const f of ['up','down','left','right']){let d=f;for(let i=0;i<4;i++)d=relativeTurn(d,'left');assert.equal(d,f,'four left turns come full circle');}
+ const {viewFor}=await import('../dist/games.js');for(const id of ['classic','rush','daily'])assert.equal(viewFor(id,{}),'first');
+});

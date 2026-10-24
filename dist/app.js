@@ -14,7 +14,7 @@ import {validKennel,DISCIPLINES} from './dawg-career.js';
 import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
 import {Cloud} from './cloud.js';
 import {Rankings} from './rankings.js';
-import {GAME_IDS,VIEWS,canSwitchView,gameById} from './games.js';
+import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
@@ -100,7 +100,8 @@ function play(){
  if(document.querySelector('dialog[open]')||countdownUntil||!isMaze())return;
  if(game.status==='over')newArcade();
  if(game.status==='level'){game.nextLevel();game.pause();}
- if(mobile.coarse()){if(focused)setFocus(false);mobile.enter();}
+ // Every device plays the maze in the full-screen session (3D corridors on capable devices).
+ if(focused)setFocus(false);mobile.enter();
  if(game.status==='playing')return;
  renderer.character=kennel.prepare(mode,game,game.status==='ready');
  countdownUntil=performance.now()+1800;$('countdownNumber').textContent='3';sound(440,.08);showState();canvas.focus({preventScroll:true});
@@ -133,10 +134,20 @@ function selectMode(next){
 
 document.querySelectorAll('[data-mode]').forEach(b=>{b.onclick=()=>selectMode(b.dataset.mode);b.addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('[data-mode]')],i=tabs.indexOf(b);if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();e.stopPropagation();const next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[next].focus();}});});
 const keyDirections={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
+// 3D maze: runs in the full-screen session; the 2D board stays for the page view and as fallback.
+const maze3d={gpu:null,state:'canvas'};
+async function upgradeMaze3D(){if(maze3d.state!=='canvas')return;if(typeof WebGL2RenderingContext==='undefined'){maze3d.state='unsupported';return;}maze3d.state='loading';
+ try{const {ThreeMaze}=await import('./maze-3d.js');const gpu=new ThreeMaze($('arcadePanel'),()=>{maze3d.state='failed';maze3d.gpu=null;document.body.classList.remove('maze-3d');canvas.style.opacity='';});await gpu.init();if(gpu.ready){maze3d.gpu=gpu;maze3d.state='ready';}else maze3d.state='failed';}catch{maze3d.state='failed';}}
+function drawMaze3D(){const on=mobile.active&&isMaze(),gpu=maze3d.gpu,live=!!(on&&gpu?.ready);if(on)upgradeMaze3D();document.body.classList.toggle('maze-3d',live);$('mazeView').hidden=!live;if(gpu?.view)gpu.view.hidden=!live;if(!live)return false;
+ const view=viewFor(mode,prefs.cameras);gpu.setCamera(view);$('mazeView').textContent=view==='first'?'1P':'3P';$('mazeView').setAttribute('aria-label',view==='first'?'Switch to third-person view':'Switch to first-person view');
+ try{return gpu.draw(game,renderer.character,renderer.reduced);}catch{gpu.fail();return false;}}
+function mazeFirstPerson(){return mobile.active&&isMaze()&&maze3d.gpu?.ready&&viewFor(mode,prefs.cameras)==='first';}
+function toggleMazeView(){if(!isMaze())return;prefs.cameras={...prefs.cameras,[mode]:viewFor(mode,prefs.cameras)==='first'?'third':'first'};saveSettings();}
+$('mazeView').onclick=toggleMazeView;
 // Maze curveballs share the pack games' rules: announced, timed, presentation and input only.
 const curve=new Curveballs({target:()=>$('maze')?.parentElement,enabled:()=>prefs.curveballs!=='off',reduced:()=>renderer.reduced,cue:(kind,m)=>{if(kind==='warn')sound(520,.12,'square',.03);else if(kind==='start')sound(m.time>1?880:m.time<1?220:660,.35,'sawtooth',.03);else sound(440,.15,'triangle',.025);}});let curveGame=null;
-function direction(dir){if(!isMaze()||document.querySelector('dialog[open]'))return;if(game.status==='ready'&&!countdownUntil)play();if(game.status==='playing'||countdownUntil){const g=game;curve.route(dir,d=>{if(g===game)g.direction(d);});}}
-window.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!isMaze()||e.ctrlKey||e.metaKey||e.altKey)return;const dir=keyDirections[e.key]||keyDirections[e.key.toLowerCase()];if(dir){e.preventDefault();direction(dir);}else if((e.key==='Shift'||e.key.toLowerCase()==='e')&&!e.repeat){e.preventDefault();dash();}else if(e.key==='Escape'&&mobile.active){returnToArcade();}else if(e.key==='Escape'&&focused){setFocus(false);}else if(e.code==='Space'||e.key.toLowerCase()==='p'){if(e.code==='Space'&&e.target.tagName==='BUTTON')return;e.preventDefault();if(!e.repeat)togglePause();}});
+function direction(dir){if(!isMaze()||document.querySelector('dialog[open]'))return;if(game.status==='ready'&&!countdownUntil)play();if(game.status==='playing'||countdownUntil){const g=game,first=mazeFirstPerson();curve.route(dir,d=>{if(g===game)g.direction(first?relativeTurn(g.player.dir,d):d);});}}
+window.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!isMaze()||e.ctrlKey||e.metaKey||e.altKey)return;const dir=keyDirections[e.key]||keyDirections[e.key.toLowerCase()];if(dir){e.preventDefault();direction(dir);}else if((e.key==='Shift'||e.key.toLowerCase()==='e')&&!e.repeat){e.preventDefault();dash();}else if(e.key.toLowerCase()==='v'&&!e.repeat&&mobile.active){e.preventDefault();toggleMazeView();}else if(e.key==='Escape'&&mobile.active){returnToArcade();}else if(e.key==='Escape'&&focused){setFocus(false);}else if(e.code==='Space'||e.key.toLowerCase()==='p'){if(e.code==='Space'&&e.target.tagName==='BUTTON')return;e.preventDefault();if(!e.repeat)togglePause();}});
 document.querySelectorAll('[data-dir]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();direction(b.dataset.dir);});b.onclick=()=>direction(b.dataset.dir);});
 let pointerStart=null;
 canvas.addEventListener('pointerdown',e=>{if(pointerStart)return;pointerStart={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});
@@ -193,7 +204,7 @@ const restartTrade=()=>trade?.status==='over'?freshTrade():confirm('A new night.
 $('newTradeButton').onclick=restartTrade;$('againTradeButton').onclick=freshTrade;
 function processEvents(){
  for(const event of game.events){
-  renderer.event(event,game);if(event.type==='dash')mobile.haptic(12);if(event.type==='power')mobile.haptic(18);if(event.type==='eat'||event.type==='loot')mobile.haptic([12,20,12]);if(event.type==='hit')mobile.haptic([30,25,20]);if(event.type==='heat'){toast(heatLabel(event.tier));sound(560+event.tier*110,.2,'square',.028);mobile.haptic([10,30,10]);}if(event.type==='interrupted'){releaseWakeLock();saveCheckpoint();toast('PAUSED · READY WHEN YOUR DEVICE IS');}
+  renderer.event(event,game);maze3d.gpu?.event(event,game);if(event.type==='dash')mobile.haptic(12);if(event.type==='power')mobile.haptic(18);if(event.type==='eat'||event.type==='loot')mobile.haptic([12,20,12]);if(event.type==='hit')mobile.haptic([30,25,20]);if(event.type==='heat'){toast(heatLabel(event.tier));sound(560+event.tier*110,.2,'square',.028);mobile.haptic([10,30,10]);}if(event.type==='interrupted'){releaseWakeLock();saveCheckpoint();toast('PAUSED · READY WHEN YOUR DEVICE IS');}
   if(event.type==='pellet'){profile.dots++;earnRep(1);if(game.pellets.size%2===0)sound(240+game.pellets.size%3*80,.035,'sine',.018);}
   if(event.type==='power'){profile.dots++;earnRep(5);sound(880,.22,'triangle');toast('BEAST MODE · THE HUNTER IS YOU');}
   if(event.type==='eat'){profile.caught++;earnRep(25);sound(600,.15,'square',.018);toast(`${event.combo>1?event.combo+'× COMBO · ':''}RIVAL CAUGHT · +${event.bonus}`);}
@@ -213,7 +224,7 @@ function frame(now){
  if(countdownUntil){const remaining=countdownUntil-now;if(remaining<=0){countdownUntil=0;game.start();sound(880,.13);showState();requestWakeLock();}else $('countdownNumber').textContent=String(Math.ceil(remaining/600));}
  if(isMaze()){
   const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
-  if(now-lastHud>80){updateHud();lastHud=now;}renderer.draw(game,now);if(now>toastUntil)$('gameToast').classList.remove('visible');
+  if(now-lastHud>80){updateHud();lastHud=now;}if(drawMaze3D())canvas.style.opacity='0';else{canvas.style.opacity='';renderer.draw(game,now);}if(now>toastUntil)$('gameToast').classList.remove('visible');
   if(soundEnabled&&game.status==='playing'&&now>=nextMusicBeat){const notes=game.power>0?[220,330,440,660,440,330,277,415]:[110,165,220,165,131,196,262,196];sound(notes[musicBeat++%8],.12,'triangle',.009);nextMusicBeat=now+(game.power>0?180:260);}
  }
  if(PACK_MODES.includes(mode))pack.frame(now);

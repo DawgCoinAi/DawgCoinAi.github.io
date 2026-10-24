@@ -63,3 +63,16 @@ body.pack-session.pack-full #packControlHint{display:none}
 body.mobile-session #arcadePanel{background:linear-gradient(#05060dd9,#05060deb),url(assets/neon-city-v2.webp) center/cover no-repeat,#05060d}
 /* Desktop: the rarely needed on-screen buttons sit in the corner, clear of the playfield. */
 @media (hover:hover) and (pointer:fine){body.pack-session.pack-full .pack-controls{left:auto;right:16px;transform:none;width:min(300px,30vw)}}
+
+/* 3D maze: the corridors fill the whole session behind the score bar, overlays and controls. */
+body.maze-3d.mobile-session #arcadePanel>.maze3d{position:absolute;inset:0;z-index:0;pointer-events:none}
+body.maze-3d.mobile-session #arcadePanel>*:not(.maze3d){position:relative;z-index:1}
+body.maze-3d.mobile-session .cabinet{background:transparent;border-color:transparent;box-shadow:none}
+body.maze-3d.mobile-session .cabinet-top{background:#0b0a16b8;backdrop-filter:blur(8px);border-radius:12px}
+#mazeView{min-width:44px}
+.maze3d .m3-map{position:absolute;right:14px;top:calc(env(safe-area-inset-top) + 64px);width:clamp(110px,22vmin,190px);height:auto;border-radius:12px;border:1px solid #b48cff66;box-shadow:0 0 24px #000a;image-rendering:pixelated;opacity:.92}
+.maze3d .m3-warn{position:absolute;left:50%;bottom:28%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#2a0a14d9;border:1px solid #ff4f6a;color:#ffd0d8;font:900 clamp(14px,2.6vw,20px)/1 var(--display);letter-spacing:1px;box-shadow:0 0 24px #ff4f6a88;animation:m3pulse .6s ease-in-out infinite alternate}
+@keyframes m3pulse{from{opacity:.65}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.maze3d .m3-warn{animation:none}}
+body.maze-3d.mobile-session .board-wrap{background:transparent}
+body.maze-3d.mobile-session .game-overlay{background:radial-gradient(ellipse at center,#090b18d0 0%,#090b1866 55%,#090b1800 85%)}

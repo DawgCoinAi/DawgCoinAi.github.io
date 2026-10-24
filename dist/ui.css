@@ -432,3 +432,11 @@ dialog .dialog-close{border-radius:50%;width:38px;height:38px;border:1px solid v
 .scene3d-wrap{position:relative;display:block}
 .scene3d-wrap>canvas{display:block;width:100%;height:auto}
 .scene3d-wrap>.scene3d{position:absolute;inset:0;border-radius:inherit}
+/* Scrollbars: thin, dark and on-theme everywhere (Firefox, then Chromium/Safari). */
+*{scrollbar-width:thin;scrollbar-color:#4a3d63 transparent}
+*::-webkit-scrollbar{width:8px;height:8px}*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#4a3d63;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:#7a5f9e;background-clip:padding-box;border:2px solid transparent}
+*::-webkit-scrollbar-corner{background:transparent}
+html{scrollbar-color:#3a3050 #07060f}
+@media(max-width:400px){.app-header{min-width:0}.top-actions{gap:4px;flex-shrink:0}.brand{min-width:0;overflow:hidden}.brand strong,.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}

@@ -345,7 +345,7 @@ function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp
 // the crash or finish can land, then fills in where the run sits socially once it's uploaded.
 var lastRun=null,resultsTimer=0;
 const results=new ResultsSheet({openDialog,reduced:()=>renderer.reduced,
- onRematch:r=>{if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')$('storyReset').click();else pack.play();},
+ onRematch:r=>{if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')pack.story.newNight();else pack.play();},
  onHome:r=>{if(isMaze(r.game))returnToArcade();else pack.exit();shell.show('play');window.scrollTo({top:0});},
  onShare:r=>{const m=medalState(r.score,r.targets);shareRun(r.game,r.score,{best:r.best,medal:m.earned?m.label:'',detail:r.detail});},
  onChallenge:r=>rankings.pickFriend(r.game),

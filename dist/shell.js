@@ -20,7 +20,7 @@ export const BLURBS={
  turbo:'Loops, springs and pure speed. Roll into bots and launch off kickers.',
  pinball:'Hold the flippers, light D-A-W-G and send the DAWG House into multiball.',
  kart:'Three laps against five rival DAWGs. Drift for mini-turbos and bonk the leader.',
- story:'A point-and-click night out. Wake the DJ, finish the demo and find all three endings.'
+ story:'One velvet suit, one night, ten places to make bad decisions. Win over Nova, steal the rooftop show, and find all six endings before sunrise.'
 };
 const HOT={kart:'NEW',pinball:'NEW',turbo:'HOT'};
 export const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString('en-US');

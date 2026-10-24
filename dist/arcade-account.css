@@ -1,0 +1,21 @@
+/* Play walls on game tabs, the wall dialog and the account / cloud-save dialog. */
+.mode-tab.locked{position:relative;filter:saturate(.35) brightness(.7)}
+.mode-tab.locked::after{content:'🔒';position:absolute;top:8px;right:9px;font-size:13px;filter:none}
+.mode-tab.locked:hover,.mode-tab.locked:focus-visible{filter:saturate(.7) brightness(.9)}
+.wall-routes{display:grid;gap:12px;margin:18px 0}
+.wall-route{padding:12px 14px;border:1px solid #ffffff1f;border-radius:12px;background:#ffffff08}
+.wall-route.done{border-color:#b9ff5e88;background:#b9ff5e12}
+.wall-route header{display:flex;justify-content:space-between;gap:12px;font:800 13px var(--body)}
+.wall-route header small{font:700 10px var(--mono);letter-spacing:1px;color:#ffffffa0;white-space:nowrap}
+.wall-route .bar{height:7px;margin-top:9px;border-radius:9px;background:#ffffff1c;overflow:hidden}
+.wall-route .bar i{display:block;height:100%;width:var(--p,0%);background:linear-gradient(90deg,#7be1d2,#b9ff5e);box-shadow:0 0 12px #b9ff5e88}
+.wall-stats{font:700 11px var(--mono);letter-spacing:1px;color:#d7ff98}
+.nav-button .account-level{font:800 10px var(--mono);color:#b9ff5e;margin-left:2px}
+.account-status{font:700 12px var(--mono);letter-spacing:1px}
+.account-status[data-state=online]{color:#b9ff5e}.account-status[data-state=offline]{color:#ff9aa8}.account-status[data-state=syncing]{color:#ffe08a}
+.account-form{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.account-form input{flex:1 1 220px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid #ffffff33;background:#0b0a16;color:#fff;font:600 14px var(--body)}
+.account-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.account-actions .danger{border-color:#ff6a7a88;color:#ffb3bd}
+.account-privacy{margin-top:16px;font-size:13px;line-height:1.55;color:#ffffffc0}
+#wallDialog,#accountDialog{width:min(560px,calc(100vw - 24px));overflow-x:hidden}

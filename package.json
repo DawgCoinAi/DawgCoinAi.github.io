@@ -12,8 +12,9 @@
   "version": "10.0.0",
   "description": "DAWG Atelier: cryptographic genomes, editable fashion, Appearance progression, a 3D showroom and portable GLB / 2D asset exports across nine arcade games.",
   "dependencies": {
-    "three": "0.186.1",
-    "pixi.js": "8.22.0"
+    "@supabase/supabase-js": "2.117.3",
+    "pixi.js": "8.22.0",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

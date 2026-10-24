@@ -10,8 +10,10 @@ import {isTimed,dailyChallenge,seededRandom,medalFor,dailyResult,advanceGame} fr
 import {snapshotMaze,restoreMaze} from './checkpoint.js';
 import {ArcadePack,PACK_MODES} from './arcade-pack.js';
 import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
-import {validKennel} from './dawg-career.js';
-import {GAME_IDS,VIEWS,canSwitchView} from './games.js';
+import {validKennel,DISCIPLINES} from './dawg-career.js';
+import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
+import {Cloud} from './cloud.js';
+import {GAME_IDS,VIEWS,canSwitchView,gameById} from './games.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
@@ -19,7 +21,10 @@ const money=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString('en-US'
 const padded=n=>String(Math.floor(n)).padStart(6,'0');
 let storageAvailable=true,restoringBackup=false,otherTabActive=false;
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('dawg-v1-'+key))??fallback;}catch{return fallback;}};
-const write=(key,value)=>{if(restoringBackup||otherTabActive)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
+const write=(key,value)=>{if(restoringBackup||otherTabActive)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));cloud.touch(key);}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
+// Cloud saves: newer progress from another device replaces this one, then the page reloads
+// so every module starts from the synced copy. Writes stop first so stale state cannot win.
+const cloud=new Cloud({onPulled:()=>{if(sessionStorage.getItem('dawg-cloud-reload'))return;try{sessionStorage.setItem('dawg-cloud-reload','1');}catch{}restoringBackup=true;location.reload();},onStatus:(...a)=>renderAccount(...a),onServer:data=>{mergeServer(arcade,data);settleUnlocks(arcade,records);write('arcade',arcade);renderLocks();}});
 // Keep the raw copy of a stored section that fails validation before the game replaces it with a fresh one.
 function keepDamaged(key,valid){if(restoringBackup||otherTabActive)return false;try{const raw=localStorage.getItem('dawg-v1-'+key);if(raw===null)return false;let value;try{value=JSON.parse(raw);}catch{}if(value===null||value!==undefined&&valid(value))return false;if(localStorage.getItem('dawg-v1-damaged-'+key)===null)localStorage.setItem('dawg-v1-damaged-'+key,raw);return true;}catch{return false;}}
 // Only the newest tab saves: an older tab stops writing so its stale state cannot overwrite newer progress.
@@ -28,6 +33,8 @@ if(tabChannel){tabChannel.onmessage=e=>{if(!e.data||e.data.claim===tabId||otherT
 let records=read('records',{classic:0,rush:0,trade:null,runs:0});
 if(!records||typeof records!=='object')records={classic:0,rush:0,trade:null,runs:0};
 let passport=read('passport',null);
+// Arcade XP, play time, streak days and unlocked games for the play walls.
+let arcade=read('arcade',null);if(!validArcade(arcade))arcade=freshArcade();
 let mode='classic',game=freshMaze(),trade=null,quantity=1,soundEnabled=read('sound',false),audioContext,confirmAction=null,scoreRecorded=false;
 const face=new Image();face.src='assets/dawg-head-v2.webp';
 const canvas=$('maze'),renderer=new ArcadeRenderer(canvas,face),cityRenderer=new PackRenderer($('cityCanvas'),face);let lastCityFrame=0;
@@ -44,7 +51,7 @@ renderer.setTheme(profile.theme);
 const kennelDamaged=keepDamaged('kennel',validKennel);
 const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)cityRenderer.city(trade,performance.now());}});
 const mobile=new MobileControls({direction,dash,pause:togglePause,exit:returnToArcade,settings:()=>openDialog('settingsDialog'),rotate:()=>pauseForInterruption('PAUSED · SCREEN ROTATED')},prefs);
-const pack=new ArcadePack(face,{read,write,prefs,prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
+const pack=new ArcadePack(face,{read,write,prefs,prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
 renderer.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches||prefs.fx==='low';
 function sound(freq=440,length=.08,type='sine',gain=.035){if(!soundEnabled)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioContext.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.6),audioContext.currentTime+length);g.gain.setValueAtTime(gain,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+length);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+length);}catch{}}
 function updateSound(){$('settingsSound').textContent=soundEnabled?'ON':'OFF';$('settingsSound').setAttribute('aria-pressed',String(soundEnabled));$('soundButton').innerHTML=`♫ <span>${soundEnabled?'ON':'OFF'}</span>`;$('soundButton').setAttribute('aria-label',`Turn sound ${soundEnabled?'off':'on'}`);$('soundButton').title=`Turn sound ${soundEnabled?'off':'on'}`;}
@@ -79,7 +86,7 @@ function recordArcade(){
   for(const key of Object.keys(dailyRecords).sort().slice(0,-14))delete dailyRecords[key];
   write('daily',dailyRecords);if(result.reward){earnRep(result.reward);profileDirty=true;renderProgress();saveProfile();}renderDaily();
  }
- kennel.record(mode,game.score);records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
+ finishRun(mode,game.score);kennel.record(mode,game.score);records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
 }
 function updateBest(){const best=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);$('bestScore').textContent=padded(best);$('recordSubtitle').textContent=mode==='daily'?"TODAY'S PERSONAL BEST":best>0?'THE SCORE TO SETTLE TONIGHT.':'EVERY LEGEND STARTS AT ZERO.';}
 function newArcade(){
@@ -107,7 +114,7 @@ function confirm(title,text,label,action){pack.pause();cancelCountdown();if(game
 $('acceptConfirm').onclick=()=>{const action=confirmAction;confirmAction=null;$('confirmDialog').close();action?.();};$('cancelConfirm').onclick=()=>{$('confirmDialog').close();confirmAction=null;};
 $('restartButton').onclick=()=>{if(game.status==='ready'||game.status==='over')newArcade();else confirm('Fresh start?','This resets the current maze run and its score.','RESTART RUN ↗',newArcade);};
 function selectMode(next){
- if(!GAME_IDS.includes(next)||next===mode)return;
+ if(!GAME_IDS.includes(next)||next===mode)return;const wall=wallFor(next,arcade,records);if(!wall.open){showWall(next,wall);return;}
  const change=()=>{
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();mode=next;
@@ -174,7 +181,7 @@ $('districts').addEventListener('click',e=>{const b=e.target.closest('[data-dist
 document.querySelectorAll('[data-qty]').forEach(b=>b.onclick=()=>{quantity=b.dataset.qty==='max'?'max':Number(b.dataset.qty);document.querySelectorAll('[data-qty]').forEach(a=>{a.classList.toggle('selected',a===b);a.setAttribute('aria-pressed',String(a===b));});});
 $('sellAllButton').onclick=()=>confirm('Sell your whole bag?',`Sell ${trade.used} units at this market for ${money(trade.inventoryValue)}. This keeps your run going.`,'SELL ALL ↗',()=>tradeAction(()=>trade.sellAll()));
 $('repayButton').onclick=()=>tradeAction(()=>trade.repay());$('depositButton').onclick=()=>tradeAction(()=>trade.deposit());$('withdrawButton').onclick=()=>tradeAction(()=>trade.withdraw());$('upgradeButton').onclick=()=>tradeAction(()=>trade.upgrade());
-function finishTrade(){if(trade.status==='over')return;if(!trade.finish())return;kennel.record('trade',trade.netWorth,{day:trade.day});if(trade.netWorth>0){profile.profitable++;earnRep(100+Math.min(500,Math.floor(trade.netWorth/100)));profileDirty=true;checkBadges();renderProgress();saveProfile();}records.trade=records.trade==null?trade.netWorth:Math.max(records.trade,trade.netWorth);records.runs=(records.runs||0)+1;write('records',records);awardPassport();saveTrade();renderTrade();$('tradeFinished').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});sound(720,.2);}
+function finishTrade(){if(trade.status==='over')return;if(!trade.finish())return;finishRun('trade',trade.netWorth);kennel.record('trade',trade.netWorth,{day:trade.day});if(trade.netWorth>0){profile.profitable++;earnRep(100+Math.min(500,Math.floor(trade.netWorth/100)));profileDirty=true;checkBadges();renderProgress();saveProfile();}records.trade=records.trade==null?trade.netWorth:Math.max(records.trade,trade.netWorth);records.runs=(records.runs||0)+1;write('records',records);awardPassport();saveTrade();renderTrade();$('tradeFinished').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});sound(720,.2);}
 $('cashoutButton').onclick=()=>confirm('Call it a night?',`Your stash will sell at today's prices, savings will be withdrawn, and debt will be paid as far as possible. Final net worth: ${money(trade.netWorth)}. This ends the run.`,'CASH OUT ↗',finishTrade);
 function freshTrade(){trade=new LivingTradeGame();enrollTrade(true);saveTrade();renderTrade();$('marketFeedback').textContent='New hustle. Start with a small buy, then travel to find a better price.';$('tradePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 const restartTrade=()=>trade?.status==='over'?freshTrade():confirm('A new night. A new hustle.','Your current Street Hustle progress will be replaced. Your completed records will stay saved.','NEW HUSTLE ↗',freshTrade);
@@ -206,6 +213,7 @@ function frame(now){
  }
  if(PACK_MODES.includes(mode))pack.frame(now);
  if(mode==='trade'&&trade&&!document.hidden&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;if(!cityRenderer.reduced)cityRenderer.city(trade,now);lastCityFrame=now;}
+ trackPlay(now,dt);
  if(now-lastProfileSave>2000){saveProfile();saveCheckpoint();lastProfileSave=now;}
  requestAnimationFrame(frame);
 }
@@ -213,6 +221,32 @@ function dash(){if(!isMaze()||countdownUntil||document.querySelector('dialog[ope
 $('dashButton').onclick=dash;
 function saveProfile(){if(!profileDirty)return;write('profile',profile);profileDirty=false;}
 let achievementTimer=0;
+// Play time counts only while a run is live (or, for the menu games, while the player is
+// interacting) and the page is visible. Leaving a game mid-run still banks the time.
+let runClock={game:null,seconds:0,startedAt:0},lastInput=-1e9;
+for(const type of ['pointerdown','keydown'])window.addEventListener(type,()=>{lastInput=performance.now();},{passive:true,capture:true});
+function activeGame(now){if(document.hidden||document.querySelector('dialog[open]'))return null;if(isMaze())return game.status==='playing'?mode:null;if(mode==='trade'||mode==='story')return now-lastInput<30000?mode:null;return pack.game?.status==='playing'?mode:null;}
+function trackPlay(now,dt){const id=activeGame(now);if(!id)return;if(runClock.game!==id){if(runClock.game&&runClock.seconds>=5)finishRun(runClock.game,0);runClock={game:id,seconds:0,startedAt:Date.now()};}runClock.seconds+=Math.min(.25,Math.max(0,dt));
+ if((id==='trade'||id==='story')&&runClock.seconds>=120)finishRun(id,0);}
+function finishRun(kind,score,gold=0){
+ const mine=runClock.game===kind,seconds=mine?Math.round(runClock.seconds):0,startedAt=mine?runClock.startedAt:Date.now();runClock={game:null,seconds:0,startedAt:0};
+ const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
+ cloud.recordRun({game:kind,day:localDay(),startedAt:new Date(startedAt).toISOString(),endedAt:new Date(Math.max(Date.now(),startedAt)).toISOString(),seconds,score:run.score,xp,gold});
+ renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
+}
+function renderLocks(){document.querySelectorAll('[data-mode]').forEach(b=>{const w=wallFor(b.dataset.mode,arcade,records);b.classList.toggle('locked',!w.open);b.title=w.open?'':'Locked: keep playing to open';});const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);}
+function showWall(id,wall){
+ $('wallTitle').textContent=(gameById(id)?.title||id)+' is locked';const list=$('wallRoutes');list.replaceChildren();
+ for(const r of wall.routes){const row=document.createElement('div');row.className='wall-route'+(r.done?' done':'');const head=document.createElement('header'),label=document.createElement('span'),left=document.createElement('small'),bar=document.createElement('div'),fill=document.createElement('i');
+  label.textContent=r.label;left.textContent=r.done?'DONE':r.left.toUpperCase();bar.className='bar';fill.style.setProperty('--p',Math.min(100,Math.round(r.have/r.need*100))+'%');bar.append(fill);head.append(label,left);row.append(head,bar);list.append(row);}
+ const s=statsOf(arcade);$('wallStats').textContent='LEVEL '+s.level+' · '+arcade.xp+' XP · '+s.minutes+' MIN PLAYED · BEST STREAK '+s.streak+' DAY'+(s.streak===1?'':'S');openDialog('wallDialog');
+}
+function renderAccount(status=cloud.status,detail='',account=cloud.account()){
+ const st=$('accountStatus');if(!st)return;st.dataset.state=status;st.textContent=status==='online'?(account?.guest?'● CLOUD SAVE ON · GUEST':'● CLOUD SAVE ON · '+account?.email):status==='syncing'?'● SYNCING…':'● OFFLINE · PROGRESS SAVED ON THIS DEVICE'+(detail?' ('+detail+')':'');
+ const s=statsOf(arcade),next=xpForLevel(s.level+1);$('accountSummary').textContent='Level '+s.level+' · '+arcade.xp+'/'+next+' XP · '+s.minutes+' min played · best streak '+s.streak+' day'+(s.streak===1?'':'s')+'.';
+ $('accountGuest').hidden=!!account&&!account.guest;$('accountMember').hidden=!account||account.guest;$('accountDelete').disabled=!account;
+ if(account?.pendingEmail)$('accountNote').textContent='Check '+account.pendingEmail+' and open the link to finish saving your progress.';
+}
 function announce(message){$('achievementToast').querySelector('strong').textContent=message;$('achievementToast').hidden=false;clearTimeout(achievementTimer);achievementTimer=setTimeout(()=>$('achievementToast').hidden=true,3800);}
 function earnRep(amount){const before=profile.rep;profile.rep+=amount;for(const t of Object.values(THEMES))if(t.unlock>before&&t.unlock<=profile.rep)announce(t.name+' unlocked');}
 const earnedBadges=new Set(BADGES.filter(b=>profile[b.id]>=b.target).map(b=>b.id));
@@ -263,6 +297,12 @@ function saveSettings(){write('settings',prefs);mobile.applyPrefs();renderer.red
 $('quickPlayButton').onclick=play;$('overlayHome').onclick=returnToArcade;$('launchSettings').onclick=()=>openDialog('settingsDialog');$('launchHelp').onclick=()=>openDialog('helpDialog');
 $('helpSettings').onclick=()=>{$('helpDialog').close();openDialog('settingsDialog');};
 $('backupButton').onclick=()=>openDialog('backupDialog');
+$('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
+const accountAction=async(task,done)=>{const note=$('accountNote');if(!cloud.client){note.textContent='Cloud saves are offline right now. Your progress is safe on this device.';return;}note.textContent='Working…';try{await task();note.textContent=done;}catch(error){note.textContent=error?.message||'Something went wrong. Try again.';}renderAccount();};
+$('accountForm').addEventListener('submit',e=>{e.preventDefault();const email=$('accountEmail').value.trim();accountAction(()=>cloud.saveWithEmail(email),'Check '+email+' and open the link to finish saving your progress.');});
+$('accountSignIn').onclick=()=>{const email=$('accountEmail').value.trim();if(!email){$('accountNote').textContent='Enter your email above, then press this again.';$('accountEmail').focus();return;}accountAction(()=>cloud.signInWithEmail(email),'Check '+email+' for your sign-in link. That account’s progress will replace this device’s.');};
+$('accountSignOut').onclick=()=>accountAction(()=>cloud.signOut(),'Signed out. You’re playing as a new guest on this device.');
+$('accountDelete').onclick=()=>confirm('Delete your cloud data?','This removes your saves, runs and unlocks from our database. Progress on this device stays unless you clear it.','DELETE CLOUD DATA',()=>{openDialog('accountDialog');accountAction(()=>cloud.deleteData(),'Your cloud data was deleted.');});
 $('exportProgress').onclick=()=>{
  try{saveProfile();saveCheckpoint();pack.saveRuns();const backup=makeBackup(localStorage),skipped=backup.skipped||[],blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='DAWG-save-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('backupStatus').textContent='Backup downloaded. Keep it to move your progress to another browser or computer.'+(skipped.length?' Damaged sections were left out: '+skipped.join(', ')+'.':'');}
  catch(e){$('backupStatus').textContent=e.message;}
@@ -281,6 +321,8 @@ $('tabReload').onclick=()=>location.reload();$('tabDialog').addEventListener('ca
 // A page restored from the back/forward cache may hold stale progress, so reload it to read and claim the latest save.
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 const restored=restoreMaze(read('mazeRun',null));
+if(restored&&!wallFor(restored.game.mode,arcade,records).open)arcade.unlocked[restored.game.mode]='played';if(settleUnlocks(arcade,records).length||restored)write('arcade',arcade);renderLocks();
+cloud.start();setTimeout(()=>{try{sessionStorage.removeItem('dawg-cloud-reload');}catch{}},15000);
 if(restored){game=restored.game;mode=game.mode;if(restored.challenge)challenge=restored.challenge;document.querySelectorAll('[data-mode]').forEach(b=>{const selected=b.dataset.mode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));});$('arcadePanel').setAttribute('aria-labelledby','tab-'+mode);}
 document.querySelectorAll('[data-mode]').forEach(b=>b.tabIndex=b.dataset.mode===mode?0:-1);
 renderer.character=kennel.prepare(mode,game);

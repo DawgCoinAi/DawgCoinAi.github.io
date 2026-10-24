@@ -149,6 +149,8 @@ Application source remains readable native JavaScript modules. The third-party l
 | `CHARACTER_SYSTEM.md` | Career rules, rating targets, architectural scope and future online phase |
 | `dist/engine.js` / `renderer.js` | Maze and trading rules / maze graphics |
 | `dist/pack-engine.js` / `snake-engine.js` / `runner-engine.js` | Flappy, Cross, Snake, and Dash rules |
+| `dist/unlocks.js` / `arcade-account.css` | Play walls: XP, levels, play time, streaks, challenges, unlock rules and the wall/account dialogs |
+| `dist/cloud.js` / `cloud-config.js` | Guest-first Supabase cloud saves and run uploads (see SUPABASE_SETUP.md) |
 | `dist/games.js` | Game registry: ids, kinds and supported camera views |
 | `dist/three-kit.js` | Shared 3D toolkit used by the 3D games |
 | `dist/dash-3d.js` / `dash-3d.css` / `dash-audio.js` | Full-screen 3D Dash city, HUD and synthesized soundtrack |

@@ -6,8 +6,9 @@ import {restoreMaze} from './checkpoint.js';
 import {restoreQuick,QUICK_MODES} from './pack-checkpoint.js';
 import {ENDINGS} from './story-engine.js';
 import {GAME_IDS,VIEWS,canSwitchView} from './games.js';
+import {validArcade} from './unlocks.js';
 export const SAVE_PREFIX='dawg-v1-';
-export const SAVE_KEYS=['records','profile','settings','sound','daily','trade','mazeRun','packRuns','story','storyEndings','passport','kennel'];
+export const SAVE_KEYS=['records','profile','settings','sound','daily','trade','mazeRun','packRuns','story','storyEndings','passport','kennel','arcade'];
 const object=o=>o!==null&&typeof o==='object'&&!Array.isArray(o);
 const count=(n,max=1e12)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 function validValue(key,v){
@@ -22,6 +23,7 @@ function validValue(key,v){
  if(key==='mazeRun')return v===null||!!restoreMaze(v,v?.challenge?.day);
  if(key==='packRuns')return object(v)&&Object.entries(v).every(([kind,s])=>QUICK_MODES.includes(kind)&&s?.kind===kind&&!!restoreQuick(s));
  if(key==='story')return v===null||validStorySave(v);
+ if(key==='arcade')return validArcade(v);
  if(key==='storyEndings')return Array.isArray(v)&&v.length<=3&&v.every(id=>Object.hasOwn(ENDINGS,id))&&new Set(v).size===v.length;
  return false;
 }

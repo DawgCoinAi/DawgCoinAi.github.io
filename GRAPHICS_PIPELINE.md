@@ -63,3 +63,7 @@ Playing and core tests use the delivered bundles; installation is for rebuilding
 Release checks passed: 122 JavaScript tests, two Python tests, and twelve outfit variants checked with Khronos glTF Validator (zero errors and zero warnings). The graphics tests cover deformed vertices, joint weights, loop boundaries, texture encoding, export structure, disposal, fallback and pooled Pixi scenes without mutating checkpoints. Native Canvas checks inspect geometry and asset content.
 
 Actual browser shader output, real device frame times, touch feel, context loss on a phone, Blender imports and platform launcher wrappers still need testing. No browser automation or GPU performance result is claimed. The next measured art pass should prioritize silhouette/face refinement, authored garment sets, atlas compression and device profiling before extending the GPU presentation to the remaining games.
+
+## CC0 models and lighting
+
+`three-kit.js` loads glTF models (`loadModel`, cached per path, cloned per use) and HDR environments (`Stage.hdrEnvironment`, Poly Haven) on top of the procedural look. Kenney kits keep their folder layout under `dist/assets/models/<kit>/` because each GLB points at its kit's `Textures/colormap.png`. `npm run build:graphics` bundles `GLTFLoader` and `HDRLoader` into `vendor/three.js`. Sources, authors and licenses: `dist/assets/CREDITS.md`. A test checks every referenced model, texture and license ships, and keeps the art under 9 MB.

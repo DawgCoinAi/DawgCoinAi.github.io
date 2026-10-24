@@ -65,6 +65,19 @@ export const skyMaterial=()=>new T.ShaderMaterial({...SKY,uniforms:T.UniformsUti
 export const auraMaterial=()=>new T.ShaderMaterial({...AURA,uniforms:T.UniformsUtils.clone(AURA.uniforms),transparent:true,depthWrite:false,blending:T.AdditiveBlending});
 
 /** Renderer, scene, camera, bloom and color grading in one view element that fills its stage. */
+// ── Loaded art: CC0 models (Kenney) and an HDR environment (Poly Haven). See assets/CREDITS.md.
+export const MODELS='assets/models/',ENV_HDR='assets/env/shanghai_bund_1k.hdr';
+const modelCache=new Map(),hdrCache=new Map();
+let gltfLoader=null;
+// Load a GLB once; every caller gets the same parsed scene to clone from.
+export function loadModel(path){if(!modelCache.has(path)){gltfLoader??=new T.GLTFLoader();modelCache.set(path,gltfLoader.loadAsync(MODELS+path).then(g=>{g.scene.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;if(o.material?.map)o.material.map.anisotropy=4;}});return g.scene;}).catch(e=>{modelCache.delete(path);throw e;}));}return modelCache.get(path);}
+export const loadModels=paths=>Promise.all(paths.map(loadModel));
+// A copy that shares geometry and textures with the original but has its own materials, so it
+// can be tinted without touching other copies.
+export function cloneModel(scene,{ownMaterials=false}={}){const c=scene.clone(true);if(ownMaterials)c.traverse(o=>{if(o.isMesh)o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();});return c;}
+export function loadHdr(url,renderer){const key=url;if(!hdrCache.has(key))hdrCache.set(key,new T.HDRLoader().loadAsync(url).then(tex=>{const pm=new T.PMREMGenerator(renderer);const env=pm.fromEquirectangular(tex).texture;pm.dispose();tex.dispose();return env;}).catch(e=>{hdrCache.delete(key);throw e;}));return hdrCache.get(key);}
+// Fit a model into a box of the given size (largest side), resting on y = 0 and centred on x/z.
+export function fitModel(obj,size){const box=new T.Box3().setFromObject(obj),dim=box.getSize(new T.Vector3()),s=size/Math.max(dim.x,dim.y,dim.z);obj.scale.multiplyScalar(s);box.setFromObject(obj);const c=box.getCenter(new T.Vector3());obj.position.x-=c.x;obj.position.z-=c.z;obj.position.y-=box.min.y;return obj;}
 export class Stage {
  constructor({quality:q=quality(),className='',onFailure}={}){this.quality=q;this.className=className;this.onFailure=onFailure;this.trauma=0;this.flash=0;this.flashColor=new T.Color(1,1,1);this.slowFrames=0;this.dead=false;this.failed=false;this.extraGeometries=[];}
  init(){
@@ -80,6 +93,9 @@ export class Stage {
   return this;
  }
  // A neon light box baked into an environment map gives wet surfaces and metals colored reflections.
+ // Swap in a real HDR environment (CC0, Poly Haven) once it loads; the procedural one stays
+ // until then, and on failure. Shared across renderers, so it downloads once.
+ hdrEnvironment(url=ENV_HDR,intensity=.9,{background=false,blur=.35}={}){return loadHdr(url,this.r).then(tex=>{if(this.dead)return;this.envMap?.dispose?.();this.scene.environment=tex;this.scene.environmentIntensity=intensity;if(background){this.scene.background=tex;this.scene.backgroundBlurriness=blur;this.scene.backgroundIntensity=.55;}}).catch(()=>{});}
  neonEnvironment(intensity=.7){
   const env=new T.Scene();env.background=new T.Color(0x05060c);for(const [x,y,z,w,h,col]of [[-6,3,-8,10,2,0xff4fc0],[6,4,-8,10,2,0x48e6ff],[0,7,6,14,1.5,0xb9ff5e],[-8,1,4,4,6,0x9f6bff],[8,2,4,4,6,0xff8a3d],[0,-3,0,30,.5,0x101828]]){const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(col).multiplyScalar(3),side:T.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);env.add(m);}
   const pm=new T.PMREMGenerator(this.r);this.envMap=pm.fromScene(env,.03);pm.dispose();env.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});this.scene.environment=this.envMap.texture;this.scene.environmentIntensity=intensity;

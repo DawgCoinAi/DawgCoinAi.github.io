@@ -7,6 +7,8 @@ import {T,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,Sta
 import {KART,trackAt,trackPoint,ordinal} from './kart-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
+import {loadKartArt,kartRig,dressTrack} from './kart-art.js';
+import {makeDawg} from './dawg-career.js';
 
 const ICONS={boost:'⚡',bone:'🦴',rocket:'🚀'},LABELS={boost:'BOOST',bone:'BONE',rocket:'ROCKET'};
 const asphalt=()=>texture(256,256,(c,w,h)=>{c.fillStyle='#15141f';c.fillRect(0,0,w,h);for(let i=0;i<900;i++){c.fillStyle=`rgba(255,255,255,${Math.random()*.05})`;c.fillRect(Math.random()*w,Math.random()*h,2,2);}
@@ -43,14 +45,16 @@ export class ThreeKart {
  }
  setCamera(mode){this.cameraMode=mode==='first'?'first':'third';this.rig?.setMode(this.cameraMode);}
  build(){
-  const s=this.scene;this.stage.neonEnvironment(.7);s.fog=new T.FogExp2(0x070914,.006);
+  const s=this.scene;this.stage.neonEnvironment(.7);this.stage.hdrEnvironment(undefined,.55);s.fog=new T.FogExp2(0x070914,.0055);
+  // Model karts and scenery load in the background; the built-in karts race until they arrive.
+  this.art=null;loadKartArt().then(a=>{if(this.dead)return;a.glowTex=this.glowTex;this.art=a;this.dressed=false;this.modelKarts=false;}).catch(()=>{});
   this.sky=new T.Mesh(new T.SphereGeometry(600,24,12),skyMaterial());s.add(this.sky);
   this.skyline=new T.Mesh(new T.CylinderGeometry(420,420,170,64,1,true),new T.MeshBasicMaterial({map:skylineTexture(),transparent:true,side:T.BackSide,fog:false,depthWrite:false}));this.skyline.material.map.repeat.set(6,1);this.skyline.position.y=55;s.add(this.skyline);
   s.add(new T.HemisphereLight(0xa9b4ff,0x150c22,1));const key=new T.DirectionalLight(0xffffff,1.2);key.position.set(60,120,40);s.add(key);
   this.groundMat=new T.MeshStandardMaterial({color:0x0a0c18,metalness:.3,roughness:.8,emissive:0xffffff,emissiveIntensity:.25});
   const grid=texture(128,128,(c,w,h)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.strokeStyle='#ffffff';c.globalAlpha=.25;c.lineWidth=2;c.strokeRect(1,1,w-2,h-2);},{repeat:true});grid.repeat.set(120,120);this.groundMat.emissiveMap=grid;
   const ground=new T.Mesh(new T.PlaneGeometry(1200,1200).rotateX(-Math.PI/2),this.groundMat);ground.position.y=-.03;s.add(ground);
-  this.roadMat=new T.MeshStandardMaterial({map:asphalt(),metalness:.25,roughness:.45,envMapIntensity:.6});this.kerbMat=new T.MeshStandardMaterial({map:kerb(),emissive:0xffffff,emissiveMap:kerb(),emissiveIntensity:.35,roughness:.5,side:T.DoubleSide});
+  this.roadMat=new T.MeshStandardMaterial({map:asphalt(),metalness:.25,roughness:.45,envMapIntensity:.6});this.kerbMat=new T.MeshStandardMaterial({map:kerb(),emissive:0xffffff,emissiveMap:kerb(),emissiveIntensity:.06,roughness:.7,envMapIntensity:.25,side:T.DoubleSide});
   this.wallMat=new T.MeshStandardMaterial({color:0x22224a,metalness:.6,roughness:.35,side:T.DoubleSide});this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,side:T.DoubleSide});
   this.boxTex=boxFace();this.glowTex=radial(glowStops);
   this.boxGeo=new T.BoxGeometry(1.1,1.1,1.1);this.boxMat=new T.MeshStandardMaterial({map:this.boxTex,emissive:0xffffff,emissiveMap:this.boxTex,emissiveIntensity:.9,transparent:true,opacity:.85,metalness:.2,roughness:.1});
@@ -63,7 +67,7 @@ export class ThreeKart {
   this.karts=[];this.particles=new Particles(s,this.quality==='high'?600:300,this.glowTex);this.dummy=new T.Object3D();this.trackGroup=new T.Group();s.add(this.trackGroup);
  }
  buildTrack(g){
-  const t=g.track,grp=this.trackGroup;for(const c of [...grp.children]){grp.remove(c);c.geometry?.dispose();}
+  const t=g.track,grp=this.trackGroup;for(const c of [...grp.children]){grp.remove(c);c.geometry?.dispose();}this.dressed=false;
   const W=KART.width/2;grp.add(new T.Mesh(ribbon(t,-W,W,{vScale:24}),this.roadMat));
   for(const side of [1,-1])grp.add(new T.Mesh(ribbon(t,side*W,side*(W+.9),{vScale:4}),this.kerbMat));
   // Run-off between the kerbs and the barriers.
@@ -85,6 +89,10 @@ export class ThreeKart {
   this.skyline.position.set((minX+maxX)/2,55,-(minY+maxY)/2);this.trackSeed=g.worldSeed;
   if(!this.karts.length)this.karts=g.karts.map(k=>{const m=kartModel(k.color,this.glowTex);this.scene.add(m.g);return m;});
  }
+ // Replace the built-in karts with the model karts: the player's own DAWG drives kart one,
+ // rivals get their own DAWGs (or the stock driver on low graphics settings).
+ swapKarts(g){this.modelKarts=true;const rnd=i=>{try{return makeDawg();}catch{return null;}};
+  this.karts.forEach((m,i)=>{const rig=kartRig(this.art.karts[i%this.art.karts.length],{dawg:i===0?this.dawg:this.quality==='high'?rnd(i):null});for(const c of [...m.g.children])if(!c.isSprite)m.g.remove(c);m.g.add(rig.root);m.wheels=rig.wheels;m.driver=rig.driver;m.head=rig.driver?.root||rig.root;});}
  pose(t,k){const p=trackPoint(t,k.p,k.d),q=trackAt(t,k.p);return {x:p.x,z:-p.y,yaw:q.ang+k.a};}
  event(e,g){if(!this.ready||!this.karts.length)return;const st=this.stage,hud=this.hud,me=this.pose(g.track,g.you),fx=Math.cos(me.yaw),fz=-Math.sin(me.yaw);
   if(e.type==='coin'){this.particles.burst(me.x+fx,1,me.z+fz,14,0xffc14d,{speed:3,life:.5});hud.pop('+50');}
@@ -99,20 +107,24 @@ export class ThreeKart {
   else if(e.type==='pass')hud.pop(ordinal(e.place).toUpperCase(),'big');
   else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);}
   else if(e.type==='finish'){hud.banner(ordinal(e.place).toUpperCase()+' PLACE!');st.flashOnce(e.place===1?0xb9ff5e:0xffffff,.4,this.reduced);this.particles.burst(me.x,2,me.z,120,e.place===1?0xffc83d:0xb48cff,{speed:9,life:1.2});}}
- draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.lastGame=g;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
+ draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.lastGame=g;this.dawg=d;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<2500));return true;}
  render(g,now){
   this.stage.resize();if(this.trackSeed!==g.worldSeed)this.buildTrack(g);const t=g.track,dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
   if(g.status!==this.status){this.status=g.status;this.statusSince=now;}
-  const look=worldLook(g.worldSeed),glow=new T.Color(look.glow),accent=new T.Color(look.accent);this.railMat.color.copy(glow).multiplyScalar(1.8);this.groundMat.emissive.copy(accent).multiplyScalar(.35);this.skyline.material.color.copy(glow).lerp(new T.Color(1,1,1),.6);
-  const u=this.sky.material.uniforms;u.uTop.value.set(0x04050c);u.uHorizon.value.copy(glow).multiplyScalar(.16);u.uGlow.value.copy(accent).multiplyScalar(.22);this.scene.fog.color.copy(glow).multiplyScalar(.05);
+  const look=worldLook(g.worldSeed),glow=new T.Color(look.glow),accent=new T.Color(look.accent);this.railMat.color.copy(glow).multiplyScalar(1.8);this.groundMat.emissive.copy(accent).multiplyScalar(.35);this.skyline.material.color.copy(glow).lerp(this.skylineTint??=new T.Color(0x8a96ff),.75);
+  const u=this.sky.material.uniforms;u.uTop.value.set(0x03040c);u.uHorizon.value.copy(glow).lerp(this.nightBlue??=new T.Color(0x1c1648),.7).multiplyScalar(.45);u.uGlow.value.copy(accent).lerp(this.nightBlue??=new T.Color(0x1c1648),.6).multiplyScalar(.2);this.scene.fog.color.copy(glow).multiplyScalar(.05);
   // Track furniture.
   this.boxes.forEach((m,i)=>{m.visible=!g.taken.some(x=>x.i===i);m.rotation.set(reduced?0:real*.8,reduced?.6:real*1.3,0);m.position.y=1+(reduced?0:Math.sin(real*2+i)*.12);});
   const lap=Math.floor(g.you.p/t.len)*1000;t.coins.forEach((c,i)=>{const p=trackPoint(t,c.s,c.d),gone=g.coinTaken.includes(lap+i);this.dummy.position.set(p.x,gone?-5:.7,-p.y);this.dummy.rotation.set(0,reduced?0:real*3+i,0);this.dummy.updateMatrix();this.coins.setMatrixAt(i,this.dummy.matrix);});this.coins.instanceMatrix.needsUpdate=true;this.dummy.rotation.set(0,0,0);
   this.bones.forEach((m,i)=>{const b=g.bones[i];m.visible=!!b;if(!b)return;const p=trackPoint(t,b.p,b.d);m.position.set(p.x,.2,-p.y);m.rotation.y=i;});
   this.rockets.forEach((m,i)=>{const r=g.rockets[i];m.visible=!!r;if(!r)return;const p=trackPoint(t,r.p,r.d);m.position.set(p.x,.8,-p.y);m.rotation.y=p.ang;if(!reduced)this.particles.burst(p.x,.8,-p.y,1,0xff8a3d,{speed:1,life:.3});});
   // Karts: heading, drift yaw, spin-outs, boost flames and drift sparks.
+  if(this.art&&!this.dressed){this.trackGroup.add(dressTrack(t,this.art,{quality:this.quality}));this.dressed=true;}
+  if(this.art&&!this.modelKarts)this.swapKarts(g);
   g.karts.forEach((k,i)=>{const m=this.karts[i],p=this.pose(t,k),drift=k.drift*.4,spin=k.spin>0?(1.1-k.spin)*Math.PI*4:0;m.g.position.set(p.x,0,p.z);m.g.rotation.set(0,p.yaw+drift+spin,(k.drift?-k.drift*.06:-k.steer*.04));
+   // Wheels roll with distance and the front pair steers.
+   if(m.wheels){m.roll=(m.roll||0)+k.v*dt/.3;for(const w of m.wheels){w.node.rotation.x=m.roll;if(w.front)w.node.rotation.y=(k.drift?k.drift*.5:k.steer*.35);}}
    const fx=Math.cos(p.yaw),fz=-Math.sin(p.yaw);if(reduced)return;
    if(k.boost>0)this.particles.burst(p.x-fx*1.3,.45,p.z-fz*1.3,2,i?0xff8a3d:0x5ee7ff,{speed:2,life:.25,up:.5});
    if(k.drift&&!i&&k.charge>.3){const c=k.charge>=1.8?0xff8a3d:k.charge>=.9?0x5ec8ff:0xffffff,sx=Math.sin(p.yaw)*.65,sz=Math.cos(p.yaw)*.65;for(const s of [-1,1])this.particles.burst(p.x-fx*.8+sx*s,.2,p.z-fz*.8+sz*s,1,c,{speed:2.5,life:.25,up:1});}});
@@ -120,7 +132,7 @@ export class ThreeKart {
   const me=this.pose(t,g.you);if(this.camYaw===null)this.camYaw=me.yaw;this.camYaw+=Math.atan2(Math.sin(me.yaw-this.camYaw),Math.cos(me.yaw-this.camYaw))*Math.min(1,dt*(reduced?20:5));
   const cx=Math.cos(this.camYaw),cz=-Math.sin(this.camYaw),fast=Math.min(1,g.you.v/KART.top);
   const third={pos:new T.Vector3(me.x-cx*(6.2+fast*1.2),2.7+fast*.3,me.z-cz*(6.2+fast*1.2)),at:new T.Vector3(me.x+cx*6,.9,me.z+cz*6)};
-  const first={pos:new T.Vector3(me.x+Math.cos(me.yaw)*.05,1.2,me.z-Math.sin(me.yaw)*.05),at:new T.Vector3(me.x+Math.cos(me.yaw)*12,.7,me.z-Math.sin(me.yaw)*12)};
+  const fwd=this.modelKarts?.45:.05,first={pos:new T.Vector3(me.x+Math.cos(me.yaw)*fwd,this.modelKarts?1.5:1.2,me.z-Math.sin(me.yaw)*fwd),at:new T.Vector3(me.x+Math.cos(me.yaw)*12,.8,me.z-Math.sin(me.yaw)*12)};
   this.karts[0].head.visible=this.rig.mix<.5;
   this.rig.update(dt,third,first,{follow:30,roll:this.rig.mix>.5?-g.you.steer*.04:0});this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera,boosting=g.you.boost>0&&!reduced?8:0;cam.fov+=(fitFov((this.rig.mix>.5?78:66)+boosting,cam.aspect,70)-cam.fov)*Math.min(1,dt*5);cam.near=.05;cam.far=1500;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);

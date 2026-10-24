@@ -28,6 +28,8 @@ jobs:
 
   deploy:
     needs: test
+    # The private source repo runs the tests only; the public Pages repo also deploys.
+    if: github.repository == 'DawgCoinAi/DawgCoinAi.github.io'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

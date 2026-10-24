@@ -29,6 +29,7 @@ export class PackRenderer {
   if(kind==='flappy')return [async()=>new (await import('./flappy-3d.js')).ThreeFlappy(this.canvas,()=>this.failGPU('flappy'))];
   if(kind==='pinball')return [async()=>new (await import('./pinball-3d.js')).ThreePinball(this.canvas,()=>this.failGPU('pinball'))];
   if(kind==='kart')return [async()=>new (await import('./kart-3d.js')).ThreeKart(this.canvas,()=>this.failGPU('kart'))];
+  if(kind==='cross')return [async()=>new (await import('./cross-3d.js')).ThreeCross(this.canvas,()=>this.failGPU('cross'))];
   return [];
  }
  get dashGPU(){return this.gpus.runner||null;}set dashGPU(v){this.gpus.runner=v;}

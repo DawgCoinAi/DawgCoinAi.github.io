@@ -1,7 +1,8 @@
 import {DawgKennel} from './dawg-kennel.js';
 import {STAMPS,updatePassport} from './passport.js';
 import {LivingTradeGame,validLivingTrade,TRADE_PERKS} from './living-trade.js';
-import {freshSeed} from './world.js';
+import {freshSeed,worldLook} from './world.js';
+import {sceneFor} from './scene-loader.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
 import {ArcadeRenderer,THEMES} from './renderer.js';
@@ -56,7 +57,7 @@ for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfil
 if(savedProfile?.theme in THEMES&&profile.rep>=THEMES[savedProfile.theme].unlock)profile.theme=savedProfile.theme;
 renderer.setTheme(profile.theme);
 const kennelDamaged=keepDamaged('kennel',validKennel);
-const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)cityRenderer.city(trade,performance.now());}});
+const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)drawCity(performance.now());}});
 const mobile=new MobileControls({direction,dash,pause:togglePause,exit:returnToArcade,settings:()=>openDialog('settingsDialog'),rotate:()=>pauseForInterruption('PAUSED · SCREEN ROTATED')},prefs);
 const pack=new ArcadePack(face,{read,write,prefs,share:(id,score,o)=>shareRun(id,score,o),prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{const prevBest=records[kind]||0;finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);queueResults(kind,score,kind==='story'?{prevBest,detail:'ending: '+(pack.story?.result?.title||'').toLowerCase(),again:'NEW EPISODE ↻'}:{prevBest,detail:pack.statLine().toLowerCase()});kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
 renderer.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches||prefs.fx==='low';
@@ -164,6 +165,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseForInt
 window.addEventListener('blur',()=>pauseForInterruption('PAUSED · YOUR RUN IS SAFE'));
 function openDialog(id){pack.pause();if(isMaze()){cancelCountdown();if(game.status==='playing')game.pause();showState();saveCheckpoint();releaseWakeLock();}if(id==='settingsDialog')renderSettings();$(id).showModal();}
 $('helpButton').onclick=()=>openDialog('helpDialog');$('recordsButton').onclick=()=>{$('achievementsContent').innerHTML=`<div class="badge-grid">${badgesHTML()}</div>`;$('recordsContent').innerHTML=`<div class="record-row"><span>01 / Maze Munch</span><strong>${padded(records.classic||0)}</strong></div><div class="record-row"><span>02 / 60-Second Rush</span><strong>${padded(records.rush||0)}</strong></div><div class="record-row"><span>03 / Street Hustle</span><strong>${records.trade===null||records.trade===undefined?'—':money(records.trade)}</strong></div><div class="record-row"><span>Daily Run / all-time</span><strong>${padded(records.daily||0)}</strong></div>${[['flappy','Flappy DAWG'],['cross','DAWG Cross'],['snake','Neon Snake'],['runner','DAWG Dash'],['story','After Hours']].map(([id,name])=>`<div class="record-row"><span>${name}</span><strong>${padded(records[id]||0)}</strong></div>`).join('')}<div class="record-row"><span>Completed runs</span><strong>${records.runs||0}</strong></div>`;openDialog('recordsDialog');};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+// Street Hustle's scene: the 3D street when it's available, otherwise the 2D city.
+const cityScene=sceneFor($('cityCanvas'));
+function drawCity(now){if(!trade)return;const seed=trade.world.seed+trade.district*771;if(!cityScene({seed,title:$('citySceneTitle').textContent,tint:worldLook(seed).glow,rain:/rain/i.test($('cityWeather').textContent),dawg:cityRenderer.character,reduced:renderer.reduced}))cityRenderer.city(trade,now);}
 function validSavedTrade(s){return s?.version===1&&validLivingTrade(s.state);}
 function loadTrade(){if(keepDamaged('trade',validSavedTrade))announce('Street Hustle save was damaged. A new campaign started; the old copy was kept.');const saved=read('trade',null);const valid=validSavedTrade(saved);trade=new LivingTradeGame(valid?saved.state:null);enrollTrade(!valid);saveTrade();}
 function enrollTrade(fresh=false){cityRenderer.character=kennel.prepare('trade',trade,fresh);if(fresh){trade.cash+=trade.career.cash;trade.world.contract.reward=Math.round(trade.world.contract.reward*(1+trade.career.order));if(trade.career.cash)trade.log('Career Hustle bonus: +$'+trade.career.cash+' starting cash.');}}
@@ -189,7 +193,7 @@ function renderLivingTrade(){
  $('tradeEncounter').hidden=!encounter;
  $('encounterOptions').replaceChildren();
  if(encounter){$('encounterTitle').textContent=encounter.title;$('encounterText').textContent=encounter.text;for(const option of encounter.options){const b=document.createElement('button'),title=document.createElement('strong'),detail=document.createElement('small');b.dataset.encounter=option.id;b.disabled=!!option.disabled;title.textContent=option.label;detail.textContent=option.detail;b.append(title,detail);$('encounterOptions').append(b);}}
- cityRenderer.reduced=renderer.reduced;cityRenderer.city(trade,performance.now());
+ cityRenderer.reduced=renderer.reduced;drawCity(performance.now());
 }
 function renderMarketIntel(){const i=Math.max(0,Math.min(5,Number($('intelGood').value)||0)),quotes=trade.world.markets.map(m=>m.prices[i]),lo=Math.min(...quotes),hi=Math.max(...quotes),basis=trade.averageCost(i);$('marketIntel').innerHTML=DISTRICTS.map((d,j)=>{const m=trade.world.markets[j],difference=m.prices[i]-basis;return `<article class="intel-place"><h4>${d.name}</h4><b>${money(m.prices[i])}</b><em>${m.prices[i]===lo?'LOWEST QUOTE':m.prices[i]===hi?'HIGHEST QUOTE':'CURRENT QUOTE'}</em><small>${m.stock[i]} units available</small><small>${trade.bag[i]?`${difference>=0?'+':'−'}${money(Math.abs(difference))} / unit vs your cost`:'No units in your bag'}</small><button data-intel="${j}" ${trade.blocked||j===trade.district||trade.day>=30?'disabled':''}>${j===trade.district?'YOU ARE HERE':'TRAVEL · '+Math.round(trade.travelRisk(j)*100)+'% RISK'}</button></article>`;}).join('');}
 $('intelGood').addEventListener('change',()=>{if(trade)renderMarketIntel();});
@@ -235,7 +239,7 @@ function frame(now){
   if(soundEnabled&&game.status==='playing'&&now>=nextMusicBeat){const notes=game.power>0?[220,330,440,660,440,330,277,415]:[110,165,220,165,131,196,262,196];sound(notes[musicBeat++%8],.12,'triangle',.009);nextMusicBeat=now+(game.power>0?180:260);}
  }
  if(PACK_MODES.includes(mode))pack.frame(now);
- if(mode==='trade'&&trade&&!document.hidden&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;if(!cityRenderer.reduced)cityRenderer.city(trade,now);lastCityFrame=now;}
+ if(mode==='trade'&&trade&&!document.hidden&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;drawCity(now);lastCityFrame=now;}
  trackPlay(now,dt);
  if(now-lastProfileSave>2000){saveProfile();saveCheckpoint();lastProfileSave=now;}
  requestAnimationFrame(frame);

@@ -427,3 +427,8 @@ dialog .dialog-close{border-radius:50%;width:38px;height:38px;border:1px solid v
 .help-dialog p b{color:var(--ui-text)}
 .help-dialog .dialog-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
 .help-dialog .dialog-actions .btn{flex:1 1 180px}
+
+/* 3D scenes over the Street Hustle and After Hours pictures */
+.scene3d-wrap{position:relative;display:block}
+.scene3d-wrap>canvas{display:block;width:100%;height:auto}
+.scene3d-wrap>.scene3d{position:absolute;inset:0;border-radius:inherit}

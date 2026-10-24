@@ -15,6 +15,7 @@ import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf
 import {Cloud} from './cloud.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById} from './games.js';
 import {heatLabel} from './difficulty.js';
+import {Curveballs} from './curveballs.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
@@ -43,7 +44,7 @@ let lastTime=0,toastUntil=0,blinkTime=0,lastProfileSave=0,musicBeat=0,nextMusicB
 let focused=false,profileDirty=false,countdownUntil=0,wakeLock=null,runOutcome=null;
 let challenge=dailyChallenge(),dailyRecords=read('daily',{});
 if(!dailyRecords||typeof dailyRecords!=='object'||Array.isArray(dailyRecords))dailyRecords={};
-const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
+const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',curveballs:savedPrefs?.curveballs==='off'?'off':'on',cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
 const BADGES=[{id:'dots',target:100,name:'Block cleaner',desc:'Collect 100 coins'},{id:'caught',target:5,name:'Pack leader',desc:'Catch 5 rivals'},{id:'loot',target:3,name:'Bag chaser',desc:'Grab 3 gold bags'},{id:'clears',target:3,name:'City legend',desc:'Clear 3 districts'},{id:'dashes',target:25,name:'Fast & furrious',desc:'Use dash 25 times'},{id:'profitable',target:1,name:'Self-made DAWG',desc:'Finish a profitable hustle'}];
 const savedProfile=read('profile',{}),profile={rep:0,dots:0,caught:0,loot:0,clears:0,dashes:0,profitable:0,theme:'district'};
 for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfile?.[k])&&savedProfile[k]>=0)profile[k]=Math.floor(savedProfile[k]);}
@@ -118,7 +119,7 @@ function selectMode(next){
  if(!GAME_IDS.includes(next)||next===mode)return;const wall=wallFor(next,arcade,records);if(!wall.open){showWall(next,wall);return;}
  const change=()=>{
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
-  if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();mode=next;
+  if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();curve.clear();mode=next;
   $('dailyBrief').hidden=next!=='daily';$('mobileLaunch').hidden=!isMaze();$('arcadePanel').hidden=!isMaze();$('tradePanel').hidden=next!=='trade';
   document.querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;});
   pack.select(PACK_MODES.includes(next)?next:null);
@@ -131,7 +132,9 @@ function selectMode(next){
 
 document.querySelectorAll('[data-mode]').forEach(b=>{b.onclick=()=>selectMode(b.dataset.mode);b.addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('[data-mode]')],i=tabs.indexOf(b);if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();e.stopPropagation();const next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[next].focus();}});});
 const keyDirections={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
-function direction(dir){if(!isMaze()||document.querySelector('dialog[open]'))return;if(game.status==='ready'&&!countdownUntil)play();if(game.status==='playing'||countdownUntil)game.direction(dir);}
+// Maze curveballs share the pack games' rules: announced, timed, presentation and input only.
+const curve=new Curveballs({target:()=>$('maze')?.parentElement,enabled:()=>prefs.curveballs!=='off',reduced:()=>renderer.reduced,cue:(kind,m)=>{if(kind==='warn')sound(520,.12,'square',.03);else if(kind==='start')sound(m.time>1?880:m.time<1?220:660,.35,'sawtooth',.03);else sound(440,.15,'triangle',.025);}});let curveGame=null;
+function direction(dir){if(!isMaze()||document.querySelector('dialog[open]'))return;if(game.status==='ready'&&!countdownUntil)play();if(game.status==='playing'||countdownUntil){const g=game;curve.route(dir,d=>{if(g===game)g.direction(d);});}}
 window.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||!isMaze()||e.ctrlKey||e.metaKey||e.altKey)return;const dir=keyDirections[e.key]||keyDirections[e.key.toLowerCase()];if(dir){e.preventDefault();direction(dir);}else if((e.key==='Shift'||e.key.toLowerCase()==='e')&&!e.repeat){e.preventDefault();dash();}else if(e.key==='Escape'&&mobile.active){returnToArcade();}else if(e.key==='Escape'&&focused){setFocus(false);}else if(e.code==='Space'||e.key.toLowerCase()==='p'){if(e.code==='Space'&&e.target.tagName==='BUTTON')return;e.preventDefault();if(!e.repeat)togglePause();}});
 document.querySelectorAll('[data-dir]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();direction(b.dataset.dir);});b.onclick=()=>direction(b.dataset.dir);});
 let pointerStart=null;
@@ -208,7 +211,7 @@ function frame(now){
  const dt=lastTime?(now-lastTime)/1000:0;lastTime=now;blinkTime=now/1000;
  if(countdownUntil){const remaining=countdownUntil-now;if(remaining<=0){countdownUntil=0;game.start();sound(880,.13);showState();requestWakeLock();}else $('countdownNumber').textContent=String(Math.ceil(remaining/600));}
  if(isMaze()){
-  const prior=game.status;if(!countdownUntil)advanceGame(game,dt);processEvents();if(prior!==game.status)showState();
+  const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
   if(now-lastHud>80){updateHud();lastHud=now;}renderer.draw(game,now);if(now>toastUntil)$('gameToast').classList.remove('visible');
   if(soundEnabled&&game.status==='playing'&&now>=nextMusicBeat){const notes=game.power>0?[220,330,440,660,440,330,277,415]:[110,165,220,165,131,196,262,196];sound(notes[musicBeat++%8],.12,'triangle',.009);nextMusicBeat=now+(game.power>0?180:260);}
  }

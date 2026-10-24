@@ -17,7 +17,7 @@ test('Pack games in the registry all have quick-game checkpoints, except the sto
  for(const id of PACK_IDS)if(id!=='story')assert.ok(QUICK_MODES.includes(id),id);
 });
 test('Camera choices fall back to each game’s default and only switch where supported',()=>{
- assert.equal(viewFor('runner',{}),'third');assert.equal(viewFor('runner',{runner:'first'}),'first');assert.equal(viewFor('runner',{runner:'sideways'}),'third');
+ assert.equal(viewFor('runner',{}),'first','first person is the default');assert.equal(viewFor('runner',{runner:'third'}),'third');assert.equal(viewFor('runner',{runner:'sideways'}),'first');
  assert.equal(viewFor('flappy',{flappy:'first'}),'third');assert.equal(canSwitchView('runner'),true);assert.equal(canSwitchView('trade'),false);
 });
 test('Backups accept saved camera choices and reject unknown ones',()=>{

@@ -40,3 +40,21 @@ body.pack-session.pack-runner .pack-dpad button{background:#0b0a1680;border-colo
 body.pack-session.pack-runner #packControlHint{display:none}
 @media (pointer:coarse){body.pack-session.pack-runner .d3-hud{--d3-bottom:96px}}
 @media (hover:hover) and (pointer:fine){body.pack-session.pack-runner .pack-controls{opacity:.35;transition:opacity .2s}body.pack-session.pack-runner .pack-controls:hover{opacity:1}}
+
+/* Curveball modes: announced twists applied to the game stage for a few seconds. */
+#curveball{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 74px);z-index:60;transform:translateX(-50%);display:grid;gap:4px;justify-items:center;padding:12px 22px;border-radius:16px;background:#12081ce6;border:1px solid #ff5fc888;box-shadow:0 0 40px #ff5fc855;text-align:center;pointer-events:none;max-width:calc(100vw - 24px)}
+#curveball strong{font:900 clamp(18px,3.6vw,30px)/1.05 var(--display);letter-spacing:1px;color:#fff;text-shadow:0 0 20px #ff5fc8}
+#curveball small{font:700 12px var(--body);color:#ffd6f2}
+#curveball[data-kind=warn]{border-color:#ffd25e99;box-shadow:0 0 40px #ffd25e55}
+#curveball[data-kind=warn] strong{text-shadow:0 0 20px #ffb43a}
+#curveball[data-kind=end]{border-color:#b9ff5e88;box-shadow:0 0 30px #b9ff5e44}
+.cb-target{transition:transform .7s cubic-bezier(.3,1.4,.5,1),filter .7s ease}
+.cb-tipsy{animation:cbSway 3.4s ease-in-out infinite;filter:blur(.7px) saturate(1.25)}
+@keyframes cbSway{0%,100%{transform:rotate(-2.6deg) translateX(-8px) scale(1.04)}50%{transform:rotate(2.6deg) translateX(8px) scale(1.04)}}
+.cb-trippy{transform:scaleX(-1);animation:cbHue 8s linear infinite}
+@keyframes cbHue{from{filter:hue-rotate(0deg) saturate(2.1) contrast(1.1)}to{filter:hue-rotate(360deg) saturate(2.1) contrast(1.1)}}
+.cb-zoomies{filter:saturate(1.6) contrast(1.15)}
+.cb-upside{transform:rotate(180deg)}
+.cb-shrink{transform:scale(.6)}
+.cb-bullet{filter:sepia(.35) saturate(.85) contrast(1.12)}
+@media (prefers-reduced-motion:reduce){.cb-target{transition:none}.cb-tipsy,.cb-trippy{animation:none}}

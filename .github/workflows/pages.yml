@@ -36,6 +36,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # Bundle and minify the app and its stylesheets into a few files for faster first loads.
+      - run: node scripts/build-app.mjs dist
       # Give every module and stylesheet a per-deploy address so browsers never mix builds.
       - run: node scripts/stamp-build.mjs dist ${{ github.sha }}
       - uses: actions/configure-pages@v5

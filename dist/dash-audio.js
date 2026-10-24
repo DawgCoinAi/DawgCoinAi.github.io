@@ -7,7 +7,7 @@ export class DashAudio {
   this.onVisibility=()=>{if(!this.ctx)return;if(document.hidden)this.ctx.suspend().catch(()=>{});else if(this.playing)this.ctx.resume().catch(()=>{});};document.addEventListener('visibilitychange',this.onVisibility);}
  ensure(){
   if(this.ctx)return this.ctx;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;const c=this.ctx=new AC();
-  this.master=c.createGain();this.master.gain.value=.55;const comp=c.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=4;this.master.connect(comp);comp.connect(c.destination);
+  this.master=c.createGain();this.master.gain.value=.55*(this.volume??.8);const comp=c.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=4;this.master.connect(comp);comp.connect(c.destination);
   this.music=c.createGain();this.music.gain.value=0;this.music.connect(this.master);this.fx=c.createGain();this.fx.gain.value=.9;this.fx.connect(this.master);
   // Shared echo gives the synths and effects a neon-alley space.
   const delay=c.createDelay(1);delay.delayTime.value=STEP*3;const feedback=c.createGain();feedback.gain.value=.28;const wet=c.createGain();wet.gain.value=.22;delay.connect(feedback);feedback.connect(delay);delay.connect(wet);wet.connect(this.master);this.echo=delay;
@@ -15,6 +15,8 @@ export class DashAudio {
   const len=c.sampleRate,buf=c.createBuffer(1,len,c.sampleRate),data=buf.getChannelData(0);for(let i=0;i<len;i++)data[i]=Math.random()*2-1;this.noiseBuf=buf;
   return c;
  }
+ // Master volume, 0–1, from the player's settings.
+ setVolume(v){if(v===this.volume)return;this.volume=v;if(this.master)this.master.gain.value=.55*v;}
  setPlaying(on,speed=25){
   if(on&&!this.ensure())return;this.intensity=Math.min(1,Math.max(0,(speed-25)/15));
   if(this.ctx&&on)this.filter.frequency.setTargetAtTime(700+this.intensity*2600,this.ctx.currentTime,.4);

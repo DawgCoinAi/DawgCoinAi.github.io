@@ -10,7 +10,7 @@
 .wall-route .bar{height:7px;margin-top:9px;border-radius:9px;background:#ffffff1c;overflow:hidden}
 .wall-route .bar i{display:block;height:100%;width:var(--p,0%);background:linear-gradient(90deg,#7be1d2,#b9ff5e);box-shadow:0 0 12px #b9ff5e88}
 .wall-stats{font:700 11px var(--mono);letter-spacing:1px;color:#d7ff98}
-.nav-button .account-level{font:800 10px var(--mono);color:#b9ff5e;margin-left:2px}
+
 .account-status{font:700 12px var(--mono);letter-spacing:1px}
 .account-status[data-state=online]{color:#b9ff5e}.account-status[data-state=offline]{color:#ff9aa8}.account-status[data-state=syncing]{color:#ffe08a}
 .account-form{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
@@ -21,10 +21,10 @@
 #wallDialog,#accountDialog{width:min(560px,calc(100vw - 24px));overflow-x:hidden}
 /* Rankings: global stats, player card, filters, board and friends. */
 #rankingsDialog{width:min(720px,calc(100vw - 24px));overflow-x:hidden}
-.rank-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
-.rank-stats div{padding:10px;border-radius:12px;background:#ffffff0a;border:1px solid #ffffff1a;text-align:center}
-.rank-stats b{display:block;font:900 22px/1 var(--display);color:#d7ff98}
-.rank-stats small{font:700 9px var(--mono);letter-spacing:1px;color:#ffffffa0}
+
+
+
+
 .rank-me{display:flex;gap:14px;align-items:center;padding:12px;border-radius:14px;background:#b9ff5e0d;border:1px solid #b9ff5e33}
 .rank-me canvas{width:96px;height:96px;flex:none;border-radius:12px;background:#0b0a16}
 .rank-me>div{min-width:0;flex:1}
@@ -50,7 +50,7 @@
 #friendList li{display:flex;gap:10px;align-items:center}
 #friendList li span{flex:1}
 #friendList li.muted{color:#ffffff90;font-size:13px}
-@media (max-width:560px){.rank-stats{grid-template-columns:repeat(2,1fr)}.rank-me{align-items:flex-start}.rank-me canvas{width:64px;height:64px}}
+@media (max-width:560px){.rank-me{align-items:flex-start}.rank-me canvas{width:64px;height:64px}}
 
 /* Sharing: score cards, the share sheet and player cards. */
 .share-run{margin:4px auto 10px;padding:10px 18px;border-radius:999px;border:1px solid #ff5fc8aa;background:#ff5fc81f;color:#ffd0ee;font:900 14px/1 var(--display);letter-spacing:1px;cursor:pointer}

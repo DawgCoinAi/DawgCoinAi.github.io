@@ -3,7 +3,7 @@
    still style the games' own panels (cabinet, pack stage, story, trade, kennel). */
 :root{
  --ui-bg:#07070f;--ui-bg2:#0c0b19;--ui-surface:#13122a;--ui-surface2:#1b1937;--ui-raise:#242149;--ui-line:#2e2b55;--ui-line2:#403c72;
- --ui-text:#f4f1ff;--ui-muted:#a7a2c9;--ui-faint:#6f6a96;
+ --ui-text:#f4f1ff;--ui-muted:#a7a2c9;--ui-faint:#8e89b8;
  --ui-lime:#b9ff5e;--ui-pink:#ff5fc8;--ui-cyan:#5ee7ff;--ui-violet:#b48cff;--ui-gold:#ffd36b;--ui-silver:#d9e1ff;--ui-bronze:#ffa86b;--ui-red:#ff4f6a;
  --ui-r:18px;--ui-r-sm:12px;--ui-r-pill:999px;
  --ui-display:'DAWG display','Arial Narrow',Impact,sans-serif;--ui-body:'DAWG body',system-ui,-apple-system,'Segoe UI',sans-serif;--ui-mono:'DAWG mono',ui-monospace,monospace;
@@ -321,3 +321,109 @@ dialog .dialog-close{border-radius:50%;width:38px;height:38px;border:1px solid v
 @media (max-width:420px){.app-top .brand-word{font-size:17px}.app-top .brand-face{width:32px;height:32px}.app-top .sound-button span{display:none}.app-top .sound-button{min-width:36px}.level-chip{padding:0 10px}.top-actions{gap:6px}}
 .play-hero>.hero-art{position:relative;inset:auto;width:auto;height:auto;opacity:1;transform:none}
 @media (min-width:900px){.play-hero>.hero-art{position:absolute;inset:0}}
+
+/* Today rail */
+.today-rail{display:flex;gap:10px;overflow-x:auto;margin:0 -16px 14px;padding:2px 16px 4px;scrollbar-width:none}
+.today-rail::-webkit-scrollbar{display:none}
+.today-rail[hidden]{display:none}
+.today-card{flex:none;display:flex;align-items:center;gap:12px;min-width:220px;max-width:280px;padding:12px 14px;border-radius:var(--ui-r);border:1px solid var(--ui-line);background:linear-gradient(180deg,var(--ui-surface2),var(--ui-surface));color:var(--ui-text);text-align:left;cursor:pointer}
+.today-card:hover{border-color:var(--ui-line2)}
+.today-card.hot{border-color:#ff5fc877;background:linear-gradient(135deg,#ff5fc822,var(--ui-surface) 70%)}
+.today-card.warn{border-color:#ffd36b77;background:linear-gradient(135deg,#ffd36b1c,var(--ui-surface) 70%)}
+.today-icon{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:12px;background:#07070f;font-size:19px}
+.today-text{display:grid;gap:3px;min-width:0;flex:1}
+.today-text strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 14px/1.2 var(--ui-body)}
+.today-text small{color:var(--ui-muted);font-size:12px;line-height:1.3}
+.today-text .meter{height:6px;margin-top:3px}
+@media (min-width:900px){.today-rail{margin:0 0 16px;padding:0;flex-wrap:wrap}.today-card{flex:1 1 220px;max-width:none}}
+
+/* Results sheet */
+.results-dialog{max-width:520px;padding:0;overflow:hidden auto;text-align:center}
+.results-dialog>*:not(.confetti){position:relative;z-index:1}
+.results-head{display:flex;align-items:center;gap:12px;padding:16px 18px 0;text-align:left}
+.results-head img{width:52px;height:52px;border-radius:14px;object-fit:cover;box-shadow:0 0 0 1px #ffffff22}
+.results-head h2{margin:4px 0 0;font:900 24px/1.05 var(--ui-display)}
+.results-score{display:grid;justify-items:center;padding:14px 18px 4px}
+.results-score b{font:900 clamp(56px,16vw,88px)/1 var(--ui-display);color:var(--ui-lime);text-shadow:0 0 34px #b9ff5e66;font-variant-numeric:tabular-nums}
+.results-score small{color:var(--ui-muted);font:800 12px/1 var(--ui-mono);letter-spacing:2px;margin-top:4px}
+.results-best{margin-bottom:8px;padding:6px 12px;border-radius:var(--ui-r-pill);background:var(--ui-pink);color:#fff;font:900 12px/1 var(--ui-mono);letter-spacing:1px;box-shadow:0 0 24px #ff5fc888;animation:ui-pop .5s cubic-bezier(.2,1.6,.4,1)}
+.results-best[hidden]{display:none}
+@keyframes ui-pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.results-medals{display:flex;justify-content:center;gap:8px;padding:8px 18px 0}
+.results-medals .medal{display:grid;justify-items:center;gap:3px;min-width:86px;padding:8px 6px;border-radius:12px;background:#ffffff08;border:1px solid var(--ui-line);opacity:.55}
+.results-medals .medal b{font-size:20px;line-height:1}
+.results-medals .medal small{font:800 10px/1 var(--ui-mono);color:var(--ui-muted)}
+.results-medals .medal.earned{opacity:1}
+.results-medals .bronze.earned{border-color:var(--ui-bronze);color:var(--ui-bronze)}.results-medals .silver.earned{border-color:var(--ui-silver);color:var(--ui-silver)}.results-medals .gold.earned{border-color:var(--ui-gold);color:var(--ui-gold);box-shadow:0 0 20px #ffd36b44}
+.results-detail{margin:10px 18px 0;color:var(--ui-muted);font:700 12px/1.5 var(--ui-mono);text-transform:uppercase;letter-spacing:.5px}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 18px 0;text-align:left}
+.results-tile{padding:12px;border-radius:var(--ui-r-sm);background:var(--ui-surface);border:1px solid var(--ui-line)}
+.results-tile[hidden]{display:none}
+.results-tile small{display:block;color:var(--ui-faint);font:700 10px/1.3 var(--ui-mono);letter-spacing:.8px}
+.results-tile b{display:block;margin:4px 0 6px;font:900 18px/1.1 var(--ui-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.results-tile .level-bar{width:100%;margin:0 0 6px;height:8px}
+.results-tile .meter{margin:0 0 6px}
+.results-social{display:grid;gap:6px;margin:12px 18px 0;padding:10px 12px;border-radius:var(--ui-r-sm);background:#07070f;border:1px solid var(--ui-line);font:700 14px/1.35 var(--ui-body)}
+.results-social[hidden]{display:none}
+.results-social .up b,.results-social .up{color:var(--ui-lime)}
+.results-social .down{color:#ffb0bd}
+.results-name{display:grid;gap:8px;margin:12px 18px 0;padding:12px;border-radius:var(--ui-r-sm);border:1px dashed var(--ui-lime);text-align:left}
+.results-name[hidden]{display:none}
+.results-name label{font:800 13px/1.2 var(--ui-body);color:var(--ui-lime)}
+.results-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 18px 0}
+.results-actions .btn.primary{grid-column:1/-1}
+.results-actions .btn[hidden]{display:none}
+.results-home{display:block;width:100%;margin:6px 0 0;padding:14px;border:0;background:none;color:var(--ui-muted);font:700 14px/1 var(--ui-body);cursor:pointer}
+.results-home:hover{color:var(--ui-text)}
+.results-dialog.pb{border-color:#ff5fc899;box-shadow:0 0 0 1px #ff5fc855,0 30px 90px #000c,0 0 80px #ff5fc833}
+.confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.confetti i{position:absolute;top:-12px;left:var(--x);width:8px;height:14px;border-radius:2px;opacity:0;animation:ui-confetti 1.6s var(--d) cubic-bezier(.25,.6,.4,1) forwards}
+@keyframes ui-confetti{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(520px) rotate(var(--r))}}
+
+/* Onboarding */
+.onboard-dialog{max-width:460px;text-align:center;padding:22px 20px 14px}
+.onboard-dialog h2{margin:8px 0 8px;font:900 clamp(26px,7vw,34px)/1.05 var(--ui-display)}
+.onboard-dialog p{margin:0 auto 12px;color:var(--ui-muted);max-width:36ch;line-height:1.5}
+.onboard-dialog section[hidden]{display:none}
+.onboard-steps{display:flex;justify-content:center;gap:6px;margin-bottom:14px}
+.onboard-steps i{width:28px;height:4px;border-radius:2px;background:var(--ui-line2)}
+.onboard-steps i.on{background:var(--ui-lime);box-shadow:0 0 10px #b9ff5e88}
+#onboardDawg{display:block;width:200px;height:200px;margin:4px auto 6px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#3a2a6a,var(--ui-surface2));box-shadow:0 0 0 3px var(--ui-lime),0 0 50px #b9ff5e33}
+.onboard-name{display:block;margin-bottom:14px;font:900 22px/1.1 var(--ui-display);color:var(--ui-lime)}
+.onboard-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.onboard-actions .btn{flex:1 1 150px}
+#onboardName{width:100%;height:52px;padding:0 16px;border-radius:var(--ui-r-sm);border:1px solid var(--ui-line2);background:#07070f;color:var(--ui-text);font:800 18px/1 var(--ui-body);text-align:center}
+.onboard-games{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.onboard-games button{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;aspect-ratio:4/3;padding:10px;border-radius:var(--ui-r);border:1px solid var(--ui-line2);background:linear-gradient(180deg,#0000 30%,#07070fee 85%),var(--poster) center/cover;color:var(--ui-text);text-align:left;cursor:pointer;overflow:hidden}
+.onboard-games button:hover{border-color:var(--ui-lime);box-shadow:var(--ui-glow-lime)}
+.onboard-games strong{font:900 16px/1.1 var(--ui-display)}
+.onboard-games small{color:var(--ui-muted);font-size:11px;line-height:1.3}
+.onboard-skip{display:block;margin:14px auto 0;padding:8px 12px;border:0;background:none;color:var(--ui-faint);font:700 13px/1 var(--ui-body);cursor:pointer}
+.onboard-skip:hover{color:var(--ui-text)}
+
+/* Feel: press feedback and view transitions */
+.btn:active,.game-card:active,.today-card:active,.chip:active,.rank-row:active,.app-nav button:active{transform:scale(.97)}
+.view:not([hidden]){animation:ui-view .22s ease-out}
+@keyframes ui-view{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view:not([hidden]),.results-best{animation:none}.confetti{display:none}.btn:active,.game-card:active,.today-card:active,.chip:active,.rank-row:active,.app-nav button:active{transform:none}}
+
+/* Bigger avatars */
+.rank-row{grid-template-columns:44px 48px minmax(0,1fr) auto}
+.rank-row canvas{width:48px;height:48px}
+.me-card canvas{width:170px;height:170px}
+@media (min-width:700px){.me-card canvas{width:190px;height:190px}}
+
+/* Loading placeholders inside stats */
+.hero-stats dd.loading,.stat-tile b.loading{min-height:1.1em;width:70%;border-radius:6px;color:transparent;background:linear-gradient(90deg,var(--ui-surface),var(--ui-raise),var(--ui-surface));background-size:200% 100%;animation:ui-shimmer 1.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.hero-stats dd.loading,.stat-tile b.loading{animation:none}}
+/* Settings: volume slider and destructive row */
+.setting-range{width:min(180px,45vw);accent-color:var(--ui-lime)}
+.settings-list .danger-row span{color:#ff9aaa}
+/* How to play */
+.help-dialog{max-width:620px}
+.help-dialog h2{margin:6px 0 10px;font:900 30px/1 var(--ui-display)}
+.help-dialog h3{margin:18px 0 6px;color:var(--ui-lime);font:900 16px/1.2 var(--ui-display);letter-spacing:.3px}
+.help-dialog p{margin:0;color:#d8d3f2;line-height:1.6;font-size:14px}
+.help-dialog p b{color:var(--ui-text)}
+.help-dialog .dialog-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.help-dialog .dialog-actions .btn{flex:1 1 180px}

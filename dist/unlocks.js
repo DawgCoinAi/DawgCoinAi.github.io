@@ -4,9 +4,9 @@
 import {GAME_IDS} from './games.js';
 
 export const LADDER={
- classic:null,runner:null,flappy:null,
+ classic:null,runner:null,flappy:null,daily:null,
  snake:{level:3,minutes:20,streak:2},
- rush:{level:4,minutes:30},daily:{level:4,minutes:30},
+ rush:{level:4,minutes:30},
  cross:{level:5,minutes:45,streak:3},
  trade:{level:6,minutes:60,challenge:'dash100'},
  turbo:{level:7,minutes:90,streak:4},
@@ -31,6 +31,10 @@ export function validArcade(a){
   &&a.challenges&&typeof a.challenges==='object'&&!Array.isArray(a.challenges)&&Object.entries(a.challenges).every(([k,v])=>k in CHALLENGES&&v===true)
   &&a.unlocked&&typeof a.unlocked==='object'&&!Array.isArray(a.unlocked)&&Object.entries(a.unlocked).every(([k,v])=>GAME_IDS.includes(k)&&['level','time','streak','challenge','played','server'].includes(v));
 }
+// Days in a row up to today (or up to yesterday, if today hasn't been played yet).
+export function currentStreak(days,today){const set=new Set(days),day=d=>new Date(Date.parse(d+'T00:00:00Z')-864e5).toISOString().slice(0,10);let d=set.has(today)?today:day(today),n=0;while(set.has(d)){n++;d=day(d);}return {days:n,today:set.has(today)};}
+// Short unlock copy for a locked game card, like 'LV 3 · 20 MIN · 2-DAY STREAK'.
+export function shortRule(id){const r=LADDER[id];if(!r)return '';return [r.level&&'LV '+r.level,r.minutes&&(r.minutes%60?r.minutes+' MIN':r.minutes/60+' H'),r.streak&&r.streak+'-DAY STREAK',r.challenge&&'CHALLENGE'].filter(Boolean).join(' · ');}
 export function statsOf(a){return {xp:a.xp,level:levelOf(a.xp),minutes:Math.floor(a.seconds/60),streak:streakOf(a.days),challenges:a.challenges};}
 
 // Status for one game: open (and why) or what remains, with progress for each route.
@@ -41,8 +45,8 @@ export function wallFor(id,arcade,records={}){
  if((records[id]||0)>0)return {open:true,reason:'played',routes:[]};
  const s=statsOf(arcade),routes=[];
  if(rule.level)routes.push({kind:'level',label:`Reach level ${rule.level}`,have:Math.min(arcade.xp,xpForLevel(rule.level)),need:xpForLevel(rule.level),done:s.level>=rule.level,left:Math.max(0,xpForLevel(rule.level)-arcade.xp)+' XP to go'});
- if(rule.minutes)routes.push({kind:'time',label:`Play for ${rule.minutes>=60?rule.minutes/60+' h':rule.minutes+' min'}`,have:s.minutes,need:rule.minutes,done:s.minutes>=rule.minutes,left:Math.max(0,rule.minutes-s.minutes)+' min to go'});
- if(rule.streak)routes.push({kind:'streak',label:`Play ${rule.streak} days in a row`,have:s.streak,need:rule.streak,done:s.streak>=rule.streak,left:Math.max(0,rule.streak-s.streak)+' more days'});
+ if(rule.minutes)routes.push({kind:'time',label:`Play for ${rule.minutes%60?rule.minutes+' min':rule.minutes/60+' h'}`,have:s.minutes,need:rule.minutes,done:s.minutes>=rule.minutes,left:Math.max(0,rule.minutes-s.minutes)+' min to go'});
+ if(rule.streak)routes.push({kind:'streak',label:`Play ${rule.streak} days in a row`,have:s.streak,need:rule.streak,done:s.streak>=rule.streak,left:(n=>n+' more day'+(n===1?'':'s'))(Math.max(0,rule.streak-s.streak))});
  if(rule.challenge)routes.push({kind:'challenge',label:CHALLENGES[rule.challenge].label,have:s.challenges[rule.challenge]?1:0,need:1,done:!!s.challenges[rule.challenge],left:'not yet'});
  const done=routes.find(r=>r.done);return done?{open:true,reason:done.kind,routes}:{open:false,reason:null,routes};
 }

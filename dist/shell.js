@@ -1,6 +1,7 @@
 // App shell: the four views (Play, Rankings, Friends, Me), the Play hero and game cards, and
 // the Me page. It only renders; app.js owns game state and rankings.js owns the social data.
 import {gameById,GAMES} from './games.js';
+import {shortRule} from './unlocks.js';
 
 const $=id=>document.getElementById(id);
 export const VIEWS=['play','rankings','friends','me'];
@@ -49,10 +50,16 @@ export class Shell {
   const play=$('heroPlay');play.disabled=!!locked;$('heroPlayLabel').textContent=locked?'LOCKED':id==='trade'||id==='story'?'CONTINUE':'PLAY NOW';
   if(locked){$('heroLockTitle').textContent='Unlock '+g.title+' — any one of these opens it:';$('heroRoutes').replaceChildren(...wall.routes.map(r=>{const row=document.createElement('div');row.className='hero-route'+(r.done?' done':'');const head=document.createElement('header'),label=document.createElement('span'),left=document.createElement('small'),bar=document.createElement('div'),fill=document.createElement('i');label.textContent=r.label;left.textContent=r.done?'DONE':r.left;bar.className='meter';fill.style.setProperty('--p',Math.min(100,Math.round(r.have/Math.max(1,r.need)*100))+'%');bar.append(fill);head.append(label,left);row.append(head,bar);return row;}));}
   for(const b of document.querySelectorAll('.game-card'))b.classList.toggle('previewing',b.dataset.mode===id&&locked);}
- heroSocial({rank='—',rankDir='',friend='—'}={}){const r=$('heroRank');r.textContent=rank;r.className=rankDir;$('heroFriend').textContent=friend;}
+ // Pass 'loading' while the weekly rank and top friend are being fetched.
+ heroSocial(s){const loading=s==='loading',{rank='—',rankDir='',friend='—'}=loading?{}:s||{},r=$('heroRank'),f=$('heroFriend');r.textContent=loading?'':rank;r.className=loading?'loading':rankDir;f.textContent=loading?'':friend;f.className=loading?'loading':'';}
  // Lock rings and states on every game card.
- cards(walls){let open=0;for(const b of document.querySelectorAll('.game-card')){const w=walls(b.dataset.mode);b.classList.toggle('locked',!w.open);if(w.open)open++;b.style.setProperty('--unlock',unlockProgress(w));b.title=w.open?'':'Locked: '+(w.routes?.[0]?.label||'keep playing to open');}
+ cards(walls){let open=0;for(const b of document.querySelectorAll('.game-card')){const w=walls(b.dataset.mode),small=b.querySelector('.card-body small');b.classList.toggle('locked',!w.open);if(w.open)open++;b.style.setProperty('--unlock',unlockProgress(w));b.title=w.open?'':'Locked: '+(w.routes?.[0]?.label||'keep playing to open');
+   // Locked cards say what opens them instead of their tagline.
+   if(small){small.dataset.tag??=small.textContent;small.textContent=w.open?small.dataset.tag:'🔓 '+shortRule(b.dataset.mode);}}
   $('gamesMeta').textContent=open+' / '+GAMES.length+' UNLOCKED';}
+ // Today rail: short cards for the daily run, streak, next unlock and anything waiting.
+ // items: [{id, icon, title, sub, pct?, tone?}]; onTap(id) handles the action.
+ today(items,onTap){const rail=$('todayRail');if(!rail)return;rail.replaceChildren(...items.map(it=>{const b=document.createElement('button');b.type='button';b.className='today-card'+(it.tone?' '+it.tone:'');b.dataset.today=it.id;const i=document.createElement('span');i.className='today-icon';i.textContent=it.icon;const t=document.createElement('span');t.className='today-text';const s=document.createElement('strong');s.textContent=it.title;const m=document.createElement('small');m.textContent=it.sub;t.append(s,m);if(it.pct!==undefined){const bar=document.createElement('span');bar.className='meter';const f=document.createElement('i');f.style.setProperty('--p',Math.round(it.pct)+'%');bar.append(f);t.append(bar);}b.append(i,t);b.onclick=()=>onTap?.(it.id);return b;}));rail.hidden=!items.length;}
  // Me page: stats, bests and the level bar. Profile name and code come from rankings.js.
  me({level,xp,next,prev,minutes,streak,runs,records,stamps,rank}){
   $('meXpFill').style.setProperty('--p',Math.min(100,Math.round((xp-prev)/Math.max(1,next-prev)*100))+'%');$('meXpText').textContent=fmt(xp)+' / '+fmt(next)+' XP TO LEVEL '+(level+1);

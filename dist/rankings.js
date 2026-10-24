@@ -24,7 +24,7 @@ const titleOf=id=>id==='level'?'Arcade Level':gameById(id)?.title||id;
 const missing=e=>/still being set up/.test(e?.message||'');
 
 export class Rankings {
- constructor({cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame}){Object.assign(this,{cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame});
+ constructor({cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame,onSocial}){Object.assign(this,{cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame,onSocial});
   this.game='level';this.period='week';this.scope='global';this.tab='inbox';this.profile=null;this.friends=[];this.challenges=[];this.cache=new Map();this.wire();}
  get api(){return this.cloud.client&&this.cloud.user?this.cloud.client:null;}
  async rpc(name,args){const api=this.api;if(!api)throw new Error('Rankings need the cloud connection. Your progress is still saved on this device.');const {data,error}=await api.rpc(name,args);if(error)throw new Error(/name taken/.test(error.message)?'That name is taken. Try another.':/not allowed/.test(error.message)?'That name isn’t allowed. Use 3–16 letters, numbers, spaces, _ . or -.':/no player/.test(error.message)?'No player has that code.':/own code/.test(error.message)?'That’s your own friend code.':/finish a ranked run/.test(error.message)?'Finish a run in that game first so there’s a score to beat.':/too many challenges/.test(error.message)?'That’s a lot of challenges for one day. Try again tomorrow.':/Could not find the function|does not exist/i.test(error.message)?'This part of the social layer is still being set up. Check back soon.':error.message);return data;}
@@ -51,10 +51,13 @@ export class Rankings {
   $('feedRow').addEventListener('click',e=>{const g=e.target.closest('[data-game]')?.dataset.game;if(g)this.play(g);});
  }
  // Called once the cloud is online: makes sure the player has a card with their current DAWG.
- async sync(){if(!this.api)return;try{this.profile=await this.rpc('ensure_profile');const d=this.kennel.active;if(d&&this.profile&&this.profile.avatar?.id!==d.id)this.profile=await this.rpc('set_profile',{p_name:this.profile.name,p_avatar:d,p_public:this.profile.public});}catch{}
+ async sync(){if(!this.api)return;try{this.profile=await this.rpc('ensure_profile');
+   // A name picked before the cloud connected (during onboarding) is applied now.
+   let pending=null;try{pending=localStorage.getItem('dawg-pending-name');}catch{}if(pending&&!this.profile?.name&&NAME_RULE.test(pending)){try{this.profile=await this.rpc('set_profile',{p_name:pending,p_avatar:this.kennel.active||null,p_public:this.profile?.public!==false});}catch{}}try{localStorage.removeItem('dawg-pending-name');}catch{}const d=this.kennel.active;if(d&&this.profile&&this.profile.avatar?.id!==d.id)this.profile=await this.rpc('set_profile',{p_name:this.profile.name,p_avatar:d,p_public:this.profile.public});}catch{}
   this.renderIdentity();this.refreshBadge();this.loadFeedStrip();this.openView(this.shell.view);clearInterval(this.poll);this.poll=setInterval(()=>{if(!document.hidden)this.refreshBadge();},120000);}
  openView(view){if(view==='rankings')this.loadBoard();else if(view==='friends')this.loadFriendsTab();else if(view==='me')this.renderIdentity();}
- avatar(canvas,d,size){const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);if(d&&validDawg(d)){try{drawDawg(c,d,canvas.width/2,canvas.height*.92,canvas.height*.9,0,'idle');return;}catch{}}c.fillStyle='#b48cff33';c.beginPath();c.arc(canvas.width/2,canvas.height/2,canvas.width*.42,0,Math.PI*2);c.fill();c.fillStyle='#b48cff';c.font=`900 ${Math.round(canvas.width*.42)}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText('?',canvas.width/2,canvas.height/2+2);}
+ avatar(canvas,d,size){const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);// drawDawg centres the figure on y. Portraits show the whole DAWG; small avatars zoom to head and shoulders.
+  if(d&&validDawg(d)){const big=canvas.width>=240;try{drawDawg(c,d,canvas.width/2,canvas.height*(big?.5:.74),canvas.height*(big?.94:1.55),0,'idle');return;}catch{}}c.fillStyle='#b48cff33';c.beginPath();c.arc(canvas.width/2,canvas.height/2,canvas.width*.42,0,Math.PI*2);c.fill();c.fillStyle='#b48cff';c.font=`900 ${Math.round(canvas.width*.42)}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText('?',canvas.width/2,canvas.height/2+2);}
  face(d,size){const cv=el('canvas');cv.width=cv.height=size*2;cv.setAttribute('aria-hidden','true');this.avatar(cv,d,size);return cv;}
  renderIdentity(){const p=this.profile,d=this.kennel.active,s=this.stats();this.avatar($('rankAvatar'),d,240);this.avatar($('navAvatar'),d,56);
   $('meName').textContent=p?.name||d?.name||'Guest';$('meMeta').textContent='Level '+s.level+(p?.code?' · friend code '+p.code:'')+(p?.public===false?' · hidden from boards':'');
@@ -136,7 +139,7 @@ export class Rankings {
  // Friends badge: unseen incoming challenges plus new "added you" players.
  async refreshBadge(){if(!this.api)return;const viewing=tab=>this.shell.view==='friends'&&this.tab===tab;
   try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];this.unseen=viewing('inbox')?0:this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length;}catch{}
-  try{const fans=await this.rpc('my_followers');let seen=0;try{seen=Number(localStorage.getItem('dawg-v1-fansSeen'))||0;}catch{}this.fans=viewing('people')?0:(fans||[]).filter(f=>new Date(f.added_at).getTime()>seen).length;}catch{}this.badge();}
+  try{const fans=await this.rpc('my_followers');let seen=0;try{seen=Number(localStorage.getItem('dawg-v1-fansSeen'))||0;}catch{}this.fans=viewing('people')?0:(fans||[]).filter(f=>new Date(f.added_at).getTime()>seen).length;}catch{}this.badge();this.onSocial?.();}
  // Friends tab badge counts both; the Challenges tab badge counts challenges only.
  badge(){const c=this.unseen||0,n=c+(this.fans||0);for(const [id,v] of [['friendsBadge',n],['inboxBadge',c]]){const b=$(id);if(!b)continue;b.hidden=!v;b.textContent=v>9?'9+':String(v);}$('friendsButton')?.setAttribute('aria-label',n?`Friends, ${n} new`:'Friends');}
  // Friend activity on the Play view.
@@ -158,6 +161,8 @@ export class Rankings {
   }catch(error){$('pickList').replaceChildren();this.note('pickNote',error.message);}}
 
  // ── Player cards, names and links ─────────────────────────────────────────────────────────
+ // Set the player name from onboarding or the results sheet; waits for the cloud if needed.
+ async setName(name){if(!NAME_RULE.test(name)){this.announce('Use 3–16 letters, numbers, spaces, _ . or -.');return false;}if(!this.api){try{localStorage.setItem('dawg-pending-name',name);}catch{}this.announce('NICE TO MEET YOU, '+name.toUpperCase());return true;}$('playerName').value=name;await this.saveProfile();return this.profile?.name===name;}
  async saveProfile(){const name=$('playerName').value.trim();if(name&&!NAME_RULE.test(name)){this.announce('Use 3–16 letters, numbers, spaces, _ . or -.');return;}try{this.profile=await this.rpc('set_profile',{p_name:name||null,p_avatar:this.kennel.active||null,p_public:$('rankPublic').checked});this.forget('board:');this.renderIdentity();this.announce(name?'SAVED · YOU’RE '+name.toUpperCase()+' ON THE BOARDS':'PROFILE SAVED');}catch(error){this.announce(error.message);}}
  async follow(code){code=String(code||'').trim().toUpperCase();if(!/^[A-F0-9]{8}$/.test(code)){this.note('friendNote','Friend codes are 8 letters and numbers, like 3FA9C210.');return null;}try{const p=await this.rpc('follow_code',{p_code:code});this.note('friendNote','Added '+(p?.name||code)+'.');this.friends=[];this.forget('board:');this.forget('feed');return p;}catch(error){this.note('friendNote',error.message);this.announce(error.message);return null;}}
  async unfollow(code){try{await this.rpc('unfollow_code',{p_code:code});this.friends=[];this.forget('board:');this.forget('feed');this.loadPeople();}catch(error){this.note('friendNote',error.message);}}

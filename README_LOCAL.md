@@ -161,6 +161,9 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/kart-engine.js` / `kart-3d.js` | Drift Dawgs: seeded circuits, kart physics in track space (drifts and mini-turbos, items, coins, boost pads, five AI rivals) and its 3D raceway with chase and driver cameras |
 | `dist/shell.js` / `ui.css` | App shell and design system: Play / Rankings / Friends / Me views (bottom bar on phones, side rail on desktop), the Play hero, poster game cards with unlock rings, and the Me page. `ui.css` holds the shared tokens and components and loads last; the older sheets still style the games' own panels |
 | `dist/rankings.js` | Social layer: per-game and Arcade Level boards with podium, pinned row and rank movement; Friends view with challenges inbox, friend activity feed, friends and "added you" lists; player cards; challenge, invite and profile links; the social lines on game-over screens |
+| `dist/onboarding.js` | First visit: meet or reroll your DAWG, pick a player name, jump into a starter game (shown once, only to players with no runs) |
+| `dist/results.js` | The shared game-over sheet: score count-up, medals, personal-best burst, XP and level, next unlock, social lines, Rematch / Share / Challenge |
+| `scripts/build-app.mjs` | Deploy-time bundle: minified entry script with lazy chunks and one minified stylesheet. CI runs it on the deploy copy before stamping; the repo keeps plain modules |
 | `dist/assets/posters/*.jpg` | Game card and hero art, rendered from each game's own renderer |
 | `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |
 | `dist/dash-3d.js` / `dash-3d.css` / `dash-audio.js` | Full-screen 3D Dash city, HUD and synthesized soundtrack |

@@ -11,10 +11,12 @@ import {snapshotMaze,restoreMaze} from './checkpoint.js';
 import {ArcadePack,PACK_MODES} from './arcade-pack.js';
 import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
 import {validKennel,DISCIPLINES} from './dawg-career.js';
-import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
+import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf,currentStreak} from './unlocks.js';
+import {ResultsSheet,medalState} from './results.js';
+import {Onboarding,needsOnboarding} from './onboarding.js';
 import {Cloud} from './cloud.js';
 import {Rankings,challengeLink} from './rankings.js';
-import {Shell,fmt as fmtNum} from './shell.js';
+import {Shell,fmt as fmtNum,unlockProgress} from './shell.js';
 import {ShareSheet,drawScoreCard,shareBase,playLink,readPlayLink,fmt} from './share.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
@@ -47,7 +49,7 @@ let lastTime=0,toastUntil=0,blinkTime=0,lastProfileSave=0,musicBeat=0,nextMusicB
 let focused=false,profileDirty=false,countdownUntil=0,wakeLock=null,runOutcome=null;
 let challenge=dailyChallenge(),dailyRecords=read('daily',{});
 if(!dailyRecords||typeof dailyRecords!=='object'||Array.isArray(dailyRecords))dailyRecords={};
-const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',curveballs:savedPrefs?.curveballs==='off'?'off':'on',cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
+const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',curveballs:savedPrefs?.curveballs==='off'?'off':'on',volume:Number.isFinite(savedPrefs?.volume)?Math.min(1,Math.max(0,savedPrefs.volume)):.8,cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
 const BADGES=[{id:'dots',target:100,name:'Block cleaner',desc:'Collect 100 coins'},{id:'caught',target:5,name:'Pack leader',desc:'Catch 5 rivals'},{id:'loot',target:3,name:'Bag chaser',desc:'Grab 3 gold bags'},{id:'clears',target:3,name:'City legend',desc:'Clear 3 districts'},{id:'dashes',target:25,name:'Fast & furrious',desc:'Use dash 25 times'},{id:'profitable',target:1,name:'Self-made DAWG',desc:'Finish a profitable hustle'}];
 const savedProfile=read('profile',{}),profile={rep:0,dots:0,caught:0,loot:0,clears:0,dashes:0,profitable:0,theme:'district'};
 for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfile?.[k])&&savedProfile[k]>=0)profile[k]=Math.floor(savedProfile[k]);}
@@ -56,9 +58,9 @@ renderer.setTheme(profile.theme);
 const kennelDamaged=keepDamaged('kennel',validKennel);
 const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)cityRenderer.city(trade,performance.now());}});
 const mobile=new MobileControls({direction,dash,pause:togglePause,exit:returnToArcade,settings:()=>openDialog('settingsDialog'),rotate:()=>pauseForInterruption('PAUSED · SCREEN ROTATED')},prefs);
-const pack=new ArcadePack(face,{read,write,prefs,share:(id,score,o)=>shareRun(id,score,o),prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
+const pack=new ArcadePack(face,{read,write,prefs,share:(id,score,o)=>shareRun(id,score,o),prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{const prevBest=records[kind]||0;finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);queueResults(kind,score,kind==='story'?{prevBest,detail:'ending: '+(pack.story?.result?.title||'').toLowerCase(),again:'NEW EPISODE ↻'}:{prevBest,detail:pack.statLine().toLowerCase()});kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
 renderer.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches||prefs.fx==='low';
-function sound(freq=440,length=.08,type='sine',gain=.035){if(!soundEnabled)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioContext.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.6),audioContext.currentTime+length);g.gain.setValueAtTime(gain,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+length);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+length);}catch{}}
+function sound(freq=440,length=.08,type='sine',gain=.035){if(!soundEnabled)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioContext.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.6),audioContext.currentTime+length);g.gain.setValueAtTime(Math.max(.0011,gain*(prefs.volume??.8)),audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+length);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+length);}catch{}}
 function updateSound(){$('settingsSound').textContent=soundEnabled?'ON':'OFF';$('settingsSound').setAttribute('aria-pressed',String(soundEnabled));$('soundButton').innerHTML=`♫ <span>${soundEnabled?'ON':'OFF'}</span>`;$('soundButton').setAttribute('aria-label',`Turn sound ${soundEnabled?'off':'on'}`);$('soundButton').title=`Turn sound ${soundEnabled?'off':'on'}`;}
 $('soundButton').onclick=()=>{soundEnabled=!soundEnabled;write('sound',soundEnabled);updateSound();sound(660,.15);};updateSound();
 function drawMaze(){renderer.draw(game,performance.now());}
@@ -91,7 +93,7 @@ function recordArcade(){
   for(const key of Object.keys(dailyRecords).sort().slice(0,-14))delete dailyRecords[key];
   write('daily',dailyRecords);if(result.reward){earnRep(result.reward);profileDirty=true;renderProgress();saveProfile();}renderDaily();
  }
- finishRun(mode,game.score);kennel.record(mode,game.score);records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
+ {const prevBest=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);finishRun(mode,game.score);queueResults(mode,game.score,{prevBest,detail:`${game.stats.dots} coins · ${game.stats.caught} rivals · ${game.stats.loot} gold bags`});}kennel.record(mode,game.score);records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
 }
 function updateBest(){const best=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);$('bestScore').textContent=padded(best);$('recordSubtitle').textContent=mode==='daily'?"TODAY'S PERSONAL BEST":best>0?'THE SCORE TO SETTLE TONIGHT.':'EVERY LEGEND STARTS AT ZERO.';}
 function newArcade(){
@@ -125,7 +127,7 @@ function selectMode(next){
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();curve.clear();mode=next;
   $('dailyBrief').hidden=next!=='daily';$('mobileLaunch').hidden=!isMaze();$('arcadePanel').hidden=!isMaze();$('tradePanel').hidden=next!=='trade';
-  document.querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===next;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;});
+  document.querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===next;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
   pack.select(PACK_MODES.includes(next)?next:null);
   if(next==='trade'){if(!trade)loadTrade();renderTrade();}
   else if(PACK_MODES.includes(next)){const panel=$(next==='story'?'storyPanel':'packPanel');panel.setAttribute('aria-labelledby','tab-'+next);}
@@ -202,7 +204,7 @@ $('districts').addEventListener('click',e=>{const b=e.target.closest('[data-dist
 document.querySelectorAll('[data-qty]').forEach(b=>b.onclick=()=>{quantity=b.dataset.qty==='max'?'max':Number(b.dataset.qty);document.querySelectorAll('[data-qty]').forEach(a=>{a.classList.toggle('selected',a===b);a.setAttribute('aria-pressed',String(a===b));});});
 $('sellAllButton').onclick=()=>confirm('Sell your whole bag?',`Sell ${trade.used} units at this market for ${money(trade.inventoryValue)}. This keeps your run going.`,'SELL ALL ↗',()=>tradeAction(()=>trade.sellAll()));
 $('repayButton').onclick=()=>tradeAction(()=>trade.repay());$('depositButton').onclick=()=>tradeAction(()=>trade.deposit());$('withdrawButton').onclick=()=>tradeAction(()=>trade.withdraw());$('upgradeButton').onclick=()=>tradeAction(()=>trade.upgrade());
-function finishTrade(){if(trade.status==='over')return;if(!trade.finish())return;finishRun('trade',trade.netWorth);kennel.record('trade',trade.netWorth,{day:trade.day});if(trade.netWorth>0){profile.profitable++;earnRep(100+Math.min(500,Math.floor(trade.netWorth/100)));profileDirty=true;checkBadges();renderProgress();saveProfile();}records.trade=records.trade==null?trade.netWorth:Math.max(records.trade,trade.netWorth);records.runs=(records.runs||0)+1;write('records',records);awardPassport();saveTrade();renderTrade();$('tradeFinished').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});sound(720,.2);}
+function finishTrade(){if(trade.status==='over')return;if(!trade.finish())return;queueResults('trade',trade.netWorth,{prevBest:records.trade||0,unit:'NET WORTH',format:money,detail:'night '+trade.day,again:'NEW CAMPAIGN ↻'});finishRun('trade',trade.netWorth);kennel.record('trade',trade.netWorth,{day:trade.day});if(trade.netWorth>0){profile.profitable++;earnRep(100+Math.min(500,Math.floor(trade.netWorth/100)));profileDirty=true;checkBadges();renderProgress();saveProfile();}records.trade=records.trade==null?trade.netWorth:Math.max(records.trade,trade.netWorth);records.runs=(records.runs||0)+1;write('records',records);awardPassport();saveTrade();renderTrade();$('tradeFinished').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});sound(720,.2);}
 $('cashoutButton').onclick=()=>confirm('Call it a night?',`Your stash will sell at today's prices, savings will be withdrawn, and debt will be paid as far as possible. Final net worth: ${money(trade.netWorth)}. This ends the run.`,'CASH OUT ↗',finishTrade);
 function freshTrade(){trade=new LivingTradeGame();enrollTrade(true);saveTrade();renderTrade();$('marketFeedback').textContent='New hustle. Start with a small buy, then travel to find a better price.';$('tradePanel').scrollIntoView({behavior:'smooth',block:'start'});}
 const restartTrade=()=>trade?.status==='over'?freshTrade():confirm('A new night. A new hustle.','Your current Street Hustle progress will be replaced. Your completed records will stay saved.','NEW HUSTLE ↗',freshTrade);
@@ -254,7 +256,7 @@ function finishRun(kind,score,gold=0){
  const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
  cloud.recordRun({game:kind,day:localDay(),startedAt:new Date(startedAt).toISOString(),endedAt:new Date(Math.max(Date.now(),startedAt)).toISOString(),seconds,score:run.score,xp,gold});
  renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
- if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);
+ lastRun={kind,xp};if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);renderToday();
 }
 function renderLocks(){shell.cards(id=>wallFor(id,arcade,records));const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);if(shell.preview&&wallFor(shell.preview,arcade,records).open){shell.preview=null;}}
 // Bring the hero into view after picking a game further down the page.
@@ -315,7 +317,7 @@ function renderDaily(){
 }
 function renderSettings(){
  document.querySelectorAll('[data-setting]').forEach(b=>b.setAttribute('aria-pressed',String(prefs[b.dataset.setting]===b.dataset.value)));
- $('hapticsToggle').textContent=prefs.haptics?'ON':'OFF';$('hapticsToggle').setAttribute('aria-pressed',String(prefs.haptics));updateSound();
+ $('settingsVolume').value=String(Math.round((prefs.volume??.8)*100));$('hapticsToggle').textContent=prefs.haptics?'ON':'OFF';$('hapticsToggle').setAttribute('aria-pressed',String(prefs.haptics));updateSound();
 }
 function saveSettings(){write('settings',prefs);mobile.applyPrefs();renderer.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches||prefs.fx==='low';pack.renderer.reduced=renderer.reduced;pack.storyRenderer.reduced=renderer.reduced;if(mode==='story')pack.renderStory();renderSettings();}
 $('quickPlayButton').onclick=play;$('overlayHome').onclick=returnToArcade;$('launchSettings').onclick=()=>openDialog('settingsDialog');$('launchHelp').onclick=()=>openDialog('helpDialog');
@@ -326,20 +328,43 @@ $('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
 var socialStarted=false;const shareSheet=new ShareSheet({openDialog});
 // App shell: Play / Rankings / Friends / Me. Switching views pauses nothing; games run full-screen.
 const shell=new Shell({onView:v=>{rankings.openView(v);if(v==='me')renderMe();if(v==='play')renderHero();}});
-const rankings=new Rankings({cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
+const rankings=new Rankings({onSocial:()=>renderToday(),cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
 // Play hero: the selected game with its best, weekly rank and top friend.
 function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallFor(shell.preview,arcade,records).open){shell.hero(shell.preview,{wall:wallFor(shell.preview,arcade,records),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
- shell.heroSocial();const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
+ shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
 $('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade'||mode==='story')$(mode==='trade'?'tradePanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
-$('meSettings').onclick=()=>openDialog('settingsDialog');$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
+$('meSettings').onclick=()=>openDialog('settingsDialog');$('meHelp').onclick=()=>openDialog('helpDialog');$('meBackup').onclick=()=>openDialog('backupDialog');$('meDelete').onclick=()=>{renderAccount();openDialog('accountDialog');$('accountDelete').focus();};$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
 $('meBests').addEventListener('click',e=>{const id=e.target.closest('[data-game]')?.dataset.game;if(id){shell.show('play');if(id===mode)renderHero();else selectMode(id);}});
 function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp,next:xpForLevel(s.level+1),prev:xpForLevel(s.level),minutes:s.minutes,streak:s.streak,runs:records.runs||0,records,stamps:(passport?.stamps?.length||0)+'/'+STAMPS.length,rank:null});rankings.renderIdentity();
- if(rankings.api)rankings.rpc('my_level_rank').then(r=>{if(r?.place){const tile=$('meStats').lastElementChild?.querySelector('b');if(tile)tile.textContent='#'+fmtNum(r.place);}}).catch(()=>{});}
-// After a run: where it lands this week and against the closest friend, on the game-over screen.
-function resultPanel(kind){const maze=isMaze(kind),host=maze?$('runRecap'):$('packResult');let box=host.parentElement.querySelector('.result-social');if(!box){box=document.createElement('div');box.className='result-social';box.setAttribute('role','status');host.after(box);}return box;}
-function showInsight(kind,score){const box=resultPanel(kind);box.hidden=true;box.replaceChildren();rankings.insight(kind,score).then(lines=>{const over=isMaze(kind)?game.status==='over'&&mode===kind:pack.kind===kind&&pack.game?.status==='over';if(!lines||!over)return;
- box.replaceChildren(...lines.map(l=>{const p=document.createElement('div');p.textContent=l.text+' ';if(l.extra){const s=document.createElement('b');s.className=l.dir==='down'?'down':'';s.textContent=l.extra;p.append(s);}if(l.dir==='down'&&l.friend){p.className='down';}return p;}));
- const acts=document.createElement('div');acts.className='result-actions';const c=document.createElement('button');c.type='button';c.className='share-run';c.textContent='CHALLENGE A FRIEND ↗';c.onclick=()=>rankings.pickFriend(kind);acts.append(c);box.append(acts);box.hidden=false;});}
+ const rankTile=$('meStats').lastElementChild?.querySelector('b');if(rankings.api&&rankTile){rankTile.classList.add('loading');rankings.rpc('my_level_rank').then(r=>{rankTile.textContent=r?.place?'#'+fmtNum(r.place):'—';}).catch(()=>{rankTile.textContent='—';}).finally(()=>rankTile.classList.remove('loading'));}}
+// Results sheet: one game-over screen for every game. It opens a moment after the run ends so
+// the crash or finish can land, then fills in where the run sits socially once it's uploaded.
+var lastRun=null,resultsTimer=0;
+const results=new ResultsSheet({openDialog,reduced:()=>renderer.reduced,
+ onRematch:r=>{if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')$('storyReset').click();else pack.play();},
+ onHome:r=>{if(isMaze(r.game))returnToArcade();else pack.exit();shell.show('play');window.scrollTo({top:0});},
+ onShare:r=>{const m=medalState(r.score,r.targets);shareRun(r.game,r.score,{best:r.best,medal:m.earned?m.label:'',detail:r.detail});},
+ onChallenge:r=>rankings.pickFriend(r.game),
+ onName:name=>rankings.setName(name)});
+function medalTargets(id){if(id==='daily')return challenge.targets;const quick=pack.targets(id);if(quick)return quick;const t=DISCIPLINES.find(d=>d.id===id)?.target||1000;return [Math.round(t*.25),Math.round(t*.6),t];}
+// The locked game closest to opening, with its quickest route.
+function nextUnlock(){let best=null;for(const id of GAME_IDS){const w=wallFor(id,arcade,records);if(w.open)continue;const pct=unlockProgress(w);if(!best||pct>best.pct){const r=[...w.routes].sort((a,b)=>b.have/Math.max(1,b.need)-a.have/Math.max(1,a.need))[0];best={id,title:gameById(id)?.title||id,pct,left:r?r.left:''};}}return best;}
+function levelInfo(){const s=statsOf(arcade),prev=xpForLevel(s.level),next=xpForLevel(s.level+1);return {level:s.level,pct:Math.min(100,Math.round((arcade.xp-prev)/Math.max(1,next-prev)*100)),text:`LEVEL ${s.level} · ${fmtNum(Math.max(0,next-arcade.xp))} XP TO LEVEL ${s.level+1}`};}
+function queueResults(kind,score,opts={}){clearTimeout(resultsTimer);resultsTimer=setTimeout(()=>showResults(kind,score,opts),kind==='trade'||kind==='story'?200:900);}
+function showResults(kind,score,{prevBest=0,detail='',unit,format,again,title}={}){
+ results.show({game:kind,score,unit,format,again,title,best:score>0&&score>prevBest,targets:medalTargets(kind),detail,xp:lastRun?.kind===kind?lastRun.xp:0,level:levelInfo(),unlock:nextUnlock(),askName:!!rankings.api&&!rankings.profile?.name,canChallenge:kind!=='story'});}
+function showInsight(kind,score){rankings.insight(kind,score).then(lines=>{if(results.run?.game===kind)results.social(lines);});}
+// Today rail: the daily run, your streak, the next unlock and any challenge waiting.
+function renderToday(){const items=[],st=currentStreak(arcade.days||[],localDay()),dbest=dailyRecords[challenge.day]?.best||0,m=medalState(dbest,challenge.targets);
+ items.push({id:'daily',icon:'✦',title:'Daily Run · '+challenge.name,sub:dbest?`Best ${fmtNum(dbest)} · `+(m.next?`${fmtNum(m.toNext)} to ${['bronze','silver','gold'][m.earned]}`:'gold earned'):'New today. Same maze for everyone.',tone:dbest?'':'hot'});
+ items.push({id:'streak',icon:'🔥',title:st.days?`${st.days}-day streak`:'Start a streak',sub:st.today?'Kept today ✓':st.days?'Play today to keep it alive':'Play any game today',tone:st.days&&!st.today?'warn':''});
+ const u=nextUnlock();if(u)items.push({id:'unlock:'+u.id,icon:'🔓',title:'Next: '+u.title,sub:u.left,pct:u.pct});
+ const waiting=(rankings.challenges||[]).filter(c=>c.direction==='in'&&!c.beaten).length;if(waiting)items.unshift({id:'challenges',icon:'⚔',title:`${waiting} challenge${waiting>1?'s':''} waiting`,sub:'Beat their score',tone:'hot'});
+ shell.today(items,id=>{if(id==='challenges'){rankings.tab='inbox';shell.show('friends');}else if(id==='daily'){if(mode==='daily'){shell.preview=null;renderHero();scrollToHero();}else selectMode('daily');}else if(id==='streak'){scrollToHero();$('heroPlay').focus({preventScroll:true});}else if(id.startsWith('unlock:'))selectMode(id.slice(7));});}
+// First visit: meet your DAWG, pick a name, jump into a first game.
+const onboarding=new Onboarding({kennel,openDialog:id=>$(id).showModal(),avatar:(cv,d)=>rankings.avatar(cv,d),onName:name=>rankings.setName(name),
+ onDawg:()=>{renderer.character=kennel.prepare(mode,game,true);rankings.renderIdentity();},
+ onPick:id=>{shell.show('play');if(id!==mode)selectMode(id);else renderHero();if(isMaze(id))play();else pack.play();}});
 // Score sharing: a card with the player's DAWG, and a link that challenges friends (or just opens the game).
 function shareRun(id,score,{best=false,medal='',detail='',text=''}={}){const title=gameById(id)?.title||id,code=rankings.profile?.code,url=code?challengeLink(shareBase(),id,score,code):playLink(id,shareBase());
  shareSheet.open({title:'Share your score',text:text||`I scored ${fmt(score)} in ${title} on the DAWG Arcade 🐶 Can you beat it?`,url,filename:`dawg-arcade-${id}-${Math.floor(score)}.png`,card:cv=>drawScoreCard(cv,{game:id,score,best,medal,detail,player:rankings.profile?.name||kennel.active?.name,dawg:kennel.active})});}
@@ -360,6 +385,7 @@ $('backupFile').addEventListener('change',async e=>{
  catch(error){$('backupStatus').textContent=error.message;}
 });
 $('settingsDone').onclick=()=>$('settingsDialog').close();$('settingsSound').onclick=()=>$('soundButton').click();
+$('settingsVolume').addEventListener('change',e=>{prefs.volume=Math.min(1,Math.max(0,Number(e.target.value)/100));saveSettings();sound(660,.1);});
 $('hapticsToggle').onclick=()=>{prefs.haptics=!prefs.haptics;saveSettings();mobile.haptic(15);};
 document.querySelectorAll('[data-setting]').forEach(b=>b.onclick=()=>{prefs[b.dataset.setting]=b.dataset.value;saveSettings();});
 window.addEventListener('pagehide',()=>{saveProfile();saveCheckpoint();releaseWakeLock();});
@@ -369,11 +395,13 @@ window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 const restored=restoreMaze(read('mazeRun',null));
 if(restored&&!wallFor(restored.game.mode,arcade,records).open)arcade.unlocked[restored.game.mode]='played';if(settleUnlocks(arcade,records).length||restored)write('arcade',arcade);renderLocks();
 cloud.start();setTimeout(()=>{try{sessionStorage.removeItem('dawg-cloud-reload');}catch{}},15000);
-if(restored){game=restored.game;mode=game.mode;if(restored.challenge)challenge=restored.challenge;document.querySelectorAll('[data-mode]').forEach(b=>{const selected=b.dataset.mode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));});$('arcadePanel').setAttribute('aria-labelledby','tab-'+mode);}
-document.querySelectorAll('[data-mode]').forEach(b=>b.tabIndex=b.dataset.mode===mode?0:-1);
+if(restored){game=restored.game;mode=game.mode;if(restored.challenge)challenge=restored.challenge;document.querySelectorAll('[data-mode]').forEach(b=>{const selected=b.dataset.mode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});$('arcadePanel').setAttribute('aria-labelledby','tab-'+mode);}
+// Short buzz on navigation taps, for players who keep vibration on.
+document.addEventListener('click',e=>{if(prefs.haptics&&e.target.closest?.('.app-nav button,.game-card,.today-card')&&typeof navigator.vibrate==='function'){try{navigator.vibrate(8);}catch{}}});
 renderer.character=kennel.prepare(mode,game);
 $('dailyBrief').hidden=mode!=='daily';setLaunchText();renderDaily();renderSettings();awardPassport();renderProgress();updateBest();showState();requestAnimationFrame(frame);
 // ?play=<game> links open straight to that game.
 const linked=readPlayLink(globalThis.location?.search||'');if(linked){const u=new URL(location.href);u.searchParams.delete('play');history.replaceState(null,'',u.pathname+u.search+u.hash);if(linked!==mode)selectMode(linked);}
-rankings.renderIdentity();renderHero();shell.initial();
+rankings.renderIdentity();renderHero();renderToday();shell.initial();
+if(needsOnboarding(records,Onboarding.seen())&&!linked)onboarding.start();
 if(kennelDamaged)announce('Saved DAWG roster was damaged and has been reset; the old copy was kept.');

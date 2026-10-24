@@ -57,9 +57,12 @@ export class Cloud {
  recordRun(run){const queue=safeRead(QUEUE,[]);queue.push(run);safeWrite(QUEUE,queue.slice(-200));if(this.user)this.flushRuns();}
  async flushRuns(){
   if(!this.client||!this.user||this.flushing)return;this.flushing=true;
-  try{let queue=safeRead(QUEUE,[]);while(queue.length){const r=queue[0];const {error}=await this.client.rpc('record_session',{p_game:r.game,p_local_day:r.day,p_started_at:r.startedAt,p_ended_at:r.endedAt,p_active_seconds:r.seconds,p_score:r.score,p_xp:r.xp,p_gold:r.gold||0});
+  try{
+   // The queue is re-read every pass: runs finished during an upload must not be lost.
+   for(let r;(r=safeRead(QUEUE,[])[0]);){const {error}=await this.client.rpc('record_session',{p_game:r.game,p_local_day:r.day,p_started_at:r.startedAt,p_ended_at:r.endedAt,p_active_seconds:r.seconds,p_score:r.score,p_xp:r.xp,p_gold:r.gold||0});
     // A rejected run (clock skew, overlap) is dropped; a network failure stops and retries later.
-    if(error&&!/out of range|overlapping|violates/.test(error.message))break;queue.shift();safeWrite(QUEUE,queue);}
+    if(error&&!/out of range|overlapping|violates/.test(error.message))break;
+    const latest=safeRead(QUEUE,[]);if(latest[0]?.startedAt===r.startedAt&&latest[0]?.game===r.game)latest.shift();safeWrite(QUEUE,latest);}
    const {data,error}=await this.client.rpc('claim_unlocks');if(!error&&data)this.onServer?.(data);
   }catch{}finally{this.flushing=false;}
  }

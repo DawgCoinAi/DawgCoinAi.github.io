@@ -52,3 +52,11 @@ test('The database unlock ladder matches the game’s rules',()=>{
 test('No secret key or password ships in the web build',()=>{
  for(const file of fs.readdirSync(new URL('../dist/',import.meta.url)).filter(f=>f.endsWith('.js')))assert.doesNotMatch(fs.readFileSync(new URL('../dist/'+file,import.meta.url),'utf8'),/sb_secret_|service_role/,file);
 });
+test('Runs finished while an upload is in flight are all uploaded, none lost',async()=>{
+ const store=new Map();globalThis.localStorage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)};
+ const {Cloud}=await import('../dist/cloud.js'),sent=[];const cloud=new Cloud();cloud.user={id:'u'};
+ cloud.client={rpc:async(name,args)=>{await new Promise(r=>setTimeout(r,5));if(name==='record_session')sent.push(args.p_game);return {data:name==='claim_unlocks'?{unlocked:{}}:null,error:null};}};
+ for(const [i,game]of ['flappy','classic','snake'].entries())cloud.recordRun({game,day:'2026-10-24',startedAt:new Date(1e12+i*1e4).toISOString(),endedAt:new Date(1e12+i*1e4+5e3).toISOString(),seconds:5,score:1,xp:15});
+ await new Promise(r=>setTimeout(r,60));await cloud.flushRuns();
+ assert.deepEqual(sent,['flappy','classic','snake']);assert.deepEqual(JSON.parse(store.get('dawg-session-queue')),[]);delete globalThis.localStorage;
+});

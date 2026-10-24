@@ -52,7 +52,7 @@ export class Rankings {
  }
  // Called once the cloud is online: makes sure the player has a card with their current DAWG.
  async sync(){if(!this.api)return;try{this.profile=await this.rpc('ensure_profile');const d=this.kennel.active;if(d&&this.profile&&this.profile.avatar?.id!==d.id)this.profile=await this.rpc('set_profile',{p_name:this.profile.name,p_avatar:d,p_public:this.profile.public});}catch{}
-  this.renderIdentity();this.refreshBadge();this.loadFeedStrip();clearInterval(this.poll);this.poll=setInterval(()=>{if(!document.hidden)this.refreshBadge();},120000);}
+  this.renderIdentity();this.refreshBadge();this.loadFeedStrip();this.openView(this.shell.view);clearInterval(this.poll);this.poll=setInterval(()=>{if(!document.hidden)this.refreshBadge();},120000);}
  openView(view){if(view==='rankings')this.loadBoard();else if(view==='friends')this.loadFriendsTab();else if(view==='me')this.renderIdentity();}
  avatar(canvas,d,size){const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);if(d&&validDawg(d)){try{drawDawg(c,d,canvas.width/2,canvas.height*.92,canvas.height*.9,0,'idle');return;}catch{}}c.fillStyle='#b48cff33';c.beginPath();c.arc(canvas.width/2,canvas.height/2,canvas.width*.42,0,Math.PI*2);c.fill();c.fillStyle='#b48cff';c.font=`900 ${Math.round(canvas.width*.42)}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText('?',canvas.width/2,canvas.height/2+2);}
  face(d,size){const cv=el('canvas');cv.width=cv.height=size*2;cv.setAttribute('aria-hidden','true');this.avatar(cv,d,size);return cv;}
@@ -67,7 +67,7 @@ export class Rankings {
   $('rankPeriods').hidden=level;for(const b of document.querySelectorAll('#rankPeriods [data-period]'))b.setAttribute('aria-pressed',String(b.dataset.period===this.period));
   for(const b of document.querySelectorAll('#rankScopes [data-scope]'))b.setAttribute('aria-pressed',String(b.dataset.scope===this.scope));
   const list=$('rankList'),podium=$('rankPodium'),me=$('rankMe');list.replaceChildren(...[0,1,2,3].map(()=>el('li','skeleton')));podium.replaceChildren();me.hidden=true;$('rankStanding').textContent='';this.note('rankNote','');this.loadStats();
-  if(!this.api){list.replaceChildren(this.empty('Rankings are offline','Rankings need the cloud connection. Your progress is still saved on this device.'));return;}
+  if(!this.api){this.note('rankNote','Connecting to the boards…');clearTimeout(this.offlineTimer);this.offlineTimer=setTimeout(()=>{if(!this.api&&this.shell.view==='rankings'){this.note('rankNote','');list.replaceChildren(this.empty('Rankings are offline','Rankings need the cloud connection. Your progress is still saved on this device.'));}},8000);return;}
   const ticket=this.ticket=Symbol();
   try{
    const key=[this.game,this.period,this.scope].join(':');
@@ -97,7 +97,7 @@ export class Rankings {
  async loadFriendsTab(){this.renderIdentity();
   for(const b of document.querySelectorAll('#friendTabs [data-tab]'))b.setAttribute('aria-selected',String(b.dataset.tab===this.tab));
   for(const [tab,id] of [['inbox','friendInbox'],['feed','friendFeed'],['people','friendPeople']])$(id).hidden=tab!==this.tab;
-  if(!this.api){this.note('friendNote','Friends need the cloud connection. Your progress is still saved on this device.');return;}this.note('friendNote','');
+  if(!this.api){this.note('friendNote','Connecting…');clearTimeout(this.offlineTimer);this.offlineTimer=setTimeout(()=>{if(!this.api)this.note('friendNote','Friends need the cloud connection. Your progress is still saved on this device.');},8000);return;}this.note('friendNote','');
   if(this.tab==='inbox')this.loadInbox();else if(this.tab==='feed')this.loadFeed();else this.loadPeople();}
  async loadInbox(){const box=$('friendInbox');box.replaceChildren(el('div','skeleton'),el('div','skeleton'));
   try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];
@@ -108,7 +108,7 @@ export class Rankings {
    if(open.length)parts.push(el('p','list-label','WAITING FOR YOU'),...open.map(c=>this.challengeRow(c)));
    if(outgoing.length)parts.push(el('p','list-label','YOU SENT'),...outgoing.map(c=>this.challengeRow(c)));
    if(done.length)parts.push(el('p','list-label','YOU WON'),...done.map(c=>this.challengeRow(c)));
-   box.replaceChildren(...parts);this.badge(0,true);
+   box.replaceChildren(...parts);this.unseen=0;this.badge();
   }catch(error){box.replaceChildren(this.emptyState(missing(error)?'Challenges are coming':'Couldn’t load challenges',error.message));}}
  challengeRow(c){const inbound=c.direction==='in',row=el('div','challenge'+(inbound&&!c.seen?' new':'')+(c.beaten?' won':'')),who=el('div','who'),title=titleOf(c.game);
   const face=this.face(c.avatar,48);face.onclick=()=>this.showCode(c.friend_code);
@@ -128,16 +128,17 @@ export class Rankings {
  async loadPeople(){const followers=$('followerList'),list=$('friendList');list.replaceChildren(el('li','skeleton'),el('li','skeleton'));followers.replaceChildren();
   try{const [rows,fans]=await Promise.all([this.rpc('my_friends'),this.rpc('my_followers').catch(()=>[])]);this.friends=rows||[];
    if(fans?.length){followers.append(el('p','list-label','ADDED YOU'),...fans.map(f=>{const row=el('div','person'),who=el('div','who'),face=this.face(f.avatar,48);face.onclick=()=>this.showCode(f.friend_code);who.append(el('b','',f.player),el('small','',`Level ${f.level} · added you ${timeAgo(f.added_at)}`));const acts=el('div','acts');acts.append(button('ADD BACK','primary',async()=>{if(await this.follow(f.friend_code))this.loadPeople();}));row.append(face,who,acts);return row;}));}
-   try{localStorage.setItem('dawg-v1-fansSeen',String(Date.now()));}catch{}this.badge();
+   try{localStorage.setItem('dawg-v1-fansSeen',String(Date.now()));}catch{}this.fans=0;this.badge();
    list.replaceChildren(...(this.friends.length?[el('p','list-label','YOUR FRIENDS · '+this.friends.length),...this.friends.map(f=>{const li=el('li','person'),who=el('div','who'),face=this.face(f.avatar,48);face.onclick=()=>this.showCode(f.friend_code);const name=el('b','',f.player+' ');if(f.follows_me)name.append(el('span','tag mutual','MUTUAL'));
      who.append(name,el('small','',`Level ${f.level}`+(f.last_game?` · played ${titleOf(f.last_game)} ${timeAgo(f.last_played)}`:' · no runs yet')));const acts=el('div','acts');acts.append(button('CHALLENGE','pink',()=>this.pickGame(f)),button('✕','',()=>this.confirm('Remove '+f.player+'?','They won’t show on your Friends board or feed. You can add them again with their code.','REMOVE',()=>this.unfollow(f.friend_code))));acts.lastChild.setAttribute('aria-label','Remove '+f.player);li.append(face,who,acts);return li;})]:[this.emptyState('Your pack is empty','Share your invite link or add a friend’s code above. Friends show up on your Friends board, feed and challenges.',button('INVITE FRIENDS','primary',()=>this.shareProfile()))]));
   }catch(error){list.replaceChildren(this.emptyState('Couldn’t load friends',error.message));}}
  emptyState(title,text,action){const d=el('div','empty-state');d.append(el('b','',title),el('span','',text));if(action)d.append(el('br'),action);return d;}
  // Friends badge: unseen incoming challenges plus new "added you" players.
- async refreshBadge(){if(!this.api)return;let n=0;try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];n+=this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length;}catch{}
-  try{const fans=await this.rpc('my_followers');let seen=0;try{seen=Number(localStorage.getItem('dawg-v1-fansSeen'))||0;}catch{}n+=(fans||[]).filter(f=>new Date(f.added_at).getTime()>seen).length;}catch{}this.badge(n);}
- badge(n=this.badgeCount||0,inboxSeen=false){if(inboxSeen)n=Math.max(0,n-this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length);this.badgeCount=n;
-  for(const id of ['friendsBadge','inboxBadge']){const b=$(id);if(!b)continue;b.hidden=!n;b.textContent=n>9?'9+':String(n);}const nav=$('friendsButton');nav?.setAttribute('aria-label',n?`Friends, ${n} new`:'Friends');}
+ async refreshBadge(){if(!this.api)return;const viewing=tab=>this.shell.view==='friends'&&this.tab===tab;
+  try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];this.unseen=viewing('inbox')?0:this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length;}catch{}
+  try{const fans=await this.rpc('my_followers');let seen=0;try{seen=Number(localStorage.getItem('dawg-v1-fansSeen'))||0;}catch{}this.fans=viewing('people')?0:(fans||[]).filter(f=>new Date(f.added_at).getTime()>seen).length;}catch{}this.badge();}
+ // Friends tab badge counts both; the Challenges tab badge counts challenges only.
+ badge(){const c=this.unseen||0,n=c+(this.fans||0);for(const [id,v] of [['friendsBadge',n],['inboxBadge',c]]){const b=$(id);if(!b)continue;b.hidden=!v;b.textContent=v>9?'9+':String(v);}$('friendsButton')?.setAttribute('aria-label',n?`Friends, ${n} new`:'Friends');}
  // Friend activity on the Play view.
  async loadFeedStrip(){if(!this.api)return;try{const rows=await this.cached('feed',30000,()=>this.rpc('friend_feed',{p_limit:40}));const strip=$('feedStrip'),row=$('feedRow');strip.hidden=!rows?.length;
   row.replaceChildren(...(rows||[]).slice(0,10).map(r=>{const b=el('button','feed-card');b.type='button';b.dataset.game=r.game;const t=el('div');t.append(el('b','',`${r.player} · ${titleOf(r.game)}`));const s=el('small','',fmt(r.score)+' · '+timeAgo(r.achieved_at));if(r.my_best>0&&r.score>r.my_best)s.append(' · ',el('span','beat','beat yours by '+fmt(r.score-r.my_best)));t.append(s);b.append(this.face(r.avatar,44),t);return b;}));}catch{}}

@@ -1,0 +1,22 @@
+{
+  "name": "dawg-after-hours",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "node start.mjs",
+    "export:dawg": "node scripts/export-dawg.mjs",
+    "build:graphics": "node scripts/build-graphics.mjs",
+    "validate:assets": "node scripts/validate-assets.mjs"
+  },
+  "version": "10.0.0",
+  "description": "DAWG Atelier: cryptographic genomes, editable fashion, Appearance progression, a 3D showroom and portable GLB / 2D asset exports across nine arcade games.",
+  "dependencies": {
+    "three": "0.186.1",
+    "pixi.js": "8.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "gltf-validator": "2.0.0-dev.3.10"
+  }
+}

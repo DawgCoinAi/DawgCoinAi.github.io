@@ -1,0 +1,60 @@
+{
+  "format": "dawg-look-receipt",
+  "version": 2,
+  "demonstrationOnly": true,
+  "algorithm": "SHA-256",
+  "identity": "216793048f50171ba2f24b309faa7700",
+  "root": "e731c0dd65d323bb9bb753dda2971fe1273facd4160c1a74f9af00e864b1ea66",
+  "traits": "domain-separated SHA-256 v2",
+  "wardrobe": "mutable; identity remains permanent",
+  "lookHash": "8de106552c80aea17bb3e428536c788b6da51b906d2f01e65ced45ff9e741b83",
+  "look": {
+    "coat": 0,
+    "pattern": 3,
+    "outfit": 1,
+    "hat": 0,
+    "glasses": 0,
+    "neck": 6,
+    "hue": 270,
+    "accentHue": 155,
+    "shoeHue": 45,
+    "build": 1,
+    "ears": 2,
+    "tail": 0,
+    "shoes": 1,
+    "back": 0,
+    "aura": 0,
+    "finish": 1,
+    "pose": 0
+  },
+  "fashionVersion": 1,
+  "atlas": {
+    "renderer": "software geometry reference; the browser generates GPU atlases",
+    "columns": 4,
+    "rows": 2,
+    "frameWidth": 256,
+    "frameHeight": 320,
+    "yawDegrees": [
+      0,
+      45,
+      90,
+      135,
+      180,
+      225,
+      270,
+      315
+    ]
+  },
+  "asset": {
+    "graphicsVersion": 2,
+    "units": "meters",
+    "up": "+Y",
+    "front": "+Z",
+    "animations": [
+      "Idle",
+      "Walk",
+      "Run"
+    ],
+    "rig": "shared skeleton; weighted torso, sleeves and trousers; rigid accessories"
+  }
+}

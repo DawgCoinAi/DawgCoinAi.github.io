@@ -1,0 +1,52 @@
+{
+  "format": "dawg-character",
+  "version": 1,
+  "character": {
+    "version": 1,
+    "genome": {
+      "version": 2,
+      "algorithm": "SHA-256",
+      "root": "e731c0dd65d323bb9bb753dda2971fe1273facd4160c1a74f9af00e864b1ea66"
+    },
+    "id": "216793048f50171ba2f24b309faa7700",
+    "name": "Atelier Demo",
+    "born": 1700000000000,
+    "xp": 28710,
+    "trained": {
+      "agility": 0,
+      "focus": 0,
+      "nerve": 0,
+      "hustle": 0,
+      "charm": 0,
+      "appearance": 24
+    },
+    "records": {},
+    "runs": 0,
+    "medals": [],
+    "history": [],
+    "fashion": {
+      "version": 1,
+      "equipped": {
+        "coat": 0,
+        "pattern": 3,
+        "outfit": 1,
+        "hat": 0,
+        "glasses": 0,
+        "neck": 6,
+        "hue": 270,
+        "accentHue": 155,
+        "shoeHue": 45,
+        "build": 1,
+        "ears": 2,
+        "tail": 0,
+        "shoes": 1,
+        "back": 0,
+        "aura": 0,
+        "finish": 1,
+        "pose": 0
+      },
+      "looks": [],
+      "roll": 0
+    }
+  }
+}

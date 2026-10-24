@@ -1,0 +1,53 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {webcrypto} from 'node:crypto';
+import {makeDawg,newDNA,dnaTraits,baseTraits,makeKennel,validDawg,validKennel,statsOf,pointsOf,train,levelOf,xpAtLevel,ratingOf,rankOf,league,adopt,bindSession,finishSession,benefits,characterFile,parseCharacter,DISCIPLINES,ATTRIBUTES} from '../dist/dawg-career.js';
+import {MazeGame} from '../dist/engine.js';import {seededRandom} from '../dist/mobile-core.js';import {snapshotMaze,restoreMaze} from '../dist/checkpoint.js';
+import {createQuickGame,snapshotQuick,restoreQuick} from '../dist/pack-checkpoint.js';import {LivingTradeGame} from '../dist/living-trade.js';import {createStory} from '../dist/living-story.js';
+import {makeBackup,parseBackup,applyBackup} from '../dist/progress-backup.js';
+if(!globalThis.crypto)Object.defineProperty(globalThis,'crypto',{value:webcrypto});
+const clone=x=>JSON.parse(JSON.stringify(x));const id='216793048f50171ba2f24b309faa7700';const fresh=()=>makeDawg(id,1700000000000,1);
+function maxed(stat){const d=fresh();d.xp=xpAtLevel(50);while(statsOf(d)[stat]<25)assert.equal(train(d,stat),true);return d;}
+
+test('10000 crypto identities are distinct; traits are deterministic, broad, and equal in starting power',()=>{
+ const ids=new Set(),looks=new Set(),styles=new Set();for(let i=0;i<10000;i++){const d=makeDawg(),t=baseTraits(d);assert.ok(validDawg(d));assert.equal(d.id.length,32);assert.deepEqual(t,baseTraits(d));assert.equal(Object.values(statsOf(d)).reduce((a,b)=>a+b,0),7);assert.equal(pointsOf(d),3);ids.add(d.id);looks.add(JSON.stringify(t));styles.add(t.hat+','+t.outfit);}assert.equal(ids.size,10000);assert.equal(looks.size,10000);assert.equal(styles.size,64);
+});
+test('Training spends real points, caps stats, and appearance DNA never rerolls as a DAWG grows',()=>{
+ const d=fresh(),traits=dnaTraits(d.id);assert.equal(levelOf(d),1);for(let i=0;i<3;i++)assert.equal(train(d,'focus'),true);assert.equal(pointsOf(d),0);assert.equal(train(d,'focus'),false);assert.equal(train(d,'missing'),false);d.xp=xpAtLevel(2);assert.equal(levelOf(d),2);assert.equal(pointsOf(d),2);assert.ok(train(d,'nerve'));assert.deepEqual(dnaTraits(d.id),traits);const max=maxed('hustle');assert.equal(statsOf(max).hustle,25);assert.equal(train(max,'hustle'),false);assert.ok(validDawg(max));
+});
+test('A run is credited once to its bound DAWG, even after switching active character and training',()=>{
+ const k=makeKennel(fresh()),g=createQuickGame('runner',77),s=bindSession(k,'runner',g);const original=clone(s.stats),second=makeDawg();adopt(k,second);train(k.dawgs[0],'focus');bindSession(k,'runner',g);assert.equal(g.dawgId,id);assert.deepEqual(k.sessions.runner.stats,original);const r=finishSession(k,'runner',1250);assert.equal(r.dawg.id,id);assert.ok(r.xp>0);assert.equal(k.dawgs[1].xp,0);assert.equal(finishSession(k,'runner',1250),null);assert.ok(validKennel(k));const next=createQuickGame('runner',78);bindSession(k,'runner',next);assert.equal(next.dawgId,second.id);
+});
+test('Repeated Daily runs can earn XP with a fresh session while boosts always remain off',()=>{
+ const k=makeKennel(maxed('agility'));const g=new MazeGame('daily',seededRandom(17),{worldSeed:17,dashRecharge:4.8});bindSession(k,'daily',g,true);assert.ok(Math.abs(g.dashRecharge-4.8)<1e-9);assert.ok(Object.values(g.career).every(x=>x===0));finishSession(k,'daily',1000);const prior=k.sessions.daily.id;bindSession(k,'daily',g,true);assert.notEqual(k.sessions.daily.id,prior);assert.ok(finishSession(k,'daily',1000));
+});
+test('Character XP rewards positive results, first mastery medals once, and never exceeds level 50',()=>{
+ const k=makeKennel(fresh());for(const m of DISCIPLINES){const g=m.id==='trade'?new LivingTradeGame(null,12):m.id==='story'?createStory(null,12):createQuickGame('runner',12);bindSession(k,m.id,g,true);const r=finishSession(k,m.id,m.target,{day:30});assert.equal(r.xp,275);assert.equal(r.medal,true);bindSession(k,m.id,g,true);const again=finishSession(k,m.id,m.target,{day:30});assert.equal(again.xp,200);assert.equal(again.medal,false);}assert.equal(k.dawgs[0].medals.length,9);assert.ok(k.dawgs[0].history.length<=8);
+ const g=createQuickGame('runner',7);bindSession(k,'runner',g,true);assert.equal(finishSession(k,'runner',0).xp,0);const trade=new LivingTradeGame(null,4);bindSession(k,'trade',trade,true);assert.equal(finishSession(k,'trade',10000,{day:1}).xp,0);k.dawgs[0].xp=xpAtLevel(50)-3;bindSession(k,'runner',g,true);assert.equal(finishSession(k,'runner',2500).xp,3);assert.equal(levelOf(k.dawgs[0]),50);assert.ok(validKennel(k));
+});
+test('Balanced circuit points use per-game bests, do not stack replays, and rank deterministically',()=>{
+ const a=fresh(),b=makeDawg('ffffffffffffffffffffffffffffffff');a.records={classic:5000,flappy:150};b.records={runner:2500,cross:600};assert.equal(ratingOf(a),1500);assert.equal(rankOf(a),'Street Regular');assert.equal(league([a,b])[0].id,b.id);for(const m of DISCIPLINES)a.records[m.id]=m.target*100;assert.equal(ratingOf(a),9000);assert.equal(rankOf(a),'Hall of Fame');assert.deepEqual(league([b,a]).map(x=>x.id),league([a,b]).map(x=>x.id));b.xp=xpAtLevel(10);assert.equal(league([a,b],'level')[0].id,b.id);
+});
+test('Character export is a detached copy; import rejects identity duplicates, corrupt stats, malformed names and a full kennel',()=>{
+ const d=fresh(),text=JSON.stringify(characterFile(d));assert.deepEqual(parseCharacter(text),d);const imported=parseCharacter(text);imported.name='Updated';assert.notEqual(d.name,imported.name);const k=makeKennel(d);assert.throws(()=>adopt(k,imported),/already/);for(let i=1;i<24;i++)adopt(k,makeDawg());assert.throws(()=>adopt(k,makeDawg()),/full/);for(const change of [x=>x.trained.focus=24,x=>x.name='<script>',x=>x.xp=Infinity,x=>x.id='broken',x=>x.history=[{mode:'hack'}]]){const bad=clone(d);change(bad);assert.equal(validDawg(bad),false);assert.throws(()=>parseCharacter(JSON.stringify({format:'dawg-character',version:1,character:bad})));}assert.throws(()=>parseCharacter('x'.repeat(50001)),/smaller/);assert.throws(()=>parseCharacter('{}'),/supported/);
+});
+test('Ken­nel save validates referential integrity and session stats; old backups remain accepted',()=>{
+ const k=makeKennel(fresh()),g=createQuickGame('cross',15);bindSession(k,'cross',g);assert.ok(validKennel(k));const bad=clone(k);bad.sessions.cross.dawgId='0'.repeat(32);assert.equal(validKennel(bad),false);bad.sessions.cross.dawgId=id;bad.sessions.cross.stats.nerve=99;assert.equal(validKennel(bad),false);const data=new Map([['dawg-v1-kennel',JSON.stringify(k)]]),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};const backup=makeBackup(storage);applyBackup(storage,parseBackup(JSON.stringify(backup)));assert.deepEqual(JSON.parse(data.get('dawg-v1-kennel')),k);assert.ok(parseBackup(JSON.stringify({format:'dawg-arcade-backup',version:1,saves:{records:{classic:200}}})));
+});
+test('Trained maze dash and beast mode benefits survive checkpoints without accumulating on resume',()=>{
+ const d=maxed('agility');while(pointsOf(d)>0&&statsOf(d).focus<25)train(d,'focus');const k=makeKennel(d),g=new MazeGame('classic',seededRandom(134),{worldSeed:134});bindSession(k,'classic',g);assert.ok(Math.abs(g.dashRecharge-4.8)<1e-9);g.start();const power=[...g.pellets].find(([p,v])=>v==='o');const [x,y]=power[0].split(',').map(Number);g.player.x=x;g.player.y=y;g.player.tx=x;g.player.ty=y;g.player.moving=false;g.collect();assert.equal(g.power,9);g.dash();assert.ok(Math.abs(g.dashCooldown-4.8)<1e-9);g.pause();const restored=restoreMaze(snapshotMaze(g));assert.ok(restored);bindSession(k,'classic',restored.game);assert.ok(Math.abs(restored.game.dashRecharge-4.8)<1e-9);assert.equal(restored.game.power,9);bindSession(k,'classic',restored.game);assert.ok(Math.abs(restored.game.dashRecharge-4.8)<1e-9);
+});
+test('Trained Flappy perfect zone grants the bonus without changing collision geometry',()=>{
+ const k=makeKennel(maxed('agility')),g=createQuickGame('flappy',5);bindSession(k,'flappy',g);g.start();g.y=290;g.vy=0;g.obstacles=[{x:25,width:66,center:260,gap:202,passed:false}];g.tick(.001);assert.equal(g.perfect,1);assert.equal(g.score,15);assert.equal(g.radius,14);const normal=createQuickGame('flappy',5);normal.start();normal.y=290;normal.obstacles=[{x:25,width:66,center:260,gap:202,passed:false}];normal.tick(.001);assert.equal(normal.score,10);
+});
+test('Nerve changes Cross idle deadline and Snake pacing; boosted checkpoints resume exactly',()=>{
+ const k=makeKennel(maxed('nerve'));for(const kind of ['cross','snake']){const g=createQuickGame(kind,52);bindSession(k,kind,g);g.start();if(kind==='cross'){g.idle=18;g.tick(.01);assert.equal(g.status,'playing');}else{assert.equal(g.interval,.264);g.elapsed=.25;}g.pause();const saved=snapshotQuick(g,kind),r=restoreQuick(saved);assert.ok(r);bindSession(k,kind,r);assert.deepEqual(r.career,g.career);assert.deepEqual(snapshotQuick(r,kind),saved);if(kind==='cross'){r.start();r.tick(2.1);assert.equal(r.status,'over');}}
+});
+test('Focus extends a real runner magnet pickup and its boosted timer survives saving',()=>{
+ const k=makeKennel(maxed('focus')),g=createQuickGame('runner',66);bindSession(k,'runner',g);g.start();g.rows[0]={id:1,z:.01,safe:1,obstacles:[{lane:0,type:'block'}],power:'magnet'};g.tick(.01);assert.equal(g.magnet,14);g.pause();const r=restoreQuick(snapshotQuick(g,'runner'));assert.ok(r);bindSession(k,'runner',r);r.start();r.tick(1);assert.equal(r.magnet,13);assert.equal(r.career.magnet,4);
+});
+test('Charm raises generated trading orders consistently and story XP, without mutating existing quotes',()=>{
+ const d=maxed('charm');d.xp=xpAtLevel(25);const k=makeKennel(d),g=new LivingTradeGame(null,41),normal=new LivingTradeGame(null,41);const quotes=clone(g.world.markets);bindSession(k,'trade',g);g.offerContract();normal.offerContract();assert.ok(Math.abs(g.world.contract.reward-normal.world.contract.reward*1.1)<=1);assert.deepEqual(g.world.markets,quotes);const story=createStory(null,110);bindSession(k,'story',story);assert.equal(finishSession(k,'story',1200).xp,330);const s=k.sessions.story.id,copyStory=createStory(story.save());bindSession(k,'story',copyStory);assert.equal(k.sessions.story.id,s);
+});
+test('Every attribute benefit stays bounded and standard Daily benefits are all zero',()=>{
+ const all=Object.fromEntries(ATTRIBUTES.map(a=>[a.id,25]));assert.deepEqual(benefits(all),{dash:.2,power:2,perfect:12,idle:5,thinking:.1,magnet:4,cash:400,order:.1,storyXP:.2});assert.ok(Object.values(benefits(all,'daily')).every(x=>x===0));assert.equal(benefits({agility:999,hustle:-4}).dash,.2);assert.equal(benefits({agility:999,hustle:-4}).cash,0);
+});

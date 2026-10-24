@@ -11,8 +11,11 @@ const $=id=>document.getElementById(id);
 
 // Links always point at the public site, so a link shared while testing locally still works.
 export function shareBase(loc=globalThis.location){return loc&&/\.github\.io$/.test(loc.hostname)?loc.origin+loc.pathname:SITE;}
-export function playLink(game,base=SITE){const u=new URL(base);u.search='';u.hash='';u.searchParams.set('play',game);return u.toString();}
-export function profileLink(code,base=SITE){const u=new URL(base);u.search='';u.hash='';u.searchParams.set('player',code);return u.toString();}
+// Game and challenge links go through play/<game>/, a static page with that game's preview
+// tags; invites go through invite/. Both forward into the app.
+export function gamePage(game,base=SITE){const u=new URL('play/'+game+'/',base);u.search='';u.hash='';return u.toString();}
+export function playLink(game,base=SITE){return gamePage(game,base);}
+export function profileLink(code,base=SITE){const u=new URL('invite/',base);u.search='';u.hash='';u.searchParams.set('player',code);return u.toString();}
 export function readPlayLink(search){const id=new URLSearchParams(search).get('play');return gameById(id)?id:null;}
 export function readPlayerLink(search){const code=(new URLSearchParams(search).get('player')||'').toUpperCase();return /^[A-F0-9]{8}$/.test(code)?code:null;}
 export function socialTargets(text,url){const t=encodeURIComponent(text),u=encodeURIComponent(url),both=encodeURIComponent(text+' '+url);
@@ -47,6 +50,17 @@ export function drawScoreCard(canvas,data){const w=canvas.width=1080,h=canvas.he
  return canvas;}
 
 // Link preview card for the whole site, 1200 × 630. Takes an optional loaded hero image.
+// Wrap text into at most `lines` lines of `max` width; the last line gets an ellipsis if cut.
+function wrap(c,text,max,lines){const words=String(text).split(' '),out=[];let line='';for(const w of words){const next=line?line+' '+w:w;if(c.measureText(next).width>max&&line){out.push(line);line=w;if(out.length===lines)break;}else line=next;}if(out.length<lines&&line)out.push(line);if(out.length===lines&&words.join(' ')!==out.join(' ')){let last=out[lines-1];while(last&&c.measureText(last+'…').width>max)last=last.slice(0,-1);out[lines-1]=last.replace(/[ ,.]+$/,'')+'…';}return out;}
+// Link preview card for one game (or an invite), 1200 × 630: the poster on the left fading into
+// the title, a line of copy and a call to action. art is a loaded image (poster or DAWG head).
+export function drawGameCard(canvas,{title,eyebrow='DAWG ARCADE',blurb='',cta='PLAY FREE ↗',art=null,square=true}={}){const w=canvas.width=1200,h=canvas.height=630,c=canvas.getContext('2d');backdrop(c,w,h,300,315);
+ if(art){c.save();if(square){c.drawImage(art,0,0,630,630);}else{c.shadowColor='#b9ff5e';c.shadowBlur=70;c.drawImage(art,40,60,510,510);}c.restore();const fade=c.createLinearGradient(330,0,690,0);fade.addColorStop(0,'#0b082000');fade.addColorStop(1,'#0b0820');c.fillStyle=fade;c.fillRect(330,0,370,h);c.fillStyle='#0b0820';c.fillRect(690,0,w-690,h);}
+ const x=660,max=w-x-56;glowText(c,eyebrow,x,118,30,'#b9ff5e',{align:'left',blur:14});
+ const lines=(c.font=`900 100px ${DISPLAY}`,wrap(c,title.toUpperCase(),max,2)),size=Math.min(100,...lines.map(l=>fitSize(c,l,max,100)));lines.forEach((l,i)=>glowText(c,l,x,220+i*size*.98,size,'#ffffff',{align:'left',blur:30}));
+ const top=220+(lines.length-1)*size*.98+64;c.font=`400 30px ${BODY}`;wrap(c,blurb,max,3).forEach((l,i)=>glowText(c,l,x,top+i*42,30,'#ddd8f6',{font:BODY,align:'left',blur:0,weight:400}));
+ c.font=`900 30px ${DISPLAY}`;const pw=c.measureText(cta).width+56,py=h-132;c.save();c.fillStyle='#b9ff5e';c.shadowColor='#b9ff5e';c.shadowBlur=30;c.beginPath();c.roundRect(x,py,pw,64,32);c.fill();c.restore();c.fillStyle='#10140a';c.textAlign='left';c.fillText(cta,x+28,py+43);
+ glowText(c,'DAWGCOINAI.GITHUB.IO',x,h-24,22,'#a7a2c9',{align:'left',blur:0});return canvas;}
 export function drawSiteCard(canvas,{head=null,games=12}={}){const w=canvas.width=1200,h=canvas.height=630,c=canvas.getContext('2d');backdrop(c,w,h,960,300);
  if(head){c.save();c.shadowColor='#b9ff5e';c.shadowBlur=70;const s=420;c.drawImage(head,975-s/2,290-s/2,s,s);c.restore();}
  glowText(c,'DAWG',70,200,170,'#b9ff5e',{align:'left',blur:40});glowText(c,'ARCADE',70,340,150,'#ffffff',{align:'left',blur:34});

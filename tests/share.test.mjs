@@ -6,9 +6,9 @@ import {SITE,shareBase,playLink,profileLink,readPlayLink,readPlayerLink,socialTa
 test('Share links always point at the public site and round-trip',()=>{
  assert.equal(shareBase({hostname:'localhost',origin:'http://localhost:8802',pathname:'/'}),SITE,'local testing still shares public links');
  assert.equal(shareBase({hostname:'dawgcoinai.github.io',origin:'https://dawgcoinai.github.io',pathname:'/'}),'https://dawgcoinai.github.io/');
- assert.equal(playLink('kart'),'https://dawgcoinai.github.io/?play=kart');assert.equal(readPlayLink(new URL(playLink('pinball')).search),'pinball');
+ assert.equal(playLink('kart'),'https://dawgcoinai.github.io/play/kart/');assert.equal(readPlayLink('?play=pinball'),'pinball');
  assert.equal(readPlayLink('?play=nope'),null);assert.equal(readPlayLink('?play=__proto__'),null);
- assert.equal(profileLink('9935FD73'),'https://dawgcoinai.github.io/?player=9935FD73');assert.equal(readPlayerLink('?player=9935fd73'),'9935FD73');
+ assert.equal(profileLink('9935FD73'),'https://dawgcoinai.github.io/invite/?player=9935FD73');assert.equal(readPlayerLink('?player=9935fd73'),'9935FD73');
  for(const bad of ['?player=XYZ','?player=9935FD7','?player=9935FD733','?player=<script>',''])assert.equal(readPlayerLink(bad),null);
 });
 test('Social targets encode the text and link, and only use known hosts',()=>{

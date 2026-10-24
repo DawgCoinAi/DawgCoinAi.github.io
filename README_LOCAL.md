@@ -163,6 +163,7 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/rankings.js` | Social layer: per-game and Arcade Level boards with podium, pinned row and rank movement; Friends view with challenges inbox, friend activity feed, friends and "added you" lists; player cards; challenge, invite and profile links; the social lines on game-over screens |
 | `dist/onboarding.js` | First visit: meet or reroll your DAWG, pick a player name, jump into a starter game (shown once, only to players with no runs) |
 | `dist/results.js` | The shared game-over sheet: score count-up, medals, personal-best burst, XP and level, next unlock, social lines, Rematch / Share / Challenge |
+| `scripts/build-share-pages.mjs` | Writes `dist/play/<game>/` and `dist/invite/`: small static pages with each game's own link-preview tags and 1200×630 card (`dist/assets/og/`), which forward into the app. Re-run after changing game titles or blurbs (a test checks they are current) |
 | `scripts/build-app.mjs` | Deploy-time bundle: minified entry script with lazy chunks and one minified stylesheet. CI runs it on the deploy copy before stamping; the repo keeps plain modules |
 | `dist/assets/posters/*.jpg` | Game card and hero art, rendered from each game's own renderer |
 | `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |

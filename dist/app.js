@@ -17,7 +17,7 @@ import {Onboarding,needsOnboarding} from './onboarding.js';
 import {Cloud} from './cloud.js';
 import {Rankings,challengeLink} from './rankings.js';
 import {Shell,fmt as fmtNum,unlockProgress} from './shell.js';
-import {ShareSheet,drawScoreCard,shareBase,playLink,readPlayLink,fmt} from './share.js';
+import {ShareSheet,drawScoreCard,shareBase,playLink,gamePage,readPlayLink,fmt} from './share.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
@@ -366,7 +366,7 @@ const onboarding=new Onboarding({kennel,openDialog:id=>$(id).showModal(),avatar:
  onDawg:()=>{renderer.character=kennel.prepare(mode,game,true);rankings.renderIdentity();},
  onPick:id=>{shell.show('play');if(id!==mode)selectMode(id);else renderHero();if(isMaze(id))play();else pack.play();}});
 // Score sharing: a card with the player's DAWG, and a link that challenges friends (or just opens the game).
-function shareRun(id,score,{best=false,medal='',detail='',text=''}={}){const title=gameById(id)?.title||id,code=rankings.profile?.code,url=code?challengeLink(shareBase(),id,score,code):playLink(id,shareBase());
+function shareRun(id,score,{best=false,medal='',detail='',text=''}={}){const title=gameById(id)?.title||id,code=rankings.profile?.code,url=code?challengeLink(gamePage(id,shareBase()),id,score,code):playLink(id,shareBase());
  shareSheet.open({title:'Share your score',text:text||`I scored ${fmt(score)} in ${title} on the DAWG Arcade 🐶 Can you beat it?`,url,filename:`dawg-arcade-${id}-${Math.floor(score)}.png`,card:cv=>drawScoreCard(cv,{game:id,score,best,medal,detail,player:rankings.profile?.name||kennel.active?.name,dawg:kennel.active})});}
 $('mazeShare').onclick=()=>{if(game.status!=='over')return;shareRun(mode,game.score,{best:!!runOutcome?.newBest,medal:$('runRecap').querySelector('.recap-medal')?.textContent.replace('✦ ','')||'',detail:`${game.stats.dots} coins · ${game.stats.caught} rivals · ${game.stats.loot} gold bags`});};
 const accountAction=async(task,done)=>{const note=$('accountNote');if(!cloud.client){note.textContent='Cloud saves are offline right now. Your progress is safe on this device.';return;}note.textContent='Working…';try{await task();note.textContent=done;}catch(error){note.textContent=error?.message||'Something went wrong. Try again.';}renderAccount();};

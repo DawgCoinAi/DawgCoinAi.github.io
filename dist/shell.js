@@ -41,10 +41,12 @@ export class Shell {
   for(const v of VIEWS){const el=$('view'+v[0].toUpperCase()+v.slice(1));if(el)el.hidden=v!==view;}
   for(const b of document.querySelectorAll('.app-nav [data-view]')){if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
   if(push&&changed&&globalThis.history){try{history.pushState(null,'',view==='play'?location.pathname+location.search:'#'+view);}catch{}}
-  if(scroll&&changed)window.scrollTo({top:0,behavior:'auto'});this.onView?.(view);}
+  if(scroll&&changed)window.scrollTo({top:0,behavior:'auto'});this.title();this.onView?.(view);}
+ // Tab title follows the view, and the selected game on Play.
+ title(){const names={rankings:'Rankings',friends:'Friends',me:'Me'};document.title=(this.view==='play'?this.gameTitle||'Play':names[this.view])+' · DAWG Arcade';}
  // Hero for the selected game, or a preview of a locked one with its unlock routes.
  hero(id,{best=0,wall=null,bestLabel=null}={}){const g=gameById(id);if(!g)return;const locked=wall&&!wall.open;this.preview=locked?id:null;
-  $('heroArt').style.setProperty('--hero-poster',`url(${posterOf(id)})`);$('heroTitle').textContent=g.title;
+  $('heroArt').style.setProperty('--hero-poster',`url(${posterOf(id)})`);$('heroTitle').textContent=g.title;this.gameTitle=g.title;this.title();
   $('heroTag').textContent=document.querySelector(`#tab-${id} .card-body small`)?.textContent||'';$('heroDesc').textContent=BLURBS[id]||'';
   $('heroBest').textContent=bestLabel??fmt(best);$('heroLock').hidden=!locked;
   const play=$('heroPlay');play.disabled=!!locked;$('heroPlayLabel').textContent=locked?'LOCKED':id==='trade'||id==='story'?'CONTINUE':'PLAY NOW';

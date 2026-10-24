@@ -21,7 +21,9 @@
 .d3-banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);font:900 clamp(20px,4.2vw,44px)/1.1 var(--display);letter-spacing:2px;color:#fff;text-align:center;white-space:nowrap;text-shadow:0 0 26px #ff5fc8,0 0 4px #fff}
 .d3-banner.d3-show{animation:d3banner 2.6s ease forwards}
 @keyframes d3banner{0%{opacity:0;letter-spacing:20px}14%{opacity:1;letter-spacing:2px}80%{opacity:1}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.d3-pop,.d3-banner.d3-show{animation-duration:.01s}}
+@media (prefers-reduced-motion:reduce){.d3-pop,.d3-banner.d3-show,.pack-heat.show{animation-duration:.01s}}
+.pack-heat{position:absolute;left:50%;top:18%;z-index:4;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#1a0b10d0;border:1px solid #ff7a3d88;font:900 clamp(16px,3.4vw,26px)/1 var(--display);letter-spacing:1px;color:#ffd0a0;white-space:nowrap;text-shadow:0 0 16px #ff7a3d;pointer-events:none}
+.pack-heat.show{animation:d3banner 1.8s ease forwards}
 
 /* Full-screen Dash: the city fills the window; header, HUD and controls float over it. */
 body.pack-session.pack-runner #packPanel{display:block;padding:0;background:#04050b}

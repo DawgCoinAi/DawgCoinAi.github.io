@@ -36,6 +36,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Give every module and stylesheet a per-deploy address so browsers never mix builds.
+      - run: node scripts/stamp-build.mjs dist ${{ github.sha }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,8 +1,10 @@
 // Seeded, three-lane runner. Every obstacle row keeps one lane completely open.
+import {heatOf,ramp,trackHeat,FULL_HEAT} from './difficulty.js';
 export class RunnerGame {
  constructor(random=Math.random,worldSeed=0){this.random=random;this.worldSeed=worldSeed;this.status='ready';this.time=0;this.distance=0;this.lane=1;this.visualLane=1;this.jump=0;this.slide=0;this.turnCooldown=0;this.shield=0;this.magnet=0;this.coins=0;this.dodged=0;this.hits=0;this.spawned=0;this.rows=[];this.events=[];this.reason='';this.score=0;for(const z of [90,150,210])this.spawn(z);}
  get x(){return 210+(this.visualLane-1)*112;}get y(){return 463;}
- get speed(){return 25+Math.min(15,this.distance/160);}
+ get heat(){return heatOf(this.distance,FULL_HEAT.runner);}
+ get speed(){return ramp(25,40,this.heat);}
  spawn(z){const safe=Math.floor(this.random()*3),other=[0,1,2].filter(l=>l!==safe),types=['crate','bar','block'];this.spawned++;const obstacles=other.filter((_,i)=>i===0||this.random()>.32).map(lane=>({lane,type:types[Math.floor(this.random()*types.length)]}));this.rows.push({id:this.spawned,z,safe,obstacles,power:this.spawned%7===0?(this.spawned%14===0?'magnet':'shield'):null});}
  start(){if(this.status==='ready'||this.status==='paused')this.status='playing';}
  pause(){if(this.status==='playing')this.status='paused';}
@@ -15,7 +17,7 @@ export class RunnerGame {
    if(this.lane===row.safe||this.magnet>0){this.coins++;this.events.push({type:'coin'});}
    if(row.power&&this.lane===row.safe){if(row.power==='shield')this.shield=1;else this.magnet=10+(this.career?.magnet||0);this.events.push({type:'power',power:row.power});}
   }
-  this.rows=this.rows.filter(r=>r.z>0);const last=this.rows.at(-1);if(!last||last.z<210)this.spawn((last?.z||160)+50+this.random()*18);this.score=Math.floor(this.distance)+this.coins*25;
+  trackHeat(this,this.heat);this.rows=this.rows.filter(r=>r.z>0);const last=this.rows.at(-1);if(!last||last.z<210)this.spawn((last?.z||160)+50+this.random()*18);this.score=Math.floor(this.distance)+this.coins*25;
  }
 }
 

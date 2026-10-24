@@ -14,6 +14,7 @@ import {validKennel,DISCIPLINES} from './dawg-career.js';
 import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
 import {Cloud} from './cloud.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById} from './games.js';
+import {heatLabel} from './difficulty.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
@@ -188,7 +189,7 @@ const restartTrade=()=>trade?.status==='over'?freshTrade():confirm('A new night.
 $('newTradeButton').onclick=restartTrade;$('againTradeButton').onclick=freshTrade;
 function processEvents(){
  for(const event of game.events){
-  renderer.event(event,game);if(event.type==='dash')mobile.haptic(12);if(event.type==='power')mobile.haptic(18);if(event.type==='eat'||event.type==='loot')mobile.haptic([12,20,12]);if(event.type==='hit')mobile.haptic([30,25,20]);if(event.type==='interrupted'){releaseWakeLock();saveCheckpoint();toast('PAUSED · READY WHEN YOUR DEVICE IS');}
+  renderer.event(event,game);if(event.type==='dash')mobile.haptic(12);if(event.type==='power')mobile.haptic(18);if(event.type==='eat'||event.type==='loot')mobile.haptic([12,20,12]);if(event.type==='hit')mobile.haptic([30,25,20]);if(event.type==='heat'){toast(heatLabel(event.tier));sound(560+event.tier*110,.2,'square',.028);mobile.haptic([10,30,10]);}if(event.type==='interrupted'){releaseWakeLock();saveCheckpoint();toast('PAUSED · READY WHEN YOUR DEVICE IS');}
   if(event.type==='pellet'){profile.dots++;earnRep(1);if(game.pellets.size%2===0)sound(240+game.pellets.size%3*80,.035,'sine',.018);}
   if(event.type==='power'){profile.dots++;earnRep(5);sound(880,.22,'triangle');toast('BEAST MODE · THE HUNTER IS YOU');}
   if(event.type==='eat'){profile.caught++;earnRep(25);sound(600,.15,'square',.018);toast(`${event.combo>1?event.combo+'× COMBO · ':''}RIVAL CAUGHT · +${event.bonus}`);}

@@ -51,6 +51,7 @@ export class DashAudio {
   else if(type==='dodge'){this.tone(880,t,.07,'triangle',.05,this.fx,true);}
   else if(type==='land'){this.tone(110,t,.12,'sine',.25,this.fx,false,.5);}
   else if(type==='over'){this.noise(t,.7,.5,'lowpass',2500,this.fx,120);this.tone(120,t,.8,'sine',.7,this.fx,false,.25);this.tone(hz(45),t,.6,'sawtooth',.12,this.fx,false,.5);}
+  else if(type==='heat'){[0,3,7,10,12].forEach((n,i)=>this.tone(hz(64+n),t+i*.05,.22,'square',.06,this.fx,true));this.noise(t,.6,.1,'bandpass',500,this.fx,5000);}
   else if(type==='count'){this.tone(660,t,.12,'square',.05,this.fx,true);}
   else if(type==='go'){this.tone(990,t,.25,'square',.06,this.fx,true);this.noise(t,.4,.06,'bandpass',600,this.fx,7000);}
  }

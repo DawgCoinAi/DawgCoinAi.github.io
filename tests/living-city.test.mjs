@@ -34,7 +34,7 @@ test('Cross seeds change road types and traffic while preserving a safe park eve
 });
 test('Flappy moving gates have bounded drift and save their exact future motion',()=>{
  const g=createQuickGame('flappy',91);g.gates=12;g.obstacles=[];g.spawn(480);assert.ok(g.obstacles[0].amplitude>0);g.start();g.time=8;g.tick(1/120);const h=restoreQuick(snapshotQuick(g,'flappy'));assert.ok(h);h.start();for(let i=0;i<30;i++){g.tick(1/120);h.tick(1/120);}assert.deepEqual(h.obstacles,g.obstacles);assert.equal(h.y,g.y);
- for(let seed=1;seed<=50;seed++){const f=createQuickGame('flappy',seed);f.gates=40;for(let i=0;i<20;i++)f.spawn(480+i*260);for(let i=1;i<f.obstacles.length;i++){const o=f.obstacles[i];assert.ok(Math.abs(o.baseCenter-f.obstacles[i-1].center)<=105);assert.ok(o.amplitude<=16);assert.ok(o.center>=150&&o.center<=395);}}
+ for(let seed=1;seed<=50;seed++){const f=createQuickGame('flappy',seed);f.gates=40;for(let i=0;i<20;i++)f.spawn(480+i*260);for(let i=1;i<f.obstacles.length;i++){const o=f.obstacles[i];assert.ok(Math.abs(o.baseCenter-f.obstacles[i-1].center)<=105);assert.ok(o.amplitude<=32,"wobble stays within the save validator limit");assert.ok(o.center>=150&&o.center<=395);}}
 });
 test('30 generated Flappy worlds can each clear at least 20 gates using timed input alone',()=>{
  for(let seed=1;seed<=30;seed++){const g=createQuickGame('flappy',seed);g.start();for(let i=0;i<60*45&&g.status==='playing';i++){const next=g.obstacles.find(o=>o.x+o.width>g.x-14),target=next?.center||270;if(g.y>target+8&&g.vy>0)g.flap();stepPack(g,1/60);}assert.equal(g.status,'playing',`seed ${seed}`);assert.ok(g.gates>=20);}

@@ -4,6 +4,7 @@
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {T,smooth,quality,fitFov,merge,texture,radial,glowStops,skylineTexture,buildingShells,facadeMaterials,signMaterials,skyMaterial,auraMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {worldLook,hash} from './world.js';
+import {heatLabel} from './difficulty.js';
 
 export {fitFov};
 export const dashQuality=quality;
@@ -128,6 +129,7 @@ export class ThreeDash {
   else if(e.type==='dodge'){this.combo++;hud.pop(this.combo>1?'CLEAN ×'+this.combo:'CLEAN!','dodge');if(this.combo%5===0){this.burst(p.x,1.2+lift,this.fxZ(-.4),40,0xb9ff5e,{speed:8});st.flashOnce(0xb9ff5e,.12,this.reduced);}}
   else if(e.type==='jump'){this.burst(p.x,.15,.1,14,0x9aa3c7,{speed:2.5,life:.5,gravity:-1,up:.6,stick:1});}
   else if(e.type==='slide'){this.burst(p.x,.15,.1,18,0xffa04d,{speed:3,life:.4,gravity:-4,up:.8,stick:1});}
+  else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);st.shake(.2);}
   else if(e.type==='over'){this.burst(p.x,1.1,this.fxZ(-.6),120,0xff4f6a,{speed:13,life:1.1,gravity:-5});st.shake(1);st.flashOnce(0xff3355,.55,this.reduced);this.combo=0;}
  }
  draw(g,d,reduced=false){

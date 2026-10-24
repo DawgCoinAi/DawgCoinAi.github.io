@@ -42,12 +42,13 @@ test('Cloud sync keeps the newest copy of each save section',()=>{
  assert.equal(validSection('records',{classic:10}),true);assert.equal(validSection('records',{classic:-1}),false);
 });
 test('The database unlock ladder matches the game’s rules',()=>{
- const sql=fs.readFileSync(new URL('../supabase/migrations/20261024000000_arcade.sql',import.meta.url),'utf8');
+ // The newest migration that defines the ladder is the one the database runs.
+ const files=fs.readdirSync(new URL('../supabase/migrations/',import.meta.url)).sort(),sql=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).filter(s=>s.includes('arcade_ladder()')).at(-1),all=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).join('\n');
  const rows=[...sql.matchAll(/\('([a-z]+)', (\d+), (\d+), (null::int|\d+), (null::text|'[a-z0-9]+')\)/g)].map(m=>[m[1],{level:+m[2],minutes:+m[3],streak:m[4].startsWith('null')?undefined:+m[4],challenge:m[5].startsWith('null')?undefined:m[5].slice(1,-1)}]);
  const locked=Object.entries(LADDER).filter(([,r])=>r).map(([id,r])=>[id,{level:r.level,minutes:r.minutes,streak:r.streak,challenge:r.challenge}]);
  assert.deepEqual(Object.fromEntries(rows),Object.fromEntries(locked));
- assert.match(sql,/round\(150 \* power\(greatest\(n - 1, 0\), 1\.6\)\)/,'level curve matches xpForLevel');assert.match(sql,/least\(greatest\(p_xp, 0\), 400, 10 \+ span\)/,'XP caps match runXp');
- assert.match(sql,/enable row level security/);assert.doesNotMatch(sql,/sb_secret|service_role/);
+ assert.match(all,/round\(150 \* power\(greatest\(n - 1, 0\), 1\.6\)\)/,'level curve matches xpForLevel');assert.match(all,/least\(greatest\(p_xp, 0\), 400, 10 \+ span\)/,'XP caps match runXp');
+ assert.match(all,/enable row level security/);assert.doesNotMatch(all,/sb_secret|service_role/);
 });
 test('No secret key or password ships in the web build',()=>{
  for(const file of fs.readdirSync(new URL('../dist/',import.meta.url)).filter(f=>f.endsWith('.js')))assert.doesNotMatch(fs.readFileSync(new URL('../dist/'+file,import.meta.url),'utf8'),/sb_secret_|service_role/,file);

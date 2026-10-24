@@ -7,6 +7,7 @@ export const STAMPS=[
  {id:'cross',name:'Uptown bound',game:'DAWG Cross',target:100,icon:'⇧'},
  {id:'snake',name:'Pack grower',game:'Neon Snake',target:100,icon:'∿'},
  {id:'runner',name:'Night runner',game:'DAWG Dash',target:400,icon:'»'},
+ {id:'turbo',name:'Loop legend',game:'Turbo Pup',target:1500,icon:'∞'},
  {id:'story',name:'Main character',game:'After Hours',target:1,icon:'☾'}
 ];
 export function validPassport(s){return s?.version===1&&Array.isArray(s.stamps)&&s.stamps.length<=STAMPS.length&&new Set(s.stamps).size===s.stamps.length&&s.stamps.every(id=>STAMPS.some(m=>m.id===id))&&typeof s.complete==='boolean'&&(!s.complete||s.stamps.length===STAMPS.length);}

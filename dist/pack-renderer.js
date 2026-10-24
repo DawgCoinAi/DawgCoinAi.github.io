@@ -4,9 +4,10 @@ import {crossLane,laneObjects} from './pack-engine.js';
 import {worldLook,hash} from './world.js';
 import {drawLivingStory,drawLivingCity} from './living-renderer.js';
 import {ROOMS} from './story-engine.js';
+import {TURBO,turboChunk,chunkAt,groundAt,groundIn} from './turbo-engine.js';
 const COLORS=['#f8bf66','#eb7fb5','#78dfd0','#b4a1ff'];
 export class PackRenderer {
- constructor(canvas,face){this.canvas=canvas;this.c=canvas.getContext('2d');this.face=face;this.particles=[];this.reduced=false;this.last=0;this.sprite=null;this.camera=0;this.gpuState='canvas';}
+ constructor(canvas,face){this.canvas=canvas;this.c=canvas.getContext('2d');this.face=face;this.particles=[];this.reduced=false;this.last=0;this.sprite=null;this.camera=0;this.gpus={};this.gpuStates={};}
  rect(x,y,w,h,color,r=0){const c=this.c;c.fillStyle=color;c.beginPath();c.roundRect(x,y,w,Math.max(0,h),r);c.fill();}
  text(text,x,y,size=14,color='#f2eaff',align='left'){const c=this.c;c.fillStyle=color;c.font=`800 ${size}px system-ui,sans-serif`;c.textAlign=align;c.fillText(text,x,y);c.textAlign='left';}
  line(x,y,x2,y2,color,width=1){const c=this.c;c.strokeStyle=color;c.lineWidth=width;c.beginPath();c.moveTo(x,y);c.lineTo(x2,y2);c.stroke();}
@@ -16,14 +17,41 @@ export class PackRenderer {
  sky(t=0,seed=0){const look=worldLook(seed);const c=this.c,g=c.createLinearGradient(0,0,0,560);g.addColorStop(0,look.sky);g.addColorStop(.65,look.floor);g.addColorStop(1,look.sky);c.fillStyle=g;c.fillRect(0,0,420,560);this.glow(320,85,155,'#9e65d52c');this.circle(328,74,29,'#e8dfbd');this.circle(318,64,29,'#171b3d');for(let i=0;i<28;i++)this.circle((i*97)%420,18+(i*37)%240,.7,'#c2c2e08c');
   for(let layer=0;layer<2;layer++)for(let i=-1;i<11;i++){const w=48+((i+12)*23)%22,x=((i*62-t*(layer+1)*8)%700+700)%700-90,h=seed?65+hash(seed,i+layer*77)*120:65+((i+12)*37)%120,y=layer?430-h:350-h;this.rect(x,y,w,560-y,layer?'#141d35':'#1e2442');this.rect(x+4,y-3,w-8,3,layer?'#775288':'#41506d');for(let a=0;a<4;a++)for(let b=0;b<6;b++)if((a+b+i)%3!==0)this.rect(x+8+a*11,y+15+b*20,4,7,layer?'#ffbf7838':'#9c92d52c');}
  }
- event(e,g){this.dashGPU?.event(e,g);if(this.reduced)return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
+ event(e,g){this.gpus[this.drawKind]?.event?.(e,g);if(this.reduced||this.drawKind==='turbo')return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
  effects(dt){for(const p of this.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;this.c.globalAlpha=Math.max(0,p.life);this.circle(p.x,p.y,2.3,p.color);}this.c.globalAlpha=1;this.particles=this.particles.filter(p=>p.life>0);}
- async upgradeDash(){if(this.gpuState!=='canvas')return;if(typeof WebGL2RenderingContext==='undefined'||!this.canvas.parentElement){this.gpuState='unsupported';const status=document.getElementById('dashGraphicsStatus');if(status)status.textContent='CANVAS · COMPATIBILITY MODE';return;}this.gpuState='loading';
-  // Full 3D city first; the PixiJS 2.5D street, then Canvas, remain fallbacks for weaker devices.
-  for(const load of [async()=>new (await import('./dash-3d.js')).ThreeDash(this.canvas,()=>this.failDash()),async()=>new (await import('./dash-presentation.js')).PixiDash(this.canvas,()=>this.failDash())]){let gpu;try{gpu=await load();this.dashGPU=gpu;gpu.onAsset=text=>{const status=document.getElementById('dashGraphicsStatus');if(status)status.textContent=text;};await gpu.init();if(this.dashGPU!==gpu)return;if(!gpu.ready)continue;gpu.view.hidden=this.drawKind!=='runner';this.gpuState='ready';if(this.drawKind==='runner'&&this.drawGame)this.draw(this.drawGame,'runner',this.last);return;}catch{try{gpu?.dispose();}catch{}if(this.dashGPU===gpu)this.dashGPU=null;}}
-  this.failDash();}
- failDash(){this.gpuState='failed';try{this.dashGPU?.dispose();}catch{}this.dashGPU=null;this.canvas.style.opacity='1';const status=document.getElementById('dashGraphicsStatus');if(status)status.textContent='CANVAS · COMPATIBILITY MODE';if(this.drawKind==='runner'&&this.drawGame)this.draw(this.drawGame,'runner',this.last);}
- draw(game,kind,now=0){this.drawKind=kind;this.drawGame=game;if(kind==='runner'){this.upgradeDash();if(this.dashGPU?.ready){try{this.dashGPU.setCamera?.(this.views?.runner);if(this.dashGPU.draw(game,this.character,this.reduced)){this.dashGPU.view.hidden=false;this.canvas.style.opacity='0';this.particles=[];this.last=now;return;}}catch{this.failDash();}}}else if(this.dashGPU?.view){this.dashGPU.view.hidden=true;this.canvas.style.opacity='1';}this.poseTime=game.time;const c=this.c;c.setTransform(this.canvas.width/420,0,0,this.canvas.height/560,0,0);const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);}
+ // 3D presentations per game, tried in order; Canvas stays the fallback for every game.
+ gpuLoaders(kind){
+  if(kind==='runner')return [async()=>new (await import('./dash-3d.js')).ThreeDash(this.canvas,()=>this.failGPU('runner')),async()=>new (await import('./dash-presentation.js')).PixiDash(this.canvas,()=>this.failGPU('runner'))];
+  if(kind==='turbo')return [async()=>new (await import('./turbo-3d.js')).ThreeTurbo(this.canvas,()=>this.failGPU('turbo'))];
+  return [];
+ }
+ get dashGPU(){return this.gpus.runner||null;}set dashGPU(v){this.gpus.runner=v;}
+ get gpuState(){return this.gpuStates.runner||'canvas';}set gpuState(v){this.gpuStates.runner=v;}
+ status(text){const el=document.getElementById('dashGraphicsStatus');if(el)el.textContent=text;}
+ async upgradeGPU(kind){
+  if((this.gpuStates[kind]||'canvas')!=='canvas')return;const loaders=this.gpuLoaders(kind);if(!loaders.length)return;
+  if(typeof WebGL2RenderingContext==='undefined'||!this.canvas.parentElement){this.gpuStates[kind]='unsupported';this.status('CANVAS · COMPATIBILITY MODE');return;}this.gpuStates[kind]='loading';
+  for(const load of loaders){let gpu;try{gpu=await load();this.gpus[kind]=gpu;gpu.onAsset=text=>this.status(text);await gpu.init();if(this.gpus[kind]!==gpu)return;if(!gpu.ready)continue;gpu.view.hidden=this.drawKind!==kind;this.gpuStates[kind]='ready';if(this.drawKind===kind&&this.drawGame)this.draw(this.drawGame,kind,this.last);return;}catch{try{gpu?.dispose();}catch{}if(this.gpus[kind]===gpu)this.gpus[kind]=null;}}
+  this.failGPU(kind);}
+ failGPU(kind){this.gpuStates[kind]='failed';try{this.gpus[kind]?.dispose();}catch{}this.gpus[kind]=null;this.canvas.style.opacity='1';this.status('CANVAS · COMPATIBILITY MODE');if(this.drawKind===kind&&this.drawGame)this.draw(this.drawGame,kind,this.last);}
+ upgradeDash(){return this.upgradeGPU('runner');}
+ failDash(){this.failGPU('runner');}
+ draw(game,kind,now=0){this.drawKind=kind;this.drawGame=game;
+  if(this.gpuLoaders(kind).length){this.upgradeGPU(kind);const gpu=this.gpus[kind];if(gpu?.ready){try{gpu.setCamera?.(this.views?.[kind]);if(gpu.draw(game,this.character,this.reduced)){gpu.view.hidden=false;for(const [k,o]of Object.entries(this.gpus))if(k!==kind&&o?.view)o.view.hidden=true;this.canvas.style.opacity='0';this.particles=[];this.last=now;return;}}catch{this.failGPU(kind);}}}
+  for(const o of Object.values(this.gpus))if(o?.view)o.view.hidden=true;this.canvas.style.opacity='1';this.poseTime=game.time;const c=this.c;c.setTransform(this.canvas.width/420,0,0,this.canvas.height/560,0,0);const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='turbo')this.turbo2D(game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);}
+ // Canvas fallback for Turbo Pup: a flat side view of the same seeded course.
+ turbo2D(g){const c=this.c,S=15,ox=g.x-8,base=400,px=x=>(x-ox)*S,py=y=>base-y*S;this.sky(g.time,g.worldSeed);
+  for(let x=Math.floor(ox*2)/2;x<ox+30;x+=.5){const y=groundAt(g.worldSeed,x),y2=groundAt(g.worldSeed,x+.5);if(y===null||y2===null)continue;c.fillStyle='#232a44';c.beginPath();c.moveTo(px(x),py(y));c.lineTo(px(x+.5),py(y2));c.lineTo(px(x+.5),560);c.lineTo(px(x),560);c.fill();this.line(px(x),py(y),px(x+.5),py(y2),'#7be1d2',3);}
+  const k=chunkAt(g.worldSeed,g.x).k;for(let i=Math.max(0,k-1);i<=k+2;i++){const ch=turboChunk(g.worldSeed,i);
+   if(ch.loop){c.strokeStyle='#a684ef';c.lineWidth=5;c.beginPath();c.arc(px(ch.loop.cx),py(TURBO.loopRadius),TURBO.loopRadius*S,0,Math.PI*2);c.stroke();}
+   for(const [a,b]of ch.spikes)for(let x=a;x<b;x+=.4){const y=py(groundIn(ch,x)??0);c.fillStyle='#ff3d5a';c.beginPath();c.moveTo(px(x),y);c.lineTo(px(x+.2),y-10);c.lineTo(px(x+.4),y);c.fill();}
+   for(const s of ch.springs)this.circle(px(s),py((groundIn(ch,s)??0)+.3),7,'#ffd25e');
+   for(const s of ch.boosts){c.fillStyle='#7ff3ff';c.fillRect(px(s)-12,py(groundIn(ch,s)??0)-3,24,4);}
+   for(const coin of ch.coins)if(!g.collected.includes(coin.id))this.circle(px(coin.x),py(coin.y),5,'#ffc83d');
+   for(const b of ch.bots)if(!g.defeated.includes(b.id)){const bx=b.x+Math.sin(g.time*b.speed+b.phase)*b.range,by=groundIn(ch,bx)??0;c.fillStyle='#b44ad8';c.fillRect(px(bx)-9,py(by)-18,18,18);}}
+  for(const s of g.scatter)this.circle(px(s.x),py(s.y),4,'#ffc83d');
+  const ce=g.center;if(!(g.invuln>0&&Math.floor(g.time*16)%2))this.circle(px(ce.x),py(ce.y),12,!g.grounded||g.rolling>0?'#e0a96b':'#c58a4d');
+ }
  flappy(g){const c=this.c;this.sky(g.time,g.worldSeed);this.glow(g.x,g.y,65,'#b8ff9b18');for(const o of g.obstacles){const upper=o.center-o.gap/2,lower=o.center+o.gap/2;this.tower(o.x,0,o.width,upper,true);this.tower(o.x,lower,o.width,520-lower,false);this.line(o.x+o.width/2,upper+24,o.x+o.width/2,lower-24,'#d3ffae22',2);this.circle(o.x+o.width/2,o.center,9,'#baff9c0f');this.circle(o.x+o.width/2,o.center,3,'#d7ffc878');}
   this.rect(0,520,420,40,'#111426');this.rect(0,520,420,3,'#e380b8');for(let i=0;i<15;i++){const x=(i*40-g.time*100)%440;this.line(x,527,x-18,560,'#3e3156',2);}c.save();c.translate(g.x,g.y);c.rotate(Math.max(-.35,Math.min(.85,g.vy/650)));this.rect(-32,3,15,17,'#6b7c95',5);this.rect(-36,7,8,9,'#f5c568',3);if(g.vy<0){c.fillStyle='#ffce79';c.beginPath();c.moveTo(-38,8);c.lineTo(-55-(g.time*120%12),12);c.lineTo(-38,17);c.fill();}this.head(0,0,54);c.restore();
   this.text(worldLook(g.worldSeed).label.toUpperCase(),18,548,9,'#b8b3cf');this.text('TAP TO FLY',401,548,9,'#c7c1db','right');

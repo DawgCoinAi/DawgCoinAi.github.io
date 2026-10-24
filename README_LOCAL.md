@@ -153,6 +153,9 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/cloud.js` / `cloud-config.js` | Guest-first Supabase cloud saves and run uploads (see SUPABASE_SETUP.md) |
 | `dist/games.js` | Game registry: ids, kinds and supported camera views |
 | `dist/three-kit.js` | Shared 3D toolkit used by the 3D games |
+| `dist/turbo-engine.js` / `turbo-3d.js` | Turbo Pup: seeded momentum platformer (loops, kickers, springs, bots) and its 3D track with side and chase cameras |
+| `dist/rankings.js` | Rankings, global stats, friends and challenge links |
+| `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |
 | `dist/dash-3d.js` / `dash-3d.css` / `dash-audio.js` | Full-screen 3D Dash city, HUD and synthesized soundtrack |
 | `dist/runner-renderer.js` / `dash-presentation.js` | Canvas compatibility / PixiJS Dash fallback |
 | `dist/dawg-graphics-model.js` / `dawg-gpu.js` / `dawg-normal-map.js` | Shared skinned asset / Three.js studio and atlases / embedded textile PNG |

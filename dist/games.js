@@ -11,6 +11,7 @@ export const GAMES=[
  {id:'cross',title:'DAWG Cross',kind:'pack',views:['third']},
  {id:'snake',title:'Neon Snake',kind:'pack',views:['third']},
  {id:'runner',title:'DAWG Dash',kind:'pack',views:['first','third']},
+ {id:'turbo',title:'Turbo Pup',kind:'pack',views:['first','third']},
  {id:'story',title:'After Hours',kind:'pack',views:[]}
 ];
 export const GAME_IDS=GAMES.map(g=>g.id);

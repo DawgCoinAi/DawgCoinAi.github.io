@@ -5,6 +5,7 @@ import {worldLook,hash} from './world.js';
 import {drawLivingStory,drawLivingCity} from './living-renderer.js';
 import {ROOMS} from './story-engine.js';
 import {TURBO,turboChunk,chunkAt,groundAt,groundIn} from './turbo-engine.js';
+import {TABLE,FLIPPERS,BUMPERS,TARGETS,LANES,LANE_Y,HOLE,WALLS,flipperTip} from './pinball-engine.js';
 const COLORS=['#f8bf66','#eb7fb5','#78dfd0','#b4a1ff'];
 export class PackRenderer {
  constructor(canvas,face){this.canvas=canvas;this.c=canvas.getContext('2d');this.face=face;this.particles=[];this.reduced=false;this.last=0;this.sprite=null;this.camera=0;this.gpus={};this.gpuStates={};}
@@ -17,7 +18,7 @@ export class PackRenderer {
  sky(t=0,seed=0){const look=worldLook(seed);const c=this.c,g=c.createLinearGradient(0,0,0,560);g.addColorStop(0,look.sky);g.addColorStop(.65,look.floor);g.addColorStop(1,look.sky);c.fillStyle=g;c.fillRect(0,0,420,560);this.glow(320,85,155,'#9e65d52c');this.circle(328,74,29,'#e8dfbd');this.circle(318,64,29,'#171b3d');for(let i=0;i<28;i++)this.circle((i*97)%420,18+(i*37)%240,.7,'#c2c2e08c');
   for(let layer=0;layer<2;layer++)for(let i=-1;i<11;i++){const w=48+((i+12)*23)%22,x=((i*62-t*(layer+1)*8)%700+700)%700-90,h=seed?65+hash(seed,i+layer*77)*120:65+((i+12)*37)%120,y=layer?430-h:350-h;this.rect(x,y,w,560-y,layer?'#141d35':'#1e2442');this.rect(x+4,y-3,w-8,3,layer?'#775288':'#41506d');for(let a=0;a<4;a++)for(let b=0;b<6;b++)if((a+b+i)%3!==0)this.rect(x+8+a*11,y+15+b*20,4,7,layer?'#ffbf7838':'#9c92d52c');}
  }
- event(e,g){this.gpus[this.drawKind]?.event?.(e,g);if(this.reduced||this.drawKind==='turbo')return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
+ event(e,g){this.gpus[this.drawKind]?.event?.(e,g);if(this.reduced||this.drawKind==='turbo'||this.drawKind==='pinball')return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
  effects(dt){for(const p of this.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;this.c.globalAlpha=Math.max(0,p.life);this.circle(p.x,p.y,2.3,p.color);}this.c.globalAlpha=1;this.particles=this.particles.filter(p=>p.life>0);}
  // 3D presentations per game, tried in order; Canvas stays the fallback for every game.
  gpuLoaders(kind){
@@ -25,6 +26,7 @@ export class PackRenderer {
   if(kind==='turbo')return [async()=>new (await import('./turbo-3d.js')).ThreeTurbo(this.canvas,()=>this.failGPU('turbo'))];
   if(kind==='snake')return [async()=>new (await import('./snake-3d.js')).ThreeSnake(this.canvas,()=>this.failGPU('snake'))];
   if(kind==='flappy')return [async()=>new (await import('./flappy-3d.js')).ThreeFlappy(this.canvas,()=>this.failGPU('flappy'))];
+  if(kind==='pinball')return [async()=>new (await import('./pinball-3d.js')).ThreePinball(this.canvas,()=>this.failGPU('pinball'))];
   return [];
  }
  get dashGPU(){return this.gpus.runner||null;}set dashGPU(v){this.gpus.runner=v;}
@@ -44,7 +46,7 @@ export class PackRenderer {
   // Wider or taller screens: the game's own sky fills the whole canvas, then the playfield is
   // drawn as large as fits, centred and framed, so the screen is always fully used.
   if(v.ox>1||v.oy>1){const k=Math.max(v.W/420,v.H/560);c.setTransform(k,0,0,k,(v.W-420*k)/2,(v.H-560*k)/2);this.sky(game.time||0,game.worldSeed||0);c.setTransform(1,0,0,1,0,0);c.fillStyle='#05060d8c';c.fillRect(0,0,v.W,v.H);}
-  c.setTransform(v.s,0,0,v.s,v.ox,v.oy);c.save();c.beginPath();c.rect(0,0,420,560);c.clip();const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='turbo')this.turbo2D(game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);c.restore();if(v.ox>1||v.oy>1)this.frame(v);}
+  c.setTransform(v.s,0,0,v.s,v.ox,v.oy);c.save();c.beginPath();c.rect(0,0,420,560);c.clip();const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='turbo')this.turbo2D(game);else if(kind==='pinball')this.pinball2D(game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);c.restore();if(v.ox>1||v.oy>1)this.frame(v);}
  // Matches the canvas to its on-screen size (capped for speed) and fits the 420×560 field inside.
  fit(){const cv=this.canvas,w=cv.clientWidth,h=cv.clientHeight;if(w>0&&h>0){const ratio=Math.max(1,Math.min(globalThis.devicePixelRatio||1,2,Math.sqrt(2.6e6/(w*h)))),W=Math.round(w*ratio),H=Math.round(h*ratio);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}}
   const W=cv.width,H=cv.height,[top,bottom]=this.insets(W/Math.max(1,w||W)),s=Math.min(W/420,(H-top-bottom)/560);return {W,H,s,ox:(W-420*s)/2,oy:top+(H-top-bottom-560*s)/2};}
@@ -53,6 +55,17 @@ export class PackRenderer {
   const top=head?Math.max(0,head.bottom-stage.top+6):0,overlap=pr&&pr.height&&pr.left<stage.left+stage.width*.62&&pr.right>stage.left+stage.width*.38;return [top*ratio,overlap?Math.max(0,stage.bottom-pr.top+6)*ratio:0];}
  frame(v){const c=this.c;c.setTransform(v.s,0,0,v.s,v.ox,v.oy);c.shadowColor='#b48cff';c.shadowBlur=18;c.strokeStyle='#b48cffaa';c.lineWidth=2.5/v.s*2;c.strokeRect(0,0,420,560);c.shadowBlur=0;c.setTransform(1,0,0,1,0,0);}
  // Canvas fallback for Turbo Pup: a flat side view of the same seeded course.
+ // Pinball fallback: the 10 × 20 table at 28 px per unit, centered in the 420 × 560 field.
+ pinball2D(g){const c=this.c,S=28,X=x=>70+x*S,Y=y=>560-y*S,look=worldLook(g.worldSeed);c.fillStyle='#07060f';c.fillRect(0,0,420,560);
+  const bg=c.createLinearGradient(0,0,0,560);bg.addColorStop(0,'#1a0b33');bg.addColorStop(1,'#07121f');c.fillStyle=bg;c.fillRect(X(0),0,10*S,560);c.lineCap='round';
+  this.text('DAWG HOUSE',X(HOLE.x),Y(HOLE.y+1),13,'#ff5fc8','center');c.lineWidth=3;c.strokeStyle=g.holeLit?'#ff5fc8':'#ff5fc855';c.beginPath();c.arc(X(HOLE.x),Y(HOLE.y),HOLE.r*S,0,Math.PI*2);c.stroke();
+  for(const [x1,y1,x2,y2,kind]of WALLS){c.strokeStyle=kind==='sling'?'#ff5fc8':kind==='gate'?'#ffffff55':look.glow;c.lineWidth=kind==='post'?5:4;c.beginPath();c.moveTo(X(x1),Y(y1));c.lineTo(X(x2),Y(y2));c.stroke();}
+  BUMPERS.forEach(b=>{c.fillStyle='#2fc8ff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S,0,Math.PI*2);c.fill();c.fillStyle='#e8fbff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S*.55,0,Math.PI*2);c.fill();});
+  TARGETS.forEach((t,i)=>{if(!g.targets[i]&&!(g.reset>0))this.rect(X(t.x)-3,Y(t.y)-10,6,20,'#ffe45e',2);});
+  LANES.forEach((l,i)=>this.text(l.label,X(l.x),Y(LANE_Y-1),16,g.lanes[i]?'#b9ff5e':'#ffffff44','center'));this.text('×'+g.mult,X(4.5),Y(8.4),16,g.mult>1?'#ff5fc8':'#ffffff55','center');
+  c.strokeStyle='#e8ffd0';c.lineWidth=.3*S;FLIPPERS.forEach((f,i)=>{const t=flipperTip(f,g.flips[i].angle);c.beginPath();c.moveTo(X(f.px),Y(f.py));c.lineTo(X(t.x),Y(t.y));c.stroke();});
+  for(const b of g.balls){const gr=c.createRadialGradient(X(b.x)-3,Y(b.y)-3,1,X(b.x),Y(b.y),TABLE.ball*S);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#8a90a8');c.fillStyle=gr;c.beginPath();c.arc(X(b.x),Y(b.y),TABLE.ball*S,0,Math.PI*2);c.fill();}
+  this.text('BALL '+Math.min(3,4-g.ballsLeft),8,24,13,'#ffffffaa');}
  turbo2D(g){const c=this.c,S=15,ox=g.x-8,base=400,px=x=>(x-ox)*S,py=y=>base-y*S;this.sky(g.time,g.worldSeed);
   for(let x=Math.floor(ox*2)/2;x<ox+30;x+=.5){const y=groundAt(g.worldSeed,x),y2=groundAt(g.worldSeed,x+.5);if(y===null||y2===null)continue;c.fillStyle='#232a44';c.beginPath();c.moveTo(px(x),py(y));c.lineTo(px(x+.5),py(y2));c.lineTo(px(x+.5),560);c.lineTo(px(x),560);c.fill();this.line(px(x),py(y),px(x+.5),py(y2),'#7be1d2',3);}
   const k=chunkAt(g.worldSeed,g.x).k;for(let i=Math.max(0,k-1);i<=k+2;i++){const ch=turboChunk(g.worldSeed,i);

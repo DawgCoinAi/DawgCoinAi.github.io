@@ -10,6 +10,7 @@ export const LADDER={
  cross:{level:5,minutes:45,streak:3},
  trade:{level:6,minutes:60,challenge:'dash100'},
  turbo:{level:7,minutes:90,streak:4},
+ pinball:{level:8,minutes:100,streak:3},
  story:{level:10,minutes:120,streak:5}
 };
 export const CHALLENGES={dash100:{label:'Collect 100 gold in one DAWG Dash run',test:run=>run.game==='runner'&&run.gold>=100}};

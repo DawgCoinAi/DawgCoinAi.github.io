@@ -149,6 +149,8 @@ Application source remains readable native JavaScript modules. The third-party l
 | `CHARACTER_SYSTEM.md` | Career rules, rating targets, architectural scope and future online phase |
 | `dist/engine.js` / `renderer.js` | Maze and trading rules / maze graphics |
 | `dist/pack-engine.js` / `snake-engine.js` / `runner-engine.js` | Flappy, Cross, Snake, and Dash rules |
+| `dist/games.js` | Game registry: ids, kinds and supported camera views |
+| `dist/three-kit.js` | Shared 3D toolkit used by the 3D games |
 | `dist/dash-3d.js` / `dash-3d.css` / `dash-audio.js` | Full-screen 3D Dash city, HUD and synthesized soundtrack |
 | `dist/runner-renderer.js` / `dash-presentation.js` | Canvas compatibility / PixiJS Dash fallback |
 | `dist/dawg-graphics-model.js` / `dawg-gpu.js` / `dawg-normal-map.js` | Shared skinned asset / Three.js studio and atlases / embedded textile PNG |

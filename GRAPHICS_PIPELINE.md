@@ -11,7 +11,8 @@ The upgraded vertical slice is **Atelier + DAWG Dash**. The other eight games re
 | `dawg-graphics-model.js` | Smooth meshes, physical materials, shared skeleton, weighted garments and animation clips |
 | `dawg-normal-map.js` | Deterministic textile normals, standalone PNG encoding and GLB embedding |
 | `dawg-gpu.js` | Three.js studio, reflection environment, lighting presets, shadows and offscreen sprite jobs |
-| `dash-3d.js` / `dash-3d.css` | Full-screen Three.js Dash: wet neon street, recycled city, bloom and grading, live rigged DAWG, chase/idle/crash cameras, particles, HUD |
+| `three-kit.js` | Shared 3D toolkit: stage (renderer, bloom, grading, resize, quality), particles, third/first-person camera rig, HUD callouts, ambient frames, city textures |
+| `dash-3d.js` / `dash-3d.css` | Full-screen Three.js Dash (third and first person): wet neon street, recycled city, bloom and grading, live rigged DAWG, chase/idle/crash cameras, particles, HUD |
 | `dash-audio.js` | Synthesized Dash soundtrack and effects (Web Audio, no files) |
 | `dash-presentation.js` | PixiJS fallback for Dash: pooled sprites, parallax, procedural scenery, effects and atlas cache |
 | `dawg-showroom.js` / `pack-renderer.js` | Progressive renderer activation and Canvas recovery |

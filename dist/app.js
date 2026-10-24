@@ -11,6 +11,7 @@ import {snapshotMaze,restoreMaze} from './checkpoint.js';
 import {ArcadePack,PACK_MODES} from './arcade-pack.js';
 import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
 import {validKennel} from './dawg-career.js';
+import {GAME_IDS,VIEWS,canSwitchView} from './games.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
@@ -34,7 +35,7 @@ let lastTime=0,toastUntil=0,blinkTime=0,lastProfileSave=0,musicBeat=0,nextMusicB
 let focused=false,profileDirty=false,countdownUntil=0,wakeLock=null,runOutcome=null;
 let challenge=dailyChallenge(),dailyRecords=read('daily',{});
 if(!dailyRecords||typeof dailyRecords!=='object'||Array.isArray(dailyRecords))dailyRecords={};
-const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto'};
+const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
 const BADGES=[{id:'dots',target:100,name:'Block cleaner',desc:'Collect 100 coins'},{id:'caught',target:5,name:'Pack leader',desc:'Catch 5 rivals'},{id:'loot',target:3,name:'Bag chaser',desc:'Grab 3 gold bags'},{id:'clears',target:3,name:'City legend',desc:'Clear 3 districts'},{id:'dashes',target:25,name:'Fast & furrious',desc:'Use dash 25 times'},{id:'profitable',target:1,name:'Self-made DAWG',desc:'Finish a profitable hustle'}];
 const savedProfile=read('profile',{}),profile={rep:0,dots:0,caught:0,loot:0,clears:0,dashes:0,profitable:0,theme:'district'};
 for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfile?.[k])&&savedProfile[k]>=0)profile[k]=Math.floor(savedProfile[k]);}
@@ -106,7 +107,7 @@ function confirm(title,text,label,action){pack.pause();cancelCountdown();if(game
 $('acceptConfirm').onclick=()=>{const action=confirmAction;confirmAction=null;$('confirmDialog').close();action?.();};$('cancelConfirm').onclick=()=>{$('confirmDialog').close();confirmAction=null;};
 $('restartButton').onclick=()=>{if(game.status==='ready'||game.status==='over')newArcade();else confirm('Fresh start?','This resets the current maze run and its score.','RESTART RUN ↗',newArcade);};
 function selectMode(next){
- if(!['classic','rush','daily','trade',...PACK_MODES].includes(next)||next===mode)return;
+ if(!GAME_IDS.includes(next)||next===mode)return;
  const change=()=>{
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();mode=next;

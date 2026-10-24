@@ -146,7 +146,7 @@ export function validTradeState(s){
  if(!['cash','debt','bank'].every(k=>Number.isSafeInteger(s[k])&&s[k]>=0)||!Number.isInteger(s.day)||s.day<1||s.day>30||!Number.isInteger(s.district)||!DISTRICTS[s.district]||![30,45,60,75,90].includes(s.capacity)||!Number.isFinite(s.heat)||s.heat<0||s.heat>100)return false;
  if(!Array.isArray(s.bag)||s.bag.length!==GOODS.length||!s.bag.every(n=>Number.isSafeInteger(n)&&n>=0)||s.bag.reduce((a,b)=>a+b,0)>s.capacity||!Array.isArray(s.prices)||s.prices.length!==GOODS.length||!s.prices.every(n=>Number.isSafeInteger(n)&&n>0))return false;
  if(s.cost!==undefined&&(!Array.isArray(s.cost)||s.cost.length!==GOODS.length||!s.cost.every(n=>Number.isFinite(n)&&n>=0)))return false;
- return typeof s.event==='string'&&s.event.length<2000&&Array.isArray(s.logs)&&s.logs.length<=12&&s.logs.every(l=>Number.isInteger(l.day)&&l.day>=1&&l.day<=30&&typeof l.message==='string'&&l.message.length<2000);
+ return typeof s.event==='string'&&s.event.length<2000&&Array.isArray(s.logs)&&s.logs.length<=12&&s.logs.every(l=>l&&Number.isInteger(l.day)&&l.day>=1&&l.day<=30&&typeof l.message==='string'&&l.message.length<2000);
 }
 export class TradeGame {
  constructor(random=Math.random,saved=null){this.random=random;

@@ -10,14 +10,20 @@ import {isTimed,dailyChallenge,seededRandom,medalFor,dailyResult,advanceGame} fr
 import {snapshotMaze,restoreMaze} from './checkpoint.js';
 import {ArcadePack,PACK_MODES} from './arcade-pack.js';
 import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
+import {validKennel} from './dawg-career.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
 const money=n=>(n<0?'−':'')+'$'+Math.abs(Math.round(n)).toLocaleString('en-US');
 const padded=n=>String(Math.floor(n)).padStart(6,'0');
-let storageAvailable=true,restoringBackup=false;
+let storageAvailable=true,restoringBackup=false,otherTabActive=false;
 const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('dawg-v1-'+key))??fallback;}catch{return fallback;}};
-const write=(key,value)=>{if(restoringBackup)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
+const write=(key,value)=>{if(restoringBackup||otherTabActive)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
+// Keep the raw copy of a stored section that fails validation before the game replaces it with a fresh one.
+function keepDamaged(key,valid){if(restoringBackup||otherTabActive)return false;try{const raw=localStorage.getItem('dawg-v1-'+key);if(raw===null)return false;let value;try{value=JSON.parse(raw);}catch{}if(value===null||value!==undefined&&valid(value))return false;if(localStorage.getItem('dawg-v1-damaged-'+key)===null)localStorage.setItem('dawg-v1-damaged-'+key,raw);return true;}catch{return false;}}
+// Only the newest tab saves: an older tab stops writing so its stale state cannot overwrite newer progress.
+const tabId=Math.random().toString(36).slice(2),tabChannel=typeof BroadcastChannel==='function'?new BroadcastChannel('dawg-v1-active-tab'):null;
+if(tabChannel){tabChannel.onmessage=e=>{if(!e.data||e.data.claim===tabId||otherTabActive)return;otherTabActive=true;pauseForInterruption('PAUSED · OPEN IN ANOTHER TAB');document.querySelectorAll('dialog[open]').forEach(d=>d.close());$('tabDialog').showModal();};tabChannel.unref?.();tabChannel.postMessage({claim:tabId});}
 let records=read('records',{classic:0,rush:0,trade:null,runs:0});
 if(!records||typeof records!=='object')records={classic:0,rush:0,trade:null,runs:0};
 let passport=read('passport',null);
@@ -34,6 +40,7 @@ const savedProfile=read('profile',{}),profile={rep:0,dots:0,caught:0,loot:0,clea
 for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfile?.[k])&&savedProfile[k]>=0)profile[k]=Math.floor(savedProfile[k]);}
 if(savedProfile?.theme in THEMES&&profile.rep>=THEMES[savedProfile.theme].unlock)profile.theme=savedProfile.theme;
 renderer.setTheme(profile.theme);
+const kennelDamaged=keepDamaged('kennel',validKennel);
 const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)cityRenderer.city(trade,performance.now());}});
 const mobile=new MobileControls({direction,dash,pause:togglePause,exit:returnToArcade,settings:()=>openDialog('settingsDialog'),rotate:()=>pauseForInterruption('PAUSED · SCREEN ROTATED')},prefs);
 const pack=new ArcadePack(face,{read,write,prefs,prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
@@ -108,7 +115,7 @@ function selectMode(next){
   pack.select(PACK_MODES.includes(next)?next:null);
   if(next==='trade'){if(!trade)loadTrade();renderTrade();}
   else if(PACK_MODES.includes(next)){const panel=$(next==='story'?'storyPanel':'packPanel');panel.setAttribute('aria-labelledby','tab-'+next);}
-  else{$('arcadePanel').setAttribute('aria-labelledby','tab-'+next);$('modeDescription').textContent=isTimed(next)?'The clock is ticking. Stack points, chase combos, and leave your best score in the dust.':"A hungry DAWG. A maze full of loot. Four rivals who really don't want you to win.";$('riskRule').textContent=isTimed(next)?'Hits cost 150 points. Keep going until the clock hits zero.':'Three lives. Fresh districts. An endless night.';if(game.mode!==next)newArcade();else{setLaunchText();renderDaily();updateBest();showState();}}
+  else{$('arcadePanel').setAttribute('aria-labelledby','tab-'+next);if(game.mode!==next)newArcade();else{setLaunchText();renderDaily();updateBest();showState();}}
  };
  if(isMaze(next)&&game.mode!==next&&['playing','paused','level'].includes(game.status))confirm('Switch your maze challenge?','This replaces your saved maze run. Your personal records stay saved.','SWITCH MODE ↗',change);else change();
 }
@@ -127,7 +134,7 @@ window.addEventListener('blur',()=>pauseForInterruption('PAUSED · YOUR RUN IS S
 function openDialog(id){pack.pause();if(isMaze()){cancelCountdown();if(game.status==='playing')game.pause();showState();saveCheckpoint();releaseWakeLock();}if(id==='settingsDialog')renderSettings();$(id).showModal();}
 $('helpButton').onclick=()=>openDialog('helpDialog');$('recordsButton').onclick=()=>{$('achievementsContent').innerHTML=`<div class="badge-grid">${badgesHTML()}</div>`;$('recordsContent').innerHTML=`<div class="record-row"><span>01 / Maze Munch</span><strong>${padded(records.classic||0)}</strong></div><div class="record-row"><span>02 / 60-Second Rush</span><strong>${padded(records.rush||0)}</strong></div><div class="record-row"><span>03 / Street Hustle</span><strong>${records.trade===null||records.trade===undefined?'—':money(records.trade)}</strong></div><div class="record-row"><span>Daily Run / all-time</span><strong>${padded(records.daily||0)}</strong></div>${[['flappy','Flappy DAWG'],['cross','DAWG Cross'],['snake','Neon Snake'],['runner','DAWG Dash'],['story','After Hours']].map(([id,name])=>`<div class="record-row"><span>${name}</span><strong>${padded(records[id]||0)}</strong></div>`).join('')}<div class="record-row"><span>Completed runs</span><strong>${records.runs||0}</strong></div>`;openDialog('recordsDialog');};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 function validSavedTrade(s){return s?.version===1&&validLivingTrade(s.state);}
-function loadTrade(){const saved=read('trade',null);const valid=validSavedTrade(saved);trade=new LivingTradeGame(valid?saved.state:null);enrollTrade(!valid);saveTrade();}
+function loadTrade(){if(keepDamaged('trade',validSavedTrade))announce('Street Hustle save was damaged. A new campaign started; the old copy was kept.');const saved=read('trade',null);const valid=validSavedTrade(saved);trade=new LivingTradeGame(valid?saved.state:null);enrollTrade(!valid);saveTrade();}
 function enrollTrade(fresh=false){cityRenderer.character=kennel.prepare('trade',trade,fresh);if(fresh){trade.cash+=trade.career.cash;trade.world.contract.reward=Math.round(trade.world.contract.reward*(1+trade.career.order));if(trade.career.cash)trade.log('Career Hustle bonus: +$'+trade.career.cash+' starting cash.');}}
 function saveTrade(){write('trade',{version:1,state:trade.save()});}
 function renderTrade(){const finished=trade.status==='over',over=trade.blocked;renderLivingTrade();$('tradeNotice').hidden=over||trade.day!==30;$('tradeCostNote').hidden=!trade.costEstimated;$('sellAllButton').disabled=over||trade.used===0;$('citySceneTitle').textContent=DISTRICTS[trade.district].name;$('citySceneDesc').textContent=DISTRICTS[trade.district].desc;$('cityRoute').innerHTML=DISTRICTS.map((d,i)=>`<button class="route-stop ${i===trade.district?'current':''}" data-route="${i}" ${over||i===trade.district||trade.day>=30?'disabled':''} aria-label="Travel to ${d.name}, one night"><i></i>${d.name}</button>`).join('');$('tradeDay').innerHTML=`${String(trade.day).padStart(2,'0')}<span>/ 30</span>`;$('tradeCash').textContent=money(trade.cash);$('tradeWorth').textContent=money(trade.netWorth);$('tradeDebt').textContent=money(trade.debt);$('tradeBag').textContent=`${trade.used} / ${trade.capacity}`;$('safeBalance').textContent=money(trade.bank);$('marketName').textContent=DISTRICTS[trade.district].name;$('heatText').textContent=Math.round(trade.heat)+'%';$('heatFill').style.width=trade.heat+'%';$('tradeEvent').textContent=trade.event;
@@ -240,7 +247,7 @@ function requestWakeLock(){if(!mobile.active||!navigator.wakeLock)return;navigat
 function releaseWakeLock(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}}
 function setLaunchText(){
  const titles={classic:'Maze Munch',rush:'60-Second Rush',daily:'Daily Run',trade:'Street Hustle'};
- $('launchTitle').textContent=titles[mode];$('modeTitle').innerHTML=mode==='daily'?'A new day.<br>A new dare.':mode==='rush'?'One minute.<br>All mayhem.':'Own the<br>after hours.';if(mode==='daily')$('modeDescription').textContent=challenge.description;$('launchDescription').textContent=mode==='daily'?challenge.description:mode==='rush'?'60 seconds. Chase your next personal best.':'Clear the block. Outrun the pack.';
+ $('launchTitle').textContent=titles[mode];$('modeTitle').innerHTML=mode==='daily'?'A new day.<br>A new dare.':mode==='rush'?'One minute.<br>All mayhem.':'Own the<br>after hours.';$('modeDescription').textContent=mode==='daily'?challenge.description:isTimed(mode)?'The clock is ticking. Stack points, chase combos, and leave your best score in the dust.':"A hungry DAWG. A maze full of loot. Four rivals who really don't want you to win.";$('riskRule').textContent=isTimed(mode)?'Hits cost 150 points. Keep going until the clock hits zero.':'Three lives. Fresh districts. An endless night.';$('launchDescription').textContent=mode==='daily'?challenge.description:mode==='rush'?'60 seconds. Chase your next personal best.':'Clear the block. Outrun the pack.';
 }
 function renderDaily(){
  const d=dailyRecords[challenge.day],best=d?.best||0;
@@ -256,7 +263,7 @@ $('quickPlayButton').onclick=play;$('overlayHome').onclick=returnToArcade;$('lau
 $('helpSettings').onclick=()=>{$('helpDialog').close();openDialog('settingsDialog');};
 $('backupButton').onclick=()=>openDialog('backupDialog');
 $('exportProgress').onclick=()=>{
- try{saveProfile();saveCheckpoint();pack.saveRuns();const backup=makeBackup(localStorage),blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='DAWG-save-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('backupStatus').textContent='Backup downloaded. Keep it to move your progress to another browser or computer.';}
+ try{saveProfile();saveCheckpoint();pack.saveRuns();const backup=makeBackup(localStorage),skipped=backup.skipped||[],blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='DAWG-save-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('backupStatus').textContent='Backup downloaded. Keep it to move your progress to another browser or computer.'+(skipped.length?' Damaged sections were left out: '+skipped.join(', ')+'.':'');}
  catch(e){$('backupStatus').textContent=e.message;}
 };
 $('importProgress').onclick=()=>{ $('backupFile').value='';$('backupFile').click();};
@@ -269,8 +276,12 @@ $('settingsDone').onclick=()=>$('settingsDialog').close();$('settingsSound').onc
 $('hapticsToggle').onclick=()=>{prefs.haptics=!prefs.haptics;saveSettings();mobile.haptic(15);};
 document.querySelectorAll('[data-setting]').forEach(b=>b.onclick=()=>{prefs[b.dataset.setting]=b.dataset.value;saveSettings();});
 window.addEventListener('pagehide',()=>{saveProfile();saveCheckpoint();releaseWakeLock();});
+$('tabReload').onclick=()=>location.reload();$('tabDialog').addEventListener('cancel',e=>e.preventDefault());
+// A page restored from the back/forward cache may hold stale progress, so reload it to read and claim the latest save.
+window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 const restored=restoreMaze(read('mazeRun',null));
 if(restored){game=restored.game;mode=game.mode;if(restored.challenge)challenge=restored.challenge;document.querySelectorAll('[data-mode]').forEach(b=>{const selected=b.dataset.mode===mode;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));});$('arcadePanel').setAttribute('aria-labelledby','tab-'+mode);}
 document.querySelectorAll('[data-mode]').forEach(b=>b.tabIndex=b.dataset.mode===mode?0:-1);
 renderer.character=kennel.prepare(mode,game);
 $('dailyBrief').hidden=mode!=='daily';setLaunchText();renderDaily();renderSettings();awardPassport();renderProgress();updateBest();showState();requestAnimationFrame(frame);
+if(kennelDamaged)announce('Saved DAWG roster was damaged and has been reset; the old copy was kept.');

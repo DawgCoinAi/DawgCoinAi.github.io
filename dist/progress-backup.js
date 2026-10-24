@@ -32,8 +32,10 @@ export function parseBackup(text){
  return backup;
 }
 export function makeBackup(storage,date=new Date()){
- const saves={};for(const key of SAVE_KEYS){const raw=storage.getItem(SAVE_PREFIX+key);if(raw!==null){let value;try{value=JSON.parse(raw);}catch{throw new Error('The saved '+key+' data is damaged.');}if(!validValue(key,value))throw new Error('The saved '+key+' data is invalid.');saves[key]=value;}}
- return {format:'dawg-arcade-backup',version:1,createdAt:date.toISOString(),saves};
+ // Damaged sections are left out and listed, so one bad key cannot block exporting everything else.
+ const saves={},skipped=[];for(const key of SAVE_KEYS){const raw=storage.getItem(SAVE_PREFIX+key);if(raw!==null){let value;try{value=JSON.parse(raw);}catch{skipped.push(key);continue;}if(!validValue(key,value)){skipped.push(key);continue;}saves[key]=value;}}
+ if(!Object.keys(saves).length)throw new Error('There is no valid progress to export yet.');
+ return {format:'dawg-arcade-backup',version:1,createdAt:date.toISOString(),saves,...(skipped.length?{skipped}:{})};
 }
 export function applyBackup(storage,backup){
  // Validate before touching storage; roll back a partially completed write on quota errors.

@@ -11,7 +11,7 @@ export function validLivingTrade(s){
  if(!w||w.version!==1||!integer(w.seed,1,0xffffffff)||!integer(w.randomState,0,0xffffffff)||!integer(w.weather,0,4)||!integer(w.reputation,0,999)||!integer(w.lastTalk,0,30))return false;
  if(!Array.isArray(w.markets)||w.markets.length!==5||!w.markets.every(m=>m&&Array.isArray(m.stock)&&m.stock.length===6&&m.stock.every(n=>integer(n,0,180))&&Array.isArray(m.prices)&&m.prices.length===6&&m.prices.every(n=>integer(n,1,100000))&&Array.isArray(m.pressure)&&m.pressure.length===6&&m.pressure.every(n=>Number.isFinite(n)&&n>=-.5&&n<=.5)))return false;
  if(!w.markets[s.district].prices.every((p,i)=>p===s.prices[i]))return false;
- if(!Array.isArray(w.rivals)||w.rivals.length!==3||!w.rivals.every(r=>integer(r.name,0,names.length-1)&&integer(r.district,0,4)&&integer(r.good,0,5)&&['buyer','seller','collector'].includes(r.style)))return false;
+ if(!Array.isArray(w.rivals)||w.rivals.length!==3||!w.rivals.every(r=>r&&integer(r.name,0,names.length-1)&&integer(r.district,0,4)&&integer(r.good,0,5)&&['buyer','seller','collector'].includes(r.style)))return false;
  if(w.upgrades!==undefined&&(!Array.isArray(w.upgrades)||w.upgrades.length>3||new Set(w.upgrades).size!==w.upgrades.length||!w.upgrades.every(id=>TRADE_PERKS.some(p=>p.id===id))))return false;
  const e=w.event;if(!e||!integer(e.kind,0,4)||!integer(e.district,0,4)||!integer(e.good,0,5)||!integer(e.remaining,1,4))return false;
  const p=w.pending;if(p!==null&&(!p||!['toll','favor','flash'].includes(p.kind)||!integer(p.amount,0,Number.MAX_SAFE_INTEGER)||!integer(p.good,0,5)))return false;

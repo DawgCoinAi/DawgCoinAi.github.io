@@ -23,7 +23,7 @@ async function renderRunAtlas(d,{frames=12,width=128,height=160,signal,turntable
   pmrem=new T.PMREMGenerator(r);room=new T.RoomEnvironment();env=pmrem.fromScene(room,.04);s.scene.environment=env.texture;room.dispose();room=null;pmrem.dispose();pmrem=null;
   for(let i=0;i<frames;i++){if(signal?.aborted)throw new Error('Sprite job cancelled');a.root.rotation.y=turntable?i/frames*Math.PI*2:Math.PI;setDawgPose(a,turntable?0:i/frames*Math.PI*2/13,turntable?'still':'run');r.render(s.scene,camera);if(r.getContext().isContextLost())throw Error('Sprite renderer lost its context');context.drawImage(canvas,i%4*width,Math.floor(i/4)*height);if(i%3===2)await new Promise(resolve=>setTimeout(resolve,0));}
   return {source:out,width,height,frames,columns:4,kind:turntable?'3d-turntable':'3d-run'};
- }finally{a?.dispose();room?.dispose();pmrem?.dispose();env?.dispose();r?.dispose();s?.scene.clear();}
+ }finally{a?.dispose();room?.dispose();pmrem?.dispose();env?.dispose();r?.forceContextLoss();r?.dispose();s?.scene.clear();}
 }
 
 export const createTurntableAtlas=(d,options={})=>createRunAtlas(d,{...options,frames:8,width:256,height:320,turntable:true});

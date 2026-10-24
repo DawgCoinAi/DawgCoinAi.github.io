@@ -51,3 +51,25 @@
 #friendList li span{flex:1}
 #friendList li.muted{color:#ffffff90;font-size:13px}
 @media (max-width:560px){.rank-stats{grid-template-columns:repeat(2,1fr)}.rank-me{align-items:flex-start}.rank-me canvas{width:64px;height:64px}}
+
+/* Sharing: score cards, the share sheet and player cards. */
+.share-run{margin:4px auto 10px;padding:10px 18px;border-radius:999px;border:1px solid #ff5fc8aa;background:#ff5fc81f;color:#ffd0ee;font:900 14px/1 var(--display);letter-spacing:1px;cursor:pointer}
+.share-run:hover,.share-run:focus-visible{background:#ff5fc84a;color:#fff}
+.story-footer .share-run{margin:0}
+.share-dialog{max-width:520px;text-align:center}
+.share-dialog h2{margin:6px 0 12px}
+.share-dialog #shareImage{display:block;width:min(100%,320px);aspect-ratio:1080/1350;margin:0 auto 14px;border-radius:14px;box-shadow:0 18px 50px #000a}
+.share-dialog #shareImage[hidden]{display:none}
+.share-dialog p{margin:0 0 8px;color:var(--muted)}
+.share-dialog code{display:block;margin:0 auto 14px;padding:8px 10px;border-radius:8px;background:#0006;color:var(--lime);font:12px/1.4 var(--mono,monospace);word-break:break-all}
+.share-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:14px}
+.share-actions>*{flex:1 1 140px}
+.share-actions .button-link{display:inline-flex;align-items:center;justify-content:center;padding:12px 16px;border-radius:10px;border:1px solid var(--line);color:var(--white);text-decoration:none;font-weight:800}
+.share-actions [hidden]{display:none}
+.share-socials{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}
+.share-socials a{padding:8px 14px;border-radius:999px;border:1px solid #5ee7ff66;color:#bff6ff;text-decoration:none;font-weight:800;font-size:13px}
+.share-socials a:hover,.share-socials a:focus-visible{background:#5ee7ff26}
+.profile-dialog canvas{display:block;width:140px;height:140px;margin:6px auto 0}
+.profile-bests{list-style:none;padding:0;margin:0 0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;text-align:left}
+.profile-bests li{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;background:#ffffff0d;font-size:13px}
+.profile-bests b{color:var(--lime)}

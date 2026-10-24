@@ -157,6 +157,7 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/snake-3d.js` / `flappy-3d.js` | 3D Neon Snake (light-cycle first person with minimap) and Flappy DAWG (cockpit flight through tower gates) |
 | `dist/turbo-engine.js` / `turbo-3d.js` | Turbo Pup: seeded momentum platformer (loops, kickers, springs, bots) and its 3D track with side and chase cameras |
 | `dist/pinball-engine.js` / `pinball-3d.js` | Neon Pinball: fixed-step table physics (hold-to-flip flippers, bumpers, slingshots, drop targets, D-A-W-G lanes, multiball, ball save) and its 3D cabinet with table and Ball Cam views |
+| `dist/share.js` | Sharing: score-card images, `?play=<game>` and `?player=<code>` links, and the share sheet (native share with the card attached, social links, save image, copy link). `assets/og-card.jpg` is the link-preview image named by the Open Graph tags in `index.html` |
 | `dist/kart-engine.js` / `kart-3d.js` | Drift Dawgs: seeded circuits, kart physics in track space (drifts and mini-turbos, items, coins, boost pads, five AI rivals) and its 3D raceway with chase and driver cameras |
 | `dist/rankings.js` | Rankings, global stats, friends and challenge links |
 | `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |

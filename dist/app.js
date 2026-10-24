@@ -13,7 +13,8 @@ import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
 import {validKennel,DISCIPLINES} from './dawg-career.js';
 import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
 import {Cloud} from './cloud.js';
-import {Rankings} from './rankings.js';
+import {Rankings,challengeLink} from './rankings.js';
+import {ShareSheet,drawScoreCard,shareBase,playLink,readPlayLink,fmt} from './share.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
@@ -27,7 +28,7 @@ const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('dawg-v1-
 const write=(key,value)=>{if(restoringBackup||otherTabActive)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));cloud.touch(key);}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
 // Cloud saves: newer progress from another device replaces this one, then the page reloads
 // so every module starts from the synced copy. Writes stop first so stale state cannot win.
-const cloud=new Cloud({onPulled:()=>{if(sessionStorage.getItem('dawg-cloud-reload'))return;try{sessionStorage.setItem('dawg-cloud-reload','1');}catch{}restoringBackup=true;location.reload();},onStatus:(...a)=>{renderAccount(...a);if(a[0]==='online'&&!socialStarted){socialStarted=true;rankings.sync().then(()=>rankings.handleChallenge());}},onServer:data=>{mergeServer(arcade,data);settleUnlocks(arcade,records);write('arcade',arcade);renderLocks();}});
+const cloud=new Cloud({onPulled:()=>{if(sessionStorage.getItem('dawg-cloud-reload'))return;try{sessionStorage.setItem('dawg-cloud-reload','1');}catch{}restoringBackup=true;location.reload();},onStatus:(...a)=>{renderAccount(...a);if(a[0]==='online'&&!socialStarted){socialStarted=true;rankings.sync().then(()=>{rankings.handleChallenge();rankings.handlePlayer();});}},onServer:data=>{mergeServer(arcade,data);settleUnlocks(arcade,records);write('arcade',arcade);renderLocks();}});
 // Keep the raw copy of a stored section that fails validation before the game replaces it with a fresh one.
 function keepDamaged(key,valid){if(restoringBackup||otherTabActive)return false;try{const raw=localStorage.getItem('dawg-v1-'+key);if(raw===null)return false;let value;try{value=JSON.parse(raw);}catch{}if(value===null||value!==undefined&&valid(value))return false;if(localStorage.getItem('dawg-v1-damaged-'+key)===null)localStorage.setItem('dawg-v1-damaged-'+key,raw);return true;}catch{return false;}}
 // Only the newest tab saves: an older tab stops writing so its stale state cannot overwrite newer progress.
@@ -54,7 +55,7 @@ renderer.setTheme(profile.theme);
 const kennelDamaged=keepDamaged('kennel',validKennel);
 const kennel=new DawgKennel({read,write,open:openDialog,play:selectMode,announce,appearanceChanged:()=>{drawMaze();if(pack.kind==='story')pack.renderStory();else if(pack.game&&pack.kind)pack.renderer.draw(pack.game,pack.kind,performance.now());if(trade)cityRenderer.city(trade,performance.now());}});
 const mobile=new MobileControls({direction,dash,pause:togglePause,exit:returnToArcade,settings:()=>openDialog('settingsDialog'),rotate:()=>pauseForInterruption('PAUSED · SCREEN ROTATED')},prefs);
-const pack=new ArcadePack(face,{read,write,prefs,prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
+const pack=new ArcadePack(face,{read,write,prefs,share:(id,score,o)=>shareRun(id,score,o),prepare:(kind,g,force=false)=>kennel.prepare(kind,g,force),sound,soundOn:()=>soundEnabled,soundToggle:()=>$('soundButton').click(),confirm,best:kind=>records[kind]||0,record:(kind,score,rep)=>{finishRun(kind,score,kind==='runner'?pack.game?.coins||0:0);kennel.record(kind,score);records[kind]=Math.max(records[kind]||0,score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();if(rep){earnRep(rep);profileDirty=true;renderProgress();saveProfile();}}});
 renderer.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches||prefs.fx==='low';
 function sound(freq=440,length=.08,type='sine',gain=.035){if(!soundEnabled)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const o=audioContext.createOscillator(),g=audioContext.createGain();o.type=type;o.frequency.setValueAtTime(freq,audioContext.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.6),audioContext.currentTime+length);g.gain.setValueAtTime(gain,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+length);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+length);}catch{}}
 function updateSound(){$('settingsSound').textContent=soundEnabled?'ON':'OFF';$('settingsSound').setAttribute('aria-pressed',String(soundEnabled));$('soundButton').innerHTML=`♫ <span>${soundEnabled?'ON':'OFF'}</span>`;$('soundButton').setAttribute('aria-label',`Turn sound ${soundEnabled?'off':'on'}`);$('soundButton').title=`Turn sound ${soundEnabled?'off':'on'}`;}
@@ -63,7 +64,7 @@ function drawMaze(){renderer.draw(game,performance.now());}
 function updateHud(){mobile.sync(game,mode,!!countdownUntil);$('quickPlayButton').innerHTML=(game.status==='ready'?'PLAY NOW':game.status==='over'?'RUN IT BACK':'RESUME RUN')+' <span>↗</span>'; const palette=renderer.palette(game);document.documentElement.style.setProperty('--world',palette.color);document.documentElement.style.setProperty('--world-secondary',palette.secondary);$('districtName').textContent=game.district.name.toUpperCase();$('districtSector').textContent='SECTOR '+String(game.level).padStart(2,'0');const ready=game.dashCooldown<=0;$('dashLabel').textContent=ready?'DASH READY':`RECHARGING ${game.dashCooldown.toFixed(1)}s`;$('dashCharge').style.width=(1-game.dashCooldown/game.dashRecharge)*100+'%';$('dashButton').classList.toggle('ready',ready);$('dashButton').disabled=!ready||!['playing','ready'].includes(game.status);$('liveIntel').textContent=game.loot?`GOLD BAG LIVE · ${Math.ceil(game.loot.time)}s left. Get it for +${game.loot.value} points.`:game.power>0?`BEAST MODE · ${game.power.toFixed(1)}s. Stack rival catches for bigger bonuses.`:'Gold bags appear after 80 and 160 pickups. Grab each one before its 12-second timer runs out.';$('score').textContent=padded(game.score);$('levelLabel').textContent=isTimed(mode)?'TIME LEFT':'LEVEL';$('level').textContent=isTimed(mode)?`${Math.ceil(game.time)}s`:String(game.level).padStart(2,'0');$('livesLabel').textContent=isTimed(mode)?'HIT PENALTY':'LIVES';$('lives').textContent=isTimed(mode)?'−150':Array(game.lives).fill('♥').join(' ');const progress=Math.round((1-game.pellets.size/game.total)*100);$('progressPercent').textContent=progress+'%';$('progressFill').style.width=progress+'%';$('powerFlash').hidden=game.power<=0||game.status!=='playing';$('powerFlash').querySelector('span').textContent=game.power.toFixed(1)+'s';$('pauseButton').disabled=!['playing','paused'].includes(game.status);$('pauseButton').textContent=game.status==='paused'?'▷':'Ⅱ';$('pauseButton').setAttribute('aria-label',game.status==='paused'?'Resume game':'Pause game');$('gameStatus').textContent=({ready:'READY WHEN YOU ARE',playing:game.power>0?'BEAST MODE · GO GET THEM':'DAWG IS ON THE MOVE',paused:'TAKE A BREATHER',over:'ANOTHER NIGHT. ANOTHER RUN.',level:'BLOCK CLEARED. KEEP IT MOVING.'})[game.status];}
 function overlay(badge,title,text,button,hint='ARROW KEYS / WASD / SWIPE'){$('overlay').hidden=false;$('overlayBadge').textContent=badge;$('overlayTitle').innerHTML=title;$('overlayText').textContent=text;$('playButton').innerHTML=button+' <span>↗</span>';$('overlayHint').textContent=hint;}
 function showState(){
- updateHud();$('overlay').classList.remove('results');$('runRecap').hidden=true;$('overlayHome').hidden=true;
+ updateHud();$('overlay').classList.remove('results');$('runRecap').hidden=true;$('mazeShare').hidden=true;$('overlayHome').hidden=true;
  if(countdownUntil){$('overlay').hidden=true;$('countdownLayer').hidden=false;return;}
  $('countdownLayer').hidden=true;
  if(game.status==='playing'){$('overlay').hidden=true;return;}
@@ -77,7 +78,7 @@ function showState(){
   const next=challenge.targets.find(n=>n>game.score);
   const note=mode==='daily'?`${medals[medalFor(game.score,challenge.targets)]}${runOutcome?.reward?' · +'+runOutcome.reward+' REP':next?' · '+(next-game.score)+' TO NEXT MEDAL':' · CITY CONQUERED'}`:runOutcome?.newBest?'✦ YOU SET THE SCORE TO BEAT':`${Math.max(0,(records[mode]||0)-game.score)} POINTS FROM YOUR PERSONAL BEST`;
   $('runRecap').innerHTML=`<div class="recap-stat"><strong>${game.stats.dots}</strong><span>COINS</span></div><div class="recap-stat"><strong>${game.stats.caught}</strong><span>RIVALS</span></div><div class="recap-stat"><strong>${game.stats.loot}</strong><span>GOLD BAGS</span></div><div class="recap-medal">${note}</div>`;
-  $('runRecap').hidden=false;$('overlayHome').hidden=!mobile.active;
+  $('runRecap').hidden=false;$('mazeShare').hidden=!(game.score>0);$('overlayHome').hidden=!mobile.active;
  }
 }
 function recordArcade(){
@@ -317,8 +318,12 @@ $('helpSettings').onclick=()=>{$('helpDialog').close();openDialog('settingsDialo
 $('backupButton').onclick=()=>openDialog('backupDialog');
 $('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
 // Rankings and friends; the board opens on the game being played.
-var socialStarted=false;const rankings=new Rankings({cloud,kennel,records:()=>records,confirm,openDialog,announce,play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();selectMode(id);}});
+var socialStarted=false;const shareSheet=new ShareSheet({openDialog});const rankings=new Rankings({cloud,kennel,records:()=>records,confirm,openDialog,announce,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();selectMode(id);}});
 $('rankingsButton').onclick=()=>rankings.open(mode);
+// Score sharing: a card with the player's DAWG, and a link that challenges friends (or just opens the game).
+function shareRun(id,score,{best=false,medal='',detail='',text=''}={}){const title=gameById(id)?.title||id,code=rankings.profile?.code,url=code?challengeLink(shareBase(),id,score,code):playLink(id,shareBase());
+ shareSheet.open({title:'Share your score',text:text||`I scored ${fmt(score)} in ${title} on the DAWG Arcade 🐶 Can you beat it?`,url,filename:`dawg-arcade-${id}-${Math.floor(score)}.png`,card:cv=>drawScoreCard(cv,{game:id,score,best,medal,detail,player:rankings.profile?.name||kennel.active?.name,dawg:kennel.active})});}
+$('mazeShare').onclick=()=>{if(game.status!=='over')return;shareRun(mode,game.score,{best:!!runOutcome?.newBest,medal:$('runRecap').querySelector('.recap-medal')?.textContent.replace('✦ ','')||'',detail:`${game.stats.dots} coins · ${game.stats.caught} rivals · ${game.stats.loot} gold bags`});};
 const accountAction=async(task,done)=>{const note=$('accountNote');if(!cloud.client){note.textContent='Cloud saves are offline right now. Your progress is safe on this device.';return;}note.textContent='Working…';try{await task();note.textContent=done;}catch(error){note.textContent=error?.message||'Something went wrong. Try again.';}renderAccount();};
 $('accountForm').addEventListener('submit',e=>{e.preventDefault();const email=$('accountEmail').value.trim();accountAction(()=>cloud.saveWithEmail(email),'Check '+email+' and open the link to finish saving your progress.');});
 $('accountSignIn').onclick=()=>{const email=$('accountEmail').value.trim();if(!email){$('accountNote').textContent='Enter your email above, then press this again.';$('accountEmail').focus();return;}accountAction(()=>cloud.signInWithEmail(email),'Check '+email+' for your sign-in link. That account’s progress will replace this device’s.');};
@@ -348,4 +353,6 @@ if(restored){game=restored.game;mode=game.mode;if(restored.challenge)challenge=r
 document.querySelectorAll('[data-mode]').forEach(b=>b.tabIndex=b.dataset.mode===mode?0:-1);
 renderer.character=kennel.prepare(mode,game);
 $('dailyBrief').hidden=mode!=='daily';setLaunchText();renderDaily();renderSettings();awardPassport();renderProgress();updateBest();showState();requestAnimationFrame(frame);
+// ?play=<game> links open straight to that game.
+const linked=readPlayLink(globalThis.location?.search||'');if(linked){const u=new URL(location.href);u.searchParams.delete('play');history.replaceState(null,'',u.pathname+u.search+u.hash);if(linked!==mode)selectMode(linked);}
 if(kennelDamaged)announce('Saved DAWG roster was damaged and has been reset; the old copy was kept.');

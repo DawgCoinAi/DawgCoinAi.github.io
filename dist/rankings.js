@@ -5,6 +5,7 @@
 import {GAMES,gameById} from './games.js';
 import {validDawg} from './dawg-career.js';
 import {drawDawg} from './dawg-art.js';
+import {profileLink,readPlayerLink,shareBase,drawScoreCard} from './share.js';
 
 const $=id=>document.getElementById(id);
 export const NAME_RULE=/^[A-Za-z0-9][A-Za-z0-9 _.-]{1,14}[A-Za-z0-9]$/;
@@ -16,7 +17,7 @@ export function readChallenge(search){const p=new URLSearchParams(search);const 
 const fmt=n=>Number(n||0).toLocaleString('en-US');
 
 export class Rankings {
- constructor({cloud,kennel,records,confirm,openDialog,announce,play}){Object.assign(this,{cloud,kennel,records,confirm,openDialog,announce,play});this.game='runner';this.period='week';this.scope='global';this.profile=null;this.wire();}
+ constructor({cloud,kennel,records,confirm,openDialog,announce,play,share}){Object.assign(this,{cloud,kennel,records,confirm,openDialog,announce,play,share});this.game='runner';this.period='week';this.scope='global';this.profile=null;this.wire();}
  get api(){return this.cloud.client&&this.cloud.user?this.cloud.client:null;}
  async rpc(name,args){const api=this.api;if(!api)throw new Error('Rankings need the cloud connection. Your progress is still saved on this device.');const {data,error}=await api.rpc(name,args);if(error)throw new Error(/name taken/.test(error.message)?'That name is taken. Try another.':/not allowed/.test(error.message)?'That name isn’t allowed. Use 3–16 letters, numbers, spaces, _ . or -.':/no player/.test(error.message)?'No player has that code.':/own code/.test(error.message)?'That’s your own friend code.':/Could not find the function|does not exist/i.test(error.message)?'Rankings are still being set up. Check back soon.':error.message);return data;}
  note(text){$('rankNote').textContent=text||'';}
@@ -28,7 +29,8 @@ export class Rankings {
   $('rankNameForm').addEventListener('submit',e=>{e.preventDefault();this.saveProfile();});
   $('rankPublic').addEventListener('change',()=>this.saveProfile());
   $('rankCopy').onclick=()=>this.copy(this.profile?.code,'Friend code copied.');
-  $('rankShare').onclick=()=>this.share();
+  $('rankShare').onclick=()=>this.shareChallenge();$('rankProfile').onclick=()=>this.shareProfile();
+  $('profileFollow').onclick=()=>this.followShown();$('profilePlay').onclick=()=>{$('profileDialog').close();this.play(this.shown?.topGame||'runner');};
   $('friendForm').addEventListener('submit',e=>{e.preventDefault();this.follow($('friendCode').value.trim());});
   $('friendList').addEventListener('click',e=>{const code=e.target.closest('[data-unfollow]')?.dataset.unfollow;if(code)this.unfollow(code);});
  }
@@ -59,8 +61,23 @@ export class Rankings {
  async follow(code){if(!/^[A-Fa-f0-9]{8}$/.test(code)){this.note('Friend codes are 8 letters and numbers, like 3FA9C210.');return;}try{const p=await this.rpc('follow_code',{p_code:code});$('friendCode').value='';this.note('Added '+(p?.name||code)+'.');this.loadFriends();if(this.scope==='friends')this.load();return p;}catch(error){this.note(error.message);}}
  async unfollow(code){try{await this.rpc('unfollow_code',{p_code:code});this.loadFriends();if(this.scope==='friends')this.load();}catch(error){this.note(error.message);}}
  async copy(text,done){if(!text)return;try{await navigator.clipboard.writeText(text);this.note(done);}catch{this.note(text);}}
- async share(){const code=this.profile?.code;if(!code){this.note('Connect to the cloud to get a friend code.');return;}const best=this.records()[this.game]||0,title=gameById(this.game)?.title||this.game,url=challengeLink(location.href,this.game,best,code),text=`Beat my ${best.toLocaleString('en-US')} in ${title} on the DAWG Arcade 🐶`;
-  if(navigator.share){try{await navigator.share({title:'DAWG Arcade challenge',text,url});return;}catch{}}this.copy(text+' '+url,'Challenge link copied. Send it to a friend.');}
+ async shareChallenge(){const code=this.profile?.code;if(!code){this.note('Connect to the cloud to get a friend code.');return;}const best=this.records()[this.game]||0,title=gameById(this.game)?.title||this.game,url=challengeLink(shareBase(),this.game,best,code),text=`Beat my ${fmt(best)} in ${title} on the DAWG Arcade 🐶`;
+  if(this.share){this.share({title:'Challenge a friend',text,url,filename:`dawg-arcade-${this.game}-challenge.png`,card:cv=>drawScoreCard(cv,{game:this.game,score:best,player:this.profile?.name,dawg:this.kennel.active,detail:'beat my score'})});return;}
+  this.copy(text+' '+url,'Challenge link copied. Send it to a friend.');}
+ // A link to the player's public card. Needs a public profile, since that is what the link shows.
+ async shareProfile(){const p=this.profile;if(!p?.code){this.note('Connect to the cloud to get a profile link.');return;}if(p.public===false){this.note('Turn on “Show me on the boards” to share your profile.');return;}
+  const url=profileLink(p.code,shareBase()),name=p.name||'Guest '+p.code,text=`Add ${name} on the DAWG Arcade 🐶 Friend code ${p.code}`;
+  if(this.share){this.share({title:'Share your profile',text,url,filename:'dawg-arcade-profile.png',card:cv=>drawScoreCard(cv,{game:null,score:this.bestScore(),player:name,dawg:this.kennel.active,unit:'TOP SCORE',detail:'friend code '+p.code})});return;}this.copy(text+' '+url,'Profile link copied.');}
+ bestScore(){return Math.max(0,...Object.values(this.records()).filter(Number.isFinite));}
+ // A profile link opened on this device: show that player's public card with an Add Friend button.
+ async handlePlayer(){const code=readPlayerLink(location.search);if(!code)return;const u=new URL(location.href);u.searchParams.delete('player');history.replaceState(null,'',u.pathname+u.search+u.hash);
+  let p=null;try{p=await this.rpc('public_profile',{p_code:code});}catch(error){this.announce(error.message);return;}if(!p){this.announce('That player card is private or no longer exists.');return;}this.showPlayer(p);}
+ showPlayer(p){this.shown=p;const bests=Object.entries(p.best||{}).filter(([g,s])=>gameById(g)&&Number.isFinite(s)).sort((a,b)=>b[1]-a[1]);p.topGame=bests[0]?.[0];
+  this.avatar($('profileAvatar'),p.avatar,200);$('profileName').textContent=p.name||'Guest '+p.code;$('profileLevel').textContent=`Level ${fmt(p.level)} · friend code ${p.code}`;
+  $('profileBests').replaceChildren(...bests.map(([g,s])=>{const li=document.createElement('li');const span=document.createElement('span');span.textContent=gameById(g).title;const b=document.createElement('b');b.textContent=fmt(s);li.append(span,b);return li;}));
+  if(!bests.length){const li=document.createElement('li');li.className='muted';li.textContent='No ranked runs yet.';$('profileBests').append(li);}
+  const mine=p.code===this.profile?.code;$('profileFollow').hidden=mine;$('profileFollow').textContent=p.following?'FRIENDS ✓':'ADD FRIEND';$('profileFollow').disabled=!!p.following;$('profileNote').textContent=mine?'This is your own card.':'';this.openDialog('profileDialog');}
+ async followShown(){const p=this.shown;if(!p||p.following)return;const r=await this.follow(p.code);if(r){p.following=true;$('profileFollow').textContent='FRIENDS ✓';$('profileFollow').disabled=true;$('profileNote').textContent='Added. Race them on the Friends board.';}}
  // A challenge link opened on this device: say who sent it, then offer to play and add them.
  async handleChallenge(){const ch=readChallenge(location.search);if(!ch)return;history.replaceState(null,'',location.pathname+location.hash);let from=null;try{from=await this.rpc('public_profile',{p_code:ch.from});}catch{}
   const who=from?.name||'A friend',title=gameById(ch.game)?.title||ch.game;this.confirm(`${who} challenged you!`,`Beat ${fmt(ch.score)} in ${title}. Accepting adds ${who} to your friends so you can race on the Friends board.`,'ACCEPT & PLAY ↗',async()=>{if(from&&!from.following&&from.code!==this.profile?.code)await this.follow(ch.from);this.play(ch.game);});}

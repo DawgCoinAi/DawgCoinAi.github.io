@@ -11,7 +11,9 @@ The upgraded vertical slice is **Atelier + DAWG Dash**. The other eight games re
 | `dawg-graphics-model.js` | Smooth meshes, physical materials, shared skeleton, weighted garments and animation clips |
 | `dawg-normal-map.js` | Deterministic textile normals, standalone PNG encoding and GLB embedding |
 | `dawg-gpu.js` | Three.js studio, reflection environment, lighting presets, shadows and offscreen sprite jobs |
-| `dash-presentation.js` | Pixi scene, pooled sprites, parallax, procedural scenery, effects and atlas cache |
+| `dash-3d.js` / `dash-3d.css` | Full-screen Three.js Dash: wet neon street, recycled city, bloom and grading, live rigged DAWG, chase/idle/crash cameras, particles, HUD |
+| `dash-audio.js` | Synthesized Dash soundtrack and effects (Web Audio, no files) |
+| `dash-presentation.js` | PixiJS fallback for Dash: pooled sprites, parallax, procedural scenery, effects and atlas cache |
 | `dawg-showroom.js` / `pack-renderer.js` | Progressive renderer activation and Canvas recovery |
 | `vendor/` | Locally bundled, pinned libraries and license notices |
 
@@ -19,6 +21,7 @@ Three.js 0.186.1 and PixiJS 8.22.0 are bundled by esbuild 0.28.2. Packages and t
 
 ## Resource and timing rules
 
+- DAWG Dash tries the Three.js city first, then the PixiJS street, then Canvas. The 3D scene renders the rigged character live (run, flip-jump, slide, lean, crash), recycles scenery by world-distance slots so it is identical after a resume, and keeps passed obstacles moving behind the camera. Its own frames run only while a run is not ticking (idle orbit before a run, a ~3 s crash camera), capped near 30 fps and stopped when hidden. Phones and low-memory devices get a lighter profile (1 DPR, no shadows, fewer props); desktops drop to it automatically after sustained slow frames.
 - One application loop advances gameplay. Pixi's ticker is stopped; its render method runs from the existing loop. Presentation never consumes the engine RNG or advances time.
 - The studio caps motion redraws near 30 fps, stops when hidden, caps full resolution at 1.5 DPR, and offers a 1-DPR mode without shadows. Its renderer and reflection map are reused; replaced outfits dispose their meshes/materials/textures/skeleton.
 - A temporary Three renderer generates an equipped character's twelve Run frames. Jobs are serialized. The renderer, environment and character resources are disposed after each completed, failed or cancelled job. Gameplay then uses a sprite sheet, rather than rendering a 3D model each frame.

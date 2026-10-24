@@ -1,0 +1,40 @@
+/* DAWG Dash 3D: full-bleed stage, glass HUD and callouts over the WebGL city. */
+.pack-stage>.dash3d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;background:#05060d}
+.dash3d .d3-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.d3-hud{position:absolute;inset:0;color:#fff;opacity:0;transition:opacity .35s ease;--d3-top:14px;--d3-bottom:22px}
+.d3-hud.d3-live{opacity:1}
+.d3-meter{position:absolute;left:16px;top:var(--d3-top);display:flex;align-items:baseline;gap:5px;text-shadow:0 2px 10px #000d,0 0 22px #b9ff5e66,0 3px 0 #000a}
+.d3-meter b{font:900 clamp(30px,5vw,58px)/1 var(--display);letter-spacing:-1px;color:#efffd9;font-variant-numeric:tabular-nums}
+.d3-meter small{font:800 12px var(--mono);color:#b9ff5e;letter-spacing:2px}
+.d3-zone{position:absolute;left:18px;top:calc(var(--d3-top) + clamp(38px,6vw,66px));font:700 10px var(--mono);letter-spacing:3px;color:#ffffffc8;text-shadow:0 1px 6px #000,0 1px 0 #000}
+.d3-gold{position:absolute;right:16px;top:var(--d3-top);display:flex;align-items:center;gap:9px;padding:7px 16px 7px 8px;border-radius:999px;background:#0b0a16b8;border:1px solid #ffd25e66;box-shadow:0 0 26px #ffb43a33,inset 0 1px 0 #ffffff1a;backdrop-filter:blur(8px)}
+.d3-gold i{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff7cf,#ffc83d 45%,#b96c0e);box-shadow:0 0 14px #ffb43a}
+.d3-gold b{font:900 24px/1 var(--display);color:#ffe08a;font-variant-numeric:tabular-nums}
+.d3-power{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;font:800 11px var(--mono);letter-spacing:4px;text-shadow:0 0 12px currentColor}
+.d3-power em{display:block;width:180px;height:6px;border-radius:9px;background:#ffffff22;overflow:hidden}
+.d3-power s{display:block;height:100%;transform-origin:left;background:currentColor;box-shadow:0 0 12px currentColor;transition:transform .1s linear}
+.d3-power[data-kind=magnet]{color:#ff6fa0}.d3-power[data-kind=shield]{color:#5ee7ff}
+.d3-pops{position:absolute;left:50%;top:40%;width:0;height:0}
+.d3-pop{position:absolute;left:var(--x);top:0;white-space:nowrap;font:900 28px/1 var(--display);color:#ffd25e;text-shadow:0 0 18px currentColor,0 3px 0 #000b;animation:d3pop 1.05s cubic-bezier(.2,.9,.3,1.3) forwards}
+.d3-pop.d3-shield{color:#7ff3ff}.d3-pop.d3-magnet{color:#ff7aa8}.d3-pop.d3-dodge{color:#c8ff7a;font-size:21px}.d3-pop.d3-big{color:#fff;font-size:clamp(28px,5vw,48px)}
+@keyframes d3pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.4)}16%{opacity:1;transform:translate(-50%,-62%) scale(1.18)}100%{opacity:0;transform:translate(-50%,-180%) scale(1)}}
+.d3-banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);font:900 clamp(20px,4.2vw,44px)/1.1 var(--display);letter-spacing:2px;color:#fff;text-align:center;white-space:nowrap;text-shadow:0 0 26px #ff5fc8,0 0 4px #fff}
+.d3-banner.d3-show{animation:d3banner 2.6s ease forwards}
+@keyframes d3banner{0%{opacity:0;letter-spacing:20px}14%{opacity:1;letter-spacing:2px}80%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.d3-pop,.d3-banner.d3-show{animation-duration:.01s}}
+
+/* Full-screen Dash: the city fills the window; header, HUD and controls float over it. */
+body.pack-session.pack-runner #packPanel{display:block;padding:0;background:#04050b}
+body.pack-session.pack-runner .pack-stage{position:absolute;inset:0;width:100%!important;height:100%;max-width:none;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#05060d}
+body.pack-session.pack-runner #packCanvas{object-fit:contain}
+body.pack-session.pack-runner .pack-stage>.graphics-status{display:none}
+body.pack-session.pack-runner .pack-header{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));height:50px;padding:0 6px;border-radius:16px;background:#0b0a16a6;border:1px solid #ffffff1c;box-shadow:0 10px 40px #0007;backdrop-filter:blur(10px)}
+body.pack-session.pack-runner .d3-hud{--d3-top:calc(env(safe-area-inset-top) + 74px)}
+body.pack-session.pack-runner .pack-overlay{background:radial-gradient(ellipse at center,#090b18d9 0%,#090b1899 45%,#090b1833 80%);backdrop-filter:none}
+body.pack-session.pack-runner .pack-overlay h2{font-size:clamp(40px,8vh,84px);text-shadow:0 0 34px #b9ff5e66}
+body.pack-session.pack-runner .pack-countdown{background:transparent;place-items:start center;padding-top:14vh;font-size:clamp(90px,22vh,200px);text-shadow:0 0 40px #b9ff5e}
+body.pack-session.pack-runner .pack-controls{position:absolute;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);width:min(380px,calc(100% - 24px));max-width:none}
+body.pack-session.pack-runner .pack-dpad button{background:#0b0a1680;border-color:#ffffff2a;backdrop-filter:blur(8px)}
+body.pack-session.pack-runner #packControlHint{display:none}
+@media (pointer:coarse){body.pack-session.pack-runner .d3-hud{--d3-bottom:96px}}
+@media (hover:hover) and (pointer:fine){body.pack-session.pack-runner .pack-controls{opacity:.35;transition:opacity .2s}body.pack-session.pack-runner .pack-controls:hover{opacity:1}}

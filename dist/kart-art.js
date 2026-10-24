@@ -5,9 +5,10 @@ import {T,loadModel,cloneModel,fitModel} from './three-kit.js';
 import {createDawgAsset} from './dawg-graphics-model.js';
 import {KART,trackAt,trackPoint} from './kart-engine.js';
 import {seededRandom} from './mobile-core.js';
+import {BUILDINGS,nightify} from './city-art.js';
+export {BUILDINGS};
 
 export const KARTS=['cars/kart-oozi.glb','cars/kart-oobi.glb','cars/kart-oodi.glb','cars/kart-ooli.glb','cars/kart-oopi.glb'];
-export const BUILDINGS='abcdefghijklmn'.split('').map(l=>`city/low-detail-building-${l}.glb`).concat(['city/low-detail-building-wide-a.glb','city/low-detail-building-wide-b.glb','city/building-skyscraper-a.glb','city/building-skyscraper-b.glb','city/building-skyscraper-e.glb']);
 export const PROPS={barrierRed:'racing/barrierRed.glb',barrierWhite:'racing/barrierWhite.glb',post:'racing/lightPostModern.glb',stand:'racing/grandStandCovered.glb',gantry:'racing/overheadLights.glb',flag:'racing/flagCheckers.glb',billboard:'racing/billboard.glb'};
 const KART_LENGTH=2.3;
 
@@ -27,10 +28,6 @@ export function kartRig(scene,{dawg=null,reduced=false}={}){const model=cloneMod
 
 // Instanced copies of a single-mesh prop (barriers): geometry and material shared, one draw call.
 function instanced(scene,count){let mesh=null;scene.traverse(o=>{if(!mesh&&o.isMesh)mesh=o;});if(!mesh)return null;const geo=mesh.geometry.clone();mesh.updateWorldMatrix(true,false);geo.applyMatrix4(mesh.matrixWorld);const im=new T.InstancedMesh(geo,mesh.material,count);im.frustumCulled=false;return im;}
-// Night city: darken the daytime palette and let its light cells (the windows) glow in a neon
-// tint. Materials are shared by every copy of a building, so this runs once per model.
-const TINTS=[0x6fd8ff,0xff7ad9,0xb9ff5e,0xffc861,0xa58bff];
-function nightify(scene,rnd){scene.traverse(o=>{if(!o.isMesh||o.material.userData.night)return;const m=o.material;m.userData.night=true;m.color.multiplyScalar(.16);m.emissive=new T.Color(TINTS[Math.floor(rnd()*TINTS.length)]);m.emissiveMap=m.map;m.emissiveIntensity=.22;m.envMapIntensity=.2;m.roughness=.6;});return scene;}
 const outwardSign=(t,s)=>{const q=trackAt(t,s);return (-Math.sin(q.ang)*q.x+Math.cos(q.ang)*q.y)>0?1:-1;};
 function farFromTrack(t,x,y,min){for(let i=0;i<t.pts.length;i+=3){const p=t.pts[i];if((p[0]-x)**2+(p[1]-y)**2<min*min)return false;}return true;}
 

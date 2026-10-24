@@ -6,6 +6,9 @@ import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,Ca
 import {SNAKE_COLS,SNAKE_ROWS} from './snake-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
+import {createDawgAsset,assetKey} from './dawg-graphics-model.js';
+import {loadBuildings,loadSet,STREET,cityRing,prop} from './city-art.js';
+import {seededRandom} from './mobile-core.js';
 
 const STEP={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const HEADING={up:Math.PI,right:Math.PI/2,down:0,left:-Math.PI/2};
@@ -24,7 +27,12 @@ export class ThreeSnake {
  }
  setCamera(mode){this.cameraMode=mode==='third'?'third':'first';this.rig?.setMode(this.cameraMode);}
  build(){
-  const s=this.scene,W=SNAKE_COLS,H=SNAKE_ROWS;this.stage.neonEnvironment(.6);s.fog=new T.FogExp2(0x070914,.035);
+  const s=this.scene,W=SNAKE_COLS,H=SNAKE_ROWS;this.stage.neonEnvironment(.6);this.stage.hdrEnvironment(undefined,.5);s.fog=new T.FogExp2(0x070914,.011);
+  // A night city around the arena and light posts on its corners (CC0 Kenney models), loaded in the background.
+  Promise.all([loadBuildings(),loadSet({post:STREET.post})]).then(([buildings,set])=>{if(this.dead)return;const rnd=seededRandom(0x5a4e),cx=(W-1)/2,cz=(H-1)/2;
+   // Outside the third-person camera, and never between it and the arena.
+   this.scene.add(cityRing(buildings,rnd,{cx,cz,radius:Math.max(W,H)*2.3,spread:18,count:this.quality==='high'?34:20,minH:18,maxH:48,clear:(x,z)=>!(z>cz&&Math.abs(x-cx)<W)}));
+   if(set.post)for(const [x,z] of [[-1.6,-1.6],[W+.6,-1.6],[-1.6,H+.6],[W+.6,H+.6]]){this.scene.add(prop(set.post,{x,z,size:5,facing:Math.atan2(cx-x,cz-z)+Math.PI}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(x+(cx-x)*.06,4.6,z+(cz-z)*.06);glow.scale.set(2.4,2.4,1);this.scene.add(glow);}}).catch(()=>{});
   this.sky=new T.Mesh(new T.SphereGeometry(120,24,12),skyMaterial());s.add(this.sky);
   this.hemi=new T.HemisphereLight(0x9fb2ff,0x140c22,.8);s.add(this.hemi);this.headLight=new T.PointLight(0xb9ff5e,5,5,1.6);s.add(this.headLight);
   const g=gridTexture(),gl=gridGlow();g.repeat.set(W,H);gl.repeat.set(W,H);this.gridMat=new T.MeshStandardMaterial({map:g,emissiveMap:gl,emissive:0xffffff,emissiveIntensity:.35,metalness:.6,roughness:.3,envMapIntensity:.7});
@@ -34,9 +42,9 @@ export class ThreeSnake {
   this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});const wallMat=new T.MeshStandardMaterial({color:0x1a2040,metalness:.6,roughness:.4});
   for(const [x,z,w,d]of [[(W-1)/2,-.75,W+1,.5],[(W-1)/2,H-.25,W+1,.5],[-.75,(H-1)/2,.5,H+1],[W-.25,(H-1)/2,.5,H+1]]){const wall=new T.Mesh(new T.BoxGeometry(w,.8,d).translate(0,.4,0),wallMat);wall.position.set(x,0,z);const rail=new T.Mesh(new T.BoxGeometry(w,.06,d).translate(0,.83,0),this.railMat);rail.position.set(x,0,z);s.add(wall,rail);}
   this.rockMat=new T.MeshStandardMaterial({color:0x2a2244,metalness:.3,roughness:.4,emissive:0x5b2a9a,emissiveIntensity:.5,flatShading:true});this.rockGeo=new T.IcosahedronGeometry(.46,0).translate(0,.4,0);this.rocks=null;this.rockSeed=null;
-  this.bodyMat=new T.MeshStandardMaterial({color:0x5cff9b,emissive:0x2bff7a,emissiveIntensity:1.4,metalness:.2,roughness:.3,transparent:true,opacity:.92});
-  this.body=new T.InstancedMesh(new T.BoxGeometry(.78,.42,.78).translate(0,.24,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;s.add(this.body);
-  this.headMat=new T.MeshStandardMaterial({color:0xd8ffe9,emissive:0x7dffb0,emissiveIntensity:2,metalness:.3,roughness:.2});this.head=new T.Mesh(new T.BoxGeometry(.86,.5,.86).translate(0,.27,0),this.headMat);s.add(this.head);
+  this.bodyMat=new T.MeshStandardMaterial({color:0x5cff9b,emissive:0x2bff7a,emissiveIntensity:.8,metalness:.3,roughness:.3,transparent:true,opacity:.95});
+  this.body=new T.InstancedMesh(new T.RoundedBoxGeometry(.8,.46,.8,3,.17).translate(0,.25,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;s.add(this.body);
+  this.headMat=new T.MeshStandardMaterial({color:0xd8ffe9,emissive:0x7dffb0,emissiveIntensity:.7,metalness:.4,roughness:.25});this.head=new T.Mesh(new T.RoundedBoxGeometry(.9,.52,.9,3,.2).translate(0,.28,0),this.headMat);s.add(this.head);
   const visor=new T.Mesh(new T.BoxGeometry(.6,.1,.05),new T.MeshBasicMaterial({color:new T.Color(3,.6,1.6),toneMapped:false}));visor.position.set(0,.38,.44);this.head.add(visor);
   this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.2,emissive:0xff8a00,emissiveIntensity:.45});this.food=new T.Mesh(new T.CylinderGeometry(.3,.3,.07,28).rotateX(Math.PI/2),this.goldMat);s.add(this.food);
   this.glowTex=radial(glowStops);this.foodGlow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.6,1.1,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.foodGlow.scale.set(1.6,1.6,1);s.add(this.foodGlow);
@@ -51,7 +59,9 @@ export class ThreeSnake {
   if(e.type==='coin'){this.particles.burst(h.x,.5,h.y,30,0xffc14d,{speed:4,life:.7});hud.pop('+25');st.shake(.12);}
   else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);}
   else if(e.type==='over'){this.particles.burst(h.x,.5,h.y,90,0xff4f6a,{speed:7,life:1});st.shake(.9);st.flashOnce(0xff3355,.5,this.reduced);}}
- draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.lastGame=g;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
+ // The player's DAWG rides the head of the light trail.
+ prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d);next.root.scale.setScalar(.42);next.root.position.y=.5;if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.head.add(next.root);}catch{}}
+ draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.prepare(d);this.lastGame=g;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<2500));return true;}
  render(g,now){
   this.stage.resize();if(this.rockSeed!==g.worldSeed||!this.rocks)this.buildRocks(g);const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
@@ -64,7 +74,7 @@ export class ThreeSnake {
   if(g.food){this.food.visible=this.foodGlow.visible=true;this.food.position.set(g.food.x,.45+(reduced?0:Math.sin(real*3)*.08),g.food.y);this.food.rotation.y=reduced?0:real*3;this.foodGlow.position.copy(this.food.position);}else this.food.visible=this.foodGlow.visible=false;
   const f=[Math.sin(this.yaw),Math.cos(this.yaw)];
   const first={pos:new T.Vector3(head.x-f[0]*.3,EYE,head.y-f[1]*.3),at:new T.Vector3(head.x+f[0]*4,EYE-.2,head.y+f[1]*4)};
-  const third={pos:new T.Vector3((SNAKE_COLS-1)/2,15.5,SNAKE_ROWS+5.5),at:new T.Vector3((SNAKE_COLS-1)/2,0,(SNAKE_ROWS-1)/2+1)};
+  const third={pos:new T.Vector3((SNAKE_COLS-1)/2,11.5,SNAKE_ROWS+9),at:new T.Vector3((SNAKE_COLS-1)/2,0,(SNAKE_ROWS-1)/2-.5)};
   this.rig.update(dt,third,first,{follow:this.rig.mix>.5?40:8});this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera;cam.fov+=(fitFov(this.rig.mix>.5?80:46,cam.aspect,this.rig.mix>.5?72:50)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
   this.particles.update(dt);this.updateHud(g,seg);this.stage.render(dt,real,{reduced,aberration:.0018});

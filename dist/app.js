@@ -141,6 +141,8 @@ async function upgradeMaze3D(){if(maze3d.state!=='canvas')return;if(typeof WebGL
 function drawMaze3D(){const on=mobile.active&&isMaze(),gpu=maze3d.gpu,live=!!(on&&gpu?.ready);if(on)upgradeMaze3D();document.body.classList.toggle('maze-3d',live);$('mazeView').hidden=!live;if(gpu?.view)gpu.view.hidden=!live;if(!live)return false;
  const view=viewFor(mode,prefs.cameras);gpu.setCamera(view);$('mazeView').textContent=view==='first'?'1P':'3P';$('mazeView').setAttribute('aria-label',view==='first'?'Switch to third-person view':'Switch to first-person view');
  try{return gpu.draw(game,renderer.character,renderer.reduced);}catch{gpu.fail();return false;}}
+// Corridors feel far faster from the inside, so first person moves everyone at 75% speed.
+const FIRST_PERSON_PACE=.75;
 function mazeFirstPerson(){return mobile.active&&isMaze()&&maze3d.gpu?.ready&&viewFor(mode,prefs.cameras)==='first';}
 function toggleMazeView(){if(!isMaze())return;prefs.cameras={...prefs.cameras,[mode]:viewFor(mode,prefs.cameras)==='first'?'third':'first'};saveSettings();}
 $('mazeView').onclick=toggleMazeView;
@@ -223,7 +225,7 @@ function frame(now){
  const dt=lastTime?(now-lastTime)/1000:0;lastTime=now;blinkTime=now/1000;
  if(countdownUntil){const remaining=countdownUntil-now;if(remaining<=0){countdownUntil=0;game.start();sound(880,.13);showState();requestWakeLock();}else $('countdownNumber').textContent=String(Math.ceil(remaining/600));}
  if(isMaze()){
-  const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
+  const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);game.pace=mazeFirstPerson()?FIRST_PERSON_PACE:1;if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
   if(now-lastHud>80){updateHud();lastHud=now;}if(drawMaze3D())canvas.style.opacity='0';else{canvas.style.opacity='';renderer.draw(game,now);}if(now>toastUntil)$('gameToast').classList.remove('visible');
   if(soundEnabled&&game.status==='playing'&&now>=nextMusicBeat){const notes=game.power>0?[220,330,440,660,440,330,277,415]:[110,165,220,165,131,196,262,196];sound(notes[musicBeat++%8],.12,'triangle',.009);nextMusicBeat=now+(game.power>0?180:260);}
  }

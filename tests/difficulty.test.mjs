@@ -39,3 +39,9 @@ test('Heat needs no new save fields: a resumed run keeps its heat and stays quie
  const g=createQuickGame('runner',9);g.start();for(let i=0;i<400;i++){g.lane=g.rows[0].safe;g.tick(.02);}g.events=[];const h=restoreQuick(JSON.parse(JSON.stringify(snapshotQuick(g,'runner'))));
  assert.ok(h);assert.equal(h.heat,g.heat);h.start();h.lane=h.rows[0].safe;h.tick(.001);assert.equal(h.events.filter(e=>e.type==='heat').length,0);
 });
+test('First-person pace slows the DAWG and rivals equally but never the Rush clock',()=>{
+ const run=pace=>{const g=new MazeGame('rush',seededRandom(3),{worldSeed:3});g.start();g.pace=pace;g.invincible=99;for(const r of g.ghosts)r.cooldown=0;let moved=0,rival=0,last=g.position(g.player),lastR=g.position(g.ghosts[0]);for(let i=0;i<90;i++){if(!g.player.moving){const o=g.options(g.player);g.direction(o.includes(g.player.dir)?g.player.dir:o[0]);}g.tick(1/60);const p=g.position(g.player),q=g.position(g.ghosts[0]);moved+=Math.abs(p.x-last.x)+Math.abs(p.y-last.y);rival+=Math.abs(q.x-lastR.x)+Math.abs(q.y-lastR.y);last=p;lastR=q;}
+  return {clock:g.time,moved,rival};};
+ const full=run(1),slow=run(.75);assert.equal(slow.clock,full.clock,'the 60 s clock is unaffected');assert.ok(slow.moved<full.moved,'the DAWG covers less ground');
+ assert.ok(slow.rival<full.rival,'rivals slow down too');assert.ok(Math.abs(slow.moved/full.moved-.75)<.08,'the DAWG moves at about 75%');
+});

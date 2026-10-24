@@ -47,6 +47,8 @@ import {heatOf,ramp,trackHeat,FULL_HEAT} from './difficulty.js';
 export class MazeGame {
   constructor(mode='classic',random=Math.random,options={}){
     this.mode=mode;this.random=random;this.worldSeed=options.worldSeed||0;this.score=0;this.lives=3;this.level=options.startLevel||1;this.dashRecharge=options.dashRecharge||6;this.lootMultiplier=options.lootMultiplier||1;this.rivalSpeed=options.rivalSpeed||1;
+    // Movement pace set by the presentation each frame (first person plays slower); never saved.
+    this.pace=1;
     this.time=60;this.status='ready';this.events=[];
     this.stats={dots:0,caught:0,dashes:0,loot:0,clears:0};
     this.dashCooldown=0;this.loadLevel();
@@ -122,10 +124,10 @@ export class MazeGame {
     this.power=Math.max(0,this.power-dt);this.invincible=Math.max(0,this.invincible-dt);
     this.dashTime=Math.max(0,this.dashTime-dt);this.dashCooldown=Math.max(0,this.dashCooldown-dt);
     if(this.loot){this.loot.time-=dt;if(this.loot.time<=0){this.events.push({type:'lootExpired'});this.loot=null;}}
-    const heat=this.heat;trackHeat(this,heat);const speed=ramp(5.4,6.6,heat)*(this.dashTime>0?2.2:1);
+    const heat=this.heat;trackHeat(this,heat);const speed=ramp(4.8,6,heat)*this.pace*(this.dashTime>0?2.2:1);
     this.move(this.player,speed*dt,()=>{const opts=this.options(this.player);return opts.includes(this.wanted)?this.wanted:opts.includes(this.player.dir)?this.player.dir:null;},()=>this.collect());
     if(this.status!=='playing')return;
-    this.ghosts.forEach(g=>{if(g.cooldown>0){g.cooldown-=dt;return;}this.move(g,(this.power>0?2.7:ramp(3.45,5.2,heat))*this.rivalSpeed*dt,()=>this.ghostDirection(g));});
+    this.ghosts.forEach(g=>{if(g.cooldown>0){g.cooldown-=dt;return;}this.move(g,(this.power>0?2.4:ramp(3.1,4.7,heat))*this.rivalSpeed*this.pace*dt,()=>this.ghostDirection(g));});
     const p=this.position(this.player);
     for(const g of this.ghosts){
       if(g.cooldown>0)continue;const q=this.position(g);if(Math.hypot(p.x-q.x,p.y-q.y)>.65)continue;

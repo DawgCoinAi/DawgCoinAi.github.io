@@ -26,20 +26,20 @@
 .pack-heat.show{animation:d3banner 1.8s ease forwards}
 
 /* Full-screen Dash: the city fills the window; header, HUD and controls float over it. */
-body.pack-session.pack-runner #packPanel{display:block;padding:0;background:#04050b}
-body.pack-session.pack-runner .pack-stage{position:absolute;inset:0;width:100%!important;height:100%;max-width:none;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#05060d}
-body.pack-session.pack-runner #packCanvas{object-fit:contain}
-body.pack-session.pack-runner .pack-stage>.graphics-status{display:none}
-body.pack-session.pack-runner .pack-header{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));height:50px;padding:0 6px;border-radius:16px;background:#0b0a16a6;border:1px solid #ffffff1c;box-shadow:0 10px 40px #0007;backdrop-filter:blur(10px)}
-body.pack-session.pack-runner .d3-hud{--d3-top:calc(env(safe-area-inset-top) + 74px)}
-body.pack-session.pack-runner .pack-overlay{background:radial-gradient(ellipse at center,#090b18d9 0%,#090b1899 45%,#090b1833 80%);backdrop-filter:none}
-body.pack-session.pack-runner .pack-overlay h2{font-size:clamp(40px,8vh,84px);text-shadow:0 0 34px #b9ff5e66}
-body.pack-session.pack-runner .pack-countdown{background:transparent;place-items:start center;padding-top:14vh;font-size:clamp(90px,22vh,200px);text-shadow:0 0 40px #b9ff5e}
-body.pack-session.pack-runner .pack-controls{position:absolute;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);width:min(380px,calc(100% - 24px));max-width:none}
-body.pack-session.pack-runner .pack-dpad button{background:#0b0a1680;border-color:#ffffff2a;backdrop-filter:blur(8px)}
-body.pack-session.pack-runner #packControlHint{display:none}
-@media (pointer:coarse){body.pack-session.pack-runner .d3-hud{--d3-bottom:96px}}
-@media (hover:hover) and (pointer:fine){body.pack-session.pack-runner .pack-controls{opacity:.35;transition:opacity .2s}body.pack-session.pack-runner .pack-controls:hover{opacity:1}}
+body.pack-session.pack-full #packPanel{display:block;padding:0;background:#04050b}
+body.pack-session.pack-full .pack-stage{position:absolute;inset:0;width:100%!important;height:100%;max-width:none;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#05060d}
+body.pack-session.pack-full .pack-stage>canvas.dash-gpu{object-fit:contain}
+body.pack-session.pack-full .pack-stage>.graphics-status{display:none}
+body.pack-session.pack-full .pack-header{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));height:50px;padding:0 6px;border-radius:16px;background:#0b0a16a6;border:1px solid #ffffff1c;box-shadow:0 10px 40px #0007;backdrop-filter:blur(10px)}
+body.pack-session.pack-full .d3-hud{--d3-top:calc(env(safe-area-inset-top) + 74px)}
+body.pack-session.pack-full .pack-overlay{background:radial-gradient(ellipse at center,#090b18d9 0%,#090b1899 45%,#090b1833 80%);backdrop-filter:none}
+body.pack-session.pack-full .pack-overlay h2{font-size:clamp(40px,8vh,84px);text-shadow:0 0 34px #b9ff5e66}
+body.pack-session.pack-full .pack-countdown{background:transparent;place-items:start center;padding-top:14vh;font-size:clamp(90px,22vh,200px);text-shadow:0 0 40px #b9ff5e}
+body.pack-session.pack-full .pack-controls{position:absolute;z-index:6;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);width:min(380px,calc(100% - 24px));max-width:none}
+body.pack-session.pack-full .pack-dpad button{background:#0b0a1680;border-color:#ffffff2a;backdrop-filter:blur(8px)}
+body.pack-session.pack-full #packControlHint{display:none}
+@media (pointer:coarse){body.pack-session.pack-full .d3-hud{--d3-bottom:96px}}
+@media (hover:hover) and (pointer:fine){body.pack-session.pack-full .pack-controls{opacity:.35;transition:opacity .2s}body.pack-session.pack-full .pack-controls:hover{opacity:1}}
 
 /* Curveball modes: announced twists applied to the game stage for a few seconds. */
 #curveball{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 74px);z-index:60;transform:translateX(-50%);display:grid;gap:4px;justify-items:center;padding:12px 22px;border-radius:16px;background:#12081ce6;border:1px solid #ff5fc888;box-shadow:0 0 40px #ff5fc855;text-align:center;pointer-events:none;max-width:calc(100vw - 24px)}
@@ -58,3 +58,8 @@ body.pack-session.pack-runner #packControlHint{display:none}
 .cb-shrink{transform:scale(.6)}
 .cb-bullet{filter:sepia(.35) saturate(.85) contrast(1.12)}
 @media (prefers-reduced-motion:reduce){.cb-target{transition:none}.cb-tipsy,.cb-trippy{animation:none}}
+
+/* Maze games: the neon city fills the space around the board in the full-screen session. */
+body.mobile-session #arcadePanel{background:linear-gradient(#05060dd9,#05060deb),url(assets/neon-city-v2.webp) center/cover no-repeat,#05060d}
+/* Desktop: the rarely needed on-screen buttons sit in the corner, clear of the playfield. */
+@media (hover:hover) and (pointer:fine){body.pack-session.pack-full .pack-controls{left:auto;right:16px;transform:none;width:min(300px,30vw)}}

@@ -13,6 +13,7 @@ export const GAMES=[
  {id:'runner',title:'DAWG Dash',kind:'pack',views:['first','third']},
  {id:'turbo',title:'Turbo Pup',kind:'pack',views:['first','third']},
  {id:'pinball',title:'Neon Pinball',kind:'pack',views:['third','first']},
+ {id:'kart',title:'Drift Dawgs',kind:'pack',views:['third','first']},
  {id:'story',title:'After Hours',kind:'pack',views:[]}
 ];
 export const GAME_IDS=GAMES.map(g=>g.id);

@@ -159,7 +159,9 @@ Application source remains readable native JavaScript modules. The third-party l
 | `dist/pinball-engine.js` / `pinball-3d.js` | Neon Pinball: fixed-step table physics (hold-to-flip flippers, bumpers, slingshots, drop targets, D-A-W-G lanes, multiball, ball save) and its 3D cabinet with table and Ball Cam views |
 | `dist/share.js` | Sharing: score-card images, `?play=<game>` and `?player=<code>` links, and the share sheet (native share with the card attached, social links, save image, copy link). `assets/og-card.jpg` is the link-preview image named by the Open Graph tags in `index.html` |
 | `dist/kart-engine.js` / `kart-3d.js` | Drift Dawgs: seeded circuits, kart physics in track space (drifts and mini-turbos, items, coins, boost pads, five AI rivals) and its 3D raceway with chase and driver cameras |
-| `dist/rankings.js` | Rankings, global stats, friends and challenge links |
+| `dist/shell.js` / `ui.css` | App shell and design system: Play / Rankings / Friends / Me views (bottom bar on phones, side rail on desktop), the Play hero, poster game cards with unlock rings, and the Me page. `ui.css` holds the shared tokens and components and loads last; the older sheets still style the games' own panels |
+| `dist/rankings.js` | Social layer: per-game and Arcade Level boards with podium, pinned row and rank movement; Friends view with challenges inbox, friend activity feed, friends and "added you" lists; player cards; challenge, invite and profile links; the social lines on game-over screens |
+| `dist/assets/posters/*.jpg` | Game card and hero art, rendered from each game's own renderer |
 | `dist/curveballs.js` / `difficulty.js` | Announced curveball modes; the shared heat difficulty curve |
 | `dist/dash-3d.js` / `dash-3d.css` / `dash-audio.js` | Full-screen 3D Dash city, HUD and synthesized soundtrack |
 | `dist/runner-renderer.js` / `dash-presentation.js` | Canvas compatibility / PixiJS Dash fallback |

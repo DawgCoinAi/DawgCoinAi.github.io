@@ -14,6 +14,7 @@ import {validKennel,DISCIPLINES} from './dawg-career.js';
 import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
 import {Cloud} from './cloud.js';
 import {Rankings,challengeLink} from './rankings.js';
+import {Shell,fmt as fmtNum} from './shell.js';
 import {ShareSheet,drawScoreCard,shareBase,playLink,readPlayLink,fmt} from './share.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
@@ -119,7 +120,7 @@ function confirm(title,text,label,action){pack.pause();cancelCountdown();if(game
 $('acceptConfirm').onclick=()=>{const action=confirmAction;confirmAction=null;$('confirmDialog').close();action?.();};$('cancelConfirm').onclick=()=>{$('confirmDialog').close();confirmAction=null;};
 $('restartButton').onclick=()=>{if(game.status==='ready'||game.status==='over')newArcade();else confirm('Fresh start?','This resets the current maze run and its score.','RESTART RUN ↗',newArcade);};
 function selectMode(next){
- if(!GAME_IDS.includes(next)||next===mode)return;const wall=wallFor(next,arcade,records);if(!wall.open){showWall(next,wall);return;}
+ if(!GAME_IDS.includes(next))return;if(next===mode){if(shell.preview){shell.preview=null;renderHero();}return;}const wall=wallFor(next,arcade,records);if(!wall.open){shell.preview=next;renderHero();scrollToHero();return;}shell.preview=null;
  const change=()=>{
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();curve.clear();mode=next;
@@ -129,6 +130,7 @@ function selectMode(next){
   if(next==='trade'){if(!trade)loadTrade();renderTrade();}
   else if(PACK_MODES.includes(next)){const panel=$(next==='story'?'storyPanel':'packPanel');panel.setAttribute('aria-labelledby','tab-'+next);}
   else{$('arcadePanel').setAttribute('aria-labelledby','tab-'+next);if(game.mode!==next)newArcade();else{setLaunchText();renderDaily();updateBest();showState();}}
+  renderHero();scrollToHero();
  };
  if(isMaze(next)&&game.mode!==next&&['playing','paused','level'].includes(game.status))confirm('Switch your maze challenge?','This replaces your saved maze run. Your personal records stay saved.','SWITCH MODE ↗',change);else change();
 }
@@ -252,8 +254,11 @@ function finishRun(kind,score,gold=0){
  const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
  cloud.recordRun({game:kind,day:localDay(),startedAt:new Date(startedAt).toISOString(),endedAt:new Date(Math.max(Date.now(),startedAt)).toISOString(),seconds,score:run.score,xp,gold});
  renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
+ if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);
 }
-function renderLocks(){document.querySelectorAll('[data-mode]').forEach(b=>{const w=wallFor(b.dataset.mode,arcade,records);b.classList.toggle('locked',!w.open);b.title=w.open?'':'Locked: keep playing to open';});const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);}
+function renderLocks(){shell.cards(id=>wallFor(id,arcade,records));const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);if(shell.preview&&wallFor(shell.preview,arcade,records).open){shell.preview=null;}}
+// Bring the hero into view after picking a game further down the page.
+function scrollToHero(){const hero=$('playHero');if(!hero.getBoundingClientRect)return;const top=hero.getBoundingClientRect().top;if(top<0||top>window.innerHeight*.5)$('playHero').scrollIntoView({behavior:renderer.reduced?'auto':'smooth',block:'start'});}
 function showWall(id,wall){
  $('wallTitle').textContent=(gameById(id)?.title||id)+' is locked';const list=$('wallRoutes');list.replaceChildren();
  for(const r of wall.routes){const row=document.createElement('div');row.className='wall-route'+(r.done?' done':'');const head=document.createElement('header'),label=document.createElement('span'),left=document.createElement('small'),bar=document.createElement('div'),fill=document.createElement('i');
@@ -261,7 +266,7 @@ function showWall(id,wall){
  const s=statsOf(arcade);$('wallStats').textContent='LEVEL '+s.level+' · '+arcade.xp+' XP · '+s.minutes+' MIN PLAYED · BEST STREAK '+s.streak+' DAY'+(s.streak===1?'':'S');openDialog('wallDialog');
 }
 function renderAccount(status=cloud.status,detail='',account=cloud.account()){
- const st=$('accountStatus');if(!st)return;st.dataset.state=status;st.textContent=status==='online'?(account?.guest?'● CLOUD SAVE ON · GUEST':'● CLOUD SAVE ON · '+account?.email):status==='syncing'?'● SYNCING…':'● OFFLINE · PROGRESS SAVED ON THIS DEVICE'+(detail?' ('+detail+')':'');
+ const st=$('accountStatus');if(!st)return;st.dataset.state=status;const dot=$('cloudDot');if(dot)dot.dataset.state=status;st.textContent=status==='online'?(account?.guest?'● CLOUD SAVE ON · GUEST':'● CLOUD SAVE ON · '+account?.email):status==='syncing'?'● SYNCING…':'● OFFLINE · PROGRESS SAVED ON THIS DEVICE'+(detail?' ('+detail+')':'');
  const s=statsOf(arcade),next=xpForLevel(s.level+1);$('accountSummary').textContent='Level '+s.level+' · '+arcade.xp+'/'+next+' XP · '+s.minutes+' min played · best streak '+s.streak+' day'+(s.streak===1?'':'s')+'.';
  $('accountGuest').hidden=!!account&&!account.guest;$('accountMember').hidden=!account||account.guest;$('accountDelete').disabled=!account;
  if(account?.pendingEmail)$('accountNote').textContent='Check '+account.pendingEmail+' and open the link to finish saving your progress.';
@@ -318,8 +323,23 @@ $('helpSettings').onclick=()=>{$('helpDialog').close();openDialog('settingsDialo
 $('backupButton').onclick=()=>openDialog('backupDialog');
 $('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
 // Rankings and friends; the board opens on the game being played.
-var socialStarted=false;const shareSheet=new ShareSheet({openDialog});const rankings=new Rankings({cloud,kennel,records:()=>records,confirm,openDialog,announce,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();selectMode(id);}});
-$('rankingsButton').onclick=()=>rankings.open(mode);
+var socialStarted=false;const shareSheet=new ShareSheet({openDialog});
+// App shell: Play / Rankings / Friends / Me. Switching views pauses nothing; games run full-screen.
+const shell=new Shell({onView:v=>{rankings.openView(v);if(v==='me')renderMe();if(v==='play')renderHero();}});
+const rankings=new Rankings({cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
+// Play hero: the selected game with its best, weekly rank and top friend.
+function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallFor(shell.preview,arcade,records).open){shell.hero(shell.preview,{wall:wallFor(shell.preview,arcade,records),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
+ shell.heroSocial();const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
+$('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade'||mode==='story')$(mode==='trade'?'tradePanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
+$('meSettings').onclick=()=>openDialog('settingsDialog');$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
+$('meBests').addEventListener('click',e=>{const id=e.target.closest('[data-game]')?.dataset.game;if(id){shell.show('play');if(id===mode)renderHero();else selectMode(id);}});
+function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp,next:xpForLevel(s.level+1),prev:xpForLevel(s.level),minutes:s.minutes,streak:s.streak,runs:records.runs||0,records,stamps:(passport?.stamps?.length||0)+'/'+STAMPS.length,rank:null});rankings.renderIdentity();
+ if(rankings.api)rankings.rpc('my_level_rank').then(r=>{if(r?.place){const tile=$('meStats').lastElementChild?.querySelector('b');if(tile)tile.textContent='#'+fmtNum(r.place);}}).catch(()=>{});}
+// After a run: where it lands this week and against the closest friend, on the game-over screen.
+function resultPanel(kind){const maze=isMaze(kind),host=maze?$('runRecap'):$('packResult');let box=host.parentElement.querySelector('.result-social');if(!box){box=document.createElement('div');box.className='result-social';box.setAttribute('role','status');host.after(box);}return box;}
+function showInsight(kind,score){const box=resultPanel(kind);box.hidden=true;box.replaceChildren();rankings.insight(kind,score).then(lines=>{const over=isMaze(kind)?game.status==='over'&&mode===kind:pack.kind===kind&&pack.game?.status==='over';if(!lines||!over)return;
+ box.replaceChildren(...lines.map(l=>{const p=document.createElement('div');p.textContent=l.text+' ';if(l.extra){const s=document.createElement('b');s.className=l.dir==='down'?'down':'';s.textContent=l.extra;p.append(s);}if(l.dir==='down'&&l.friend){p.className='down';}return p;}));
+ const acts=document.createElement('div');acts.className='result-actions';const c=document.createElement('button');c.type='button';c.className='share-run';c.textContent='CHALLENGE A FRIEND ↗';c.onclick=()=>rankings.pickFriend(kind);acts.append(c);box.append(acts);box.hidden=false;});}
 // Score sharing: a card with the player's DAWG, and a link that challenges friends (or just opens the game).
 function shareRun(id,score,{best=false,medal='',detail='',text=''}={}){const title=gameById(id)?.title||id,code=rankings.profile?.code,url=code?challengeLink(shareBase(),id,score,code):playLink(id,shareBase());
  shareSheet.open({title:'Share your score',text:text||`I scored ${fmt(score)} in ${title} on the DAWG Arcade 🐶 Can you beat it?`,url,filename:`dawg-arcade-${id}-${Math.floor(score)}.png`,card:cv=>drawScoreCard(cv,{game:id,score,best,medal,detail,player:rankings.profile?.name||kennel.active?.name,dawg:kennel.active})});}
@@ -355,4 +375,5 @@ renderer.character=kennel.prepare(mode,game);
 $('dailyBrief').hidden=mode!=='daily';setLaunchText();renderDaily();renderSettings();awardPassport();renderProgress();updateBest();showState();requestAnimationFrame(frame);
 // ?play=<game> links open straight to that game.
 const linked=readPlayLink(globalThis.location?.search||'');if(linked){const u=new URL(location.href);u.searchParams.delete('play');history.replaceState(null,'',u.pathname+u.search+u.hash);if(linked!==mode)selectMode(linked);}
+rankings.renderIdentity();renderHero();shell.initial();
 if(kennelDamaged)announce('Saved DAWG roster was damaged and has been reset; the old copy was kept.');

@@ -13,6 +13,7 @@ import {makeBackup,parseBackup,applyBackup} from './progress-backup.js';
 import {validKennel,DISCIPLINES} from './dawg-career.js';
 import {freshArcade,validArcade,wallFor,settleUnlocks,addRun,mergeServer,statsOf,localDay,xpForLevel,levelOf} from './unlocks.js';
 import {Cloud} from './cloud.js';
+import {Rankings} from './rankings.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
@@ -26,7 +27,7 @@ const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('dawg-v1-
 const write=(key,value)=>{if(restoringBackup||otherTabActive)return;try{localStorage.setItem('dawg-v1-'+key,JSON.stringify(value));cloud.touch(key);}catch{storageAvailable=false;$('saveNote').textContent='SAVING UNAVAILABLE IN THIS BROWSER';}};
 // Cloud saves: newer progress from another device replaces this one, then the page reloads
 // so every module starts from the synced copy. Writes stop first so stale state cannot win.
-const cloud=new Cloud({onPulled:()=>{if(sessionStorage.getItem('dawg-cloud-reload'))return;try{sessionStorage.setItem('dawg-cloud-reload','1');}catch{}restoringBackup=true;location.reload();},onStatus:(...a)=>renderAccount(...a),onServer:data=>{mergeServer(arcade,data);settleUnlocks(arcade,records);write('arcade',arcade);renderLocks();}});
+const cloud=new Cloud({onPulled:()=>{if(sessionStorage.getItem('dawg-cloud-reload'))return;try{sessionStorage.setItem('dawg-cloud-reload','1');}catch{}restoringBackup=true;location.reload();},onStatus:(...a)=>{renderAccount(...a);if(a[0]==='online'&&!socialStarted){socialStarted=true;rankings.sync().then(()=>rankings.handleChallenge());}},onServer:data=>{mergeServer(arcade,data);settleUnlocks(arcade,records);write('arcade',arcade);renderLocks();}});
 // Keep the raw copy of a stored section that fails validation before the game replaces it with a fresh one.
 function keepDamaged(key,valid){if(restoringBackup||otherTabActive)return false;try{const raw=localStorage.getItem('dawg-v1-'+key);if(raw===null)return false;let value;try{value=JSON.parse(raw);}catch{}if(value===null||value!==undefined&&valid(value))return false;if(localStorage.getItem('dawg-v1-damaged-'+key)===null)localStorage.setItem('dawg-v1-damaged-'+key,raw);return true;}catch{return false;}}
 // Only the newest tab saves: an older tab stops writing so its stale state cannot overwrite newer progress.
@@ -302,6 +303,9 @@ $('quickPlayButton').onclick=play;$('overlayHome').onclick=returnToArcade;$('lau
 $('helpSettings').onclick=()=>{$('helpDialog').close();openDialog('settingsDialog');};
 $('backupButton').onclick=()=>openDialog('backupDialog');
 $('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
+// Rankings and friends; the board opens on the game being played.
+var socialStarted=false;const rankings=new Rankings({cloud,kennel,records:()=>records,confirm,openDialog,announce,play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();selectMode(id);}});
+$('rankingsButton').onclick=()=>rankings.open(mode);
 const accountAction=async(task,done)=>{const note=$('accountNote');if(!cloud.client){note.textContent='Cloud saves are offline right now. Your progress is safe on this device.';return;}note.textContent='Working…';try{await task();note.textContent=done;}catch(error){note.textContent=error?.message||'Something went wrong. Try again.';}renderAccount();};
 $('accountForm').addEventListener('submit',e=>{e.preventDefault();const email=$('accountEmail').value.trim();accountAction(()=>cloud.saveWithEmail(email),'Check '+email+' and open the link to finish saving your progress.');});
 $('accountSignIn').onclick=()=>{const email=$('accountEmail').value.trim();if(!email){$('accountNote').textContent='Enter your email above, then press this again.';$('accountEmail').focus();return;}accountAction(()=>cloud.signInWithEmail(email),'Check '+email+' for your sign-in link. That account’s progress will replace this device’s.');};

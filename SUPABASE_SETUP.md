@@ -7,6 +7,7 @@ Project: `https://zbdvbplhwsqmsplsdexe.supabase.co`. The publishable key is in `
 ## One-time setup (dashboard)
 
 1. **Create the tables and rules.** Open **SQL Editor → New query**. Paste all of `supabase/migrations/20261024000000_arcade.sql` and run it. It is safe to run again later.
+   Then do the same with `supabase/migrations/20261024010000_social.sql` (player names, friends, leaderboards, global stats). Run the files in date order; both are safe to re-run.
 2. **Allow guests.** Under **Authentication → Sign In / Providers**, turn on **Allow anonymous sign-ins**.
 3. **Allow email links.** Under the same page, make sure **Email** is enabled. Without custom SMTP, Supabase only sends a few emails per hour; add SMTP before launch.
 4. **Tell Supabase where the game lives.** Under **Authentication → URL Configuration**:
@@ -31,11 +32,14 @@ Project: `https://zbdvbplhwsqmsplsdexe.supabase.co`. The publishable key is in `
 | `saves` | One row per save section (records, characters, settings, progress, arcade XP) | Owner reads and writes |
 | `play_sessions` | One row per finished run: game, score, active seconds, local day | Owner reads; writes go only through `record_session()`, which caps time and XP and rejects overlapping runs |
 | `unlocks` | Games the server has verified as unlocked | Owner reads; written only by `claim_unlocks()` |
-| `profiles` | Optional display name | Owner |
+| `profiles` | Public player name, DAWG avatar, friend code, visibility | Owner writes through `set_profile()`; others see only public cards and boards through server functions |
+| `follows` | Who each player has added as a friend | Owner reads; written through `follow_code()` / `unfollow_code()` |
 
 **Encryption and access:**
 - Data travels over HTTPS and is encrypted at rest by Supabase.
 - Row Level Security limits every request to the signed-in player's own rows.
 - **Delete my cloud data** in the Account panel calls `delete_my_data()`, which removes every row belonging to that player.
 
-**Limits to know:** progress is computed in the browser and mirrored to the server, so a player can still edit their own save to open games early. That only affects that player. Public leaderboards or prizes would need server-validated scores, which is a separate feature.
+**Limits to know:**
+- Progress is computed in the browser and mirrored to the server, so a player can still edit their own save to open games early. That only affects that player.
+- Leaderboard scores are reported by the browser. The server keeps scores that are impossible for the run's length off the boards (`score_cap()`), but a determined cheater could still post a plausible fake score. Before offering prizes, add server-side run verification, such as replaying seeded inputs.

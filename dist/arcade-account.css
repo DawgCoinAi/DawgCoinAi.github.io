@@ -19,3 +19,35 @@
 .account-actions .danger{border-color:#ff6a7a88;color:#ffb3bd}
 .account-privacy{margin-top:16px;font-size:13px;line-height:1.55;color:#ffffffc0}
 #wallDialog,#accountDialog{width:min(560px,calc(100vw - 24px));overflow-x:hidden}
+/* Rankings: global stats, player card, filters, board and friends. */
+#rankingsDialog{width:min(720px,calc(100vw - 24px));overflow-x:hidden}
+.rank-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.rank-stats div{padding:10px;border-radius:12px;background:#ffffff0a;border:1px solid #ffffff1a;text-align:center}
+.rank-stats b{display:block;font:900 22px/1 var(--display);color:#d7ff98}
+.rank-stats small{font:700 9px var(--mono);letter-spacing:1px;color:#ffffffa0}
+.rank-me{display:flex;gap:14px;align-items:center;padding:12px;border-radius:14px;background:#b9ff5e0d;border:1px solid #b9ff5e33}
+.rank-me canvas{width:96px;height:96px;flex:none;border-radius:12px;background:#0b0a16}
+.rank-me>div{min-width:0;flex:1}
+.rank-name-form{display:flex;gap:8px;flex-wrap:wrap}
+.rank-name-form input{flex:1 1 160px;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid #ffffff33;background:#0b0a16;color:#fff;font:700 14px var(--body)}
+.rank-code{margin:10px 0 6px;font:700 11px var(--mono);letter-spacing:1px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rank-code b{color:#b9ff5e;font-size:14px}
+.rank-public{font-size:12px;color:#ffffffc0}
+.rank-filters{display:grid;gap:8px;margin:16px 0 8px}
+.rank-chips{display:flex;gap:6px;flex-wrap:wrap}
+.rank-chips button{min-height:32px;padding:0 10px;font:800 10px var(--mono);letter-spacing:1px}
+.rank-chips button[aria-pressed=true]{background:#b9ff5e;color:#10140a;border-color:#b9ff5e}
+.rank-standing{font:700 12px var(--mono);color:#ffe08a;min-height:1.2em}
+.rank-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:42vh;overflow-y:auto}
+.rank-row{display:grid;grid-template-columns:54px 40px 1fr auto;gap:10px;align-items:center;padding:6px 10px;border-radius:10px;background:#ffffff08}
+.rank-row:nth-child(1) .rank-place{color:#ffd25e}.rank-row:nth-child(2) .rank-place{color:#dfe6ff}.rank-row:nth-child(3) .rank-place{color:#ffa86b}
+.rank-row.me{background:#b9ff5e1a;border:1px solid #b9ff5e66}
+.rank-place{font:900 16px var(--display)}
+.rank-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.rank-row b{font:900 16px var(--mono);color:#fff}
+.rank-friends h3{margin:18px 0 8px}
+#friendList{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}
+#friendList li{display:flex;gap:10px;align-items:center}
+#friendList li span{flex:1}
+#friendList li.muted{color:#ffffff90;font-size:13px}
+@media (max-width:560px){.rank-stats{grid-template-columns:repeat(2,1fr)}.rank-me{align-items:flex-start}.rank-me canvas{width:64px;height:64px}}

@@ -6,6 +6,9 @@ import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {T,quality,fitFov,radial,glowStops,skylineTexture,skyMaterial,buildingShells,facadeMaterials,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook,hash} from './world.js';
+import {loadModel} from './three-kit.js';
+import {loadBuildings,loadSet,STREET,TRAFFIC,building,prop} from './city-art.js';
+import {seededRandom} from './mobile-core.js';
 
 export const PX=30;
 export const fieldToWorld=(x,y)=>({x:x/PX,y:(520-y)/PX});
@@ -36,6 +39,13 @@ export class ThreeFlappy {
   this.shells=buildingShells();this.stage.extraGeometries.push(...this.shells.map(sh=>sh.g));this.city=Array.from({length:high?40:26},()=>{const m=new T.Mesh(this.shells[0].g,this.facades[0]);m.userData={a:null};s.add(m);return m;});
   this.holder=new T.Group();s.add(this.holder);this.flame=new T.Sprite(new T.SpriteMaterial({map:radial(glowStops),color:new T.Color(2.4,1.2,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.flame.scale.set(.9,.9,1);this.holder.add(this.flame);
   this.glowTex=radial(glowStops);this.particles=new Particles(s,high?400:220,this.glowTex);this.m4=new T.Matrix4();
+  // CC0 art in the background: a far skyline that scrolls slower (parallax), traffic on the street
+  // below and lamps along it. The procedural city stays in front and until this has loaded.
+  this.stage.hdrEnvironment(undefined,.5);this.farCity=[];this.traffic=[];this.lamps=[];this.trafficT=0;
+  Promise.all([loadBuildings(),Promise.all(TRAFFIC.map(p=>loadModel(p).catch(()=>null))),loadSet({lamp:STREET.post})]).then(([buildings,cars,set])=>{if(this.dead)return;const rnd=seededRandom(0xf1a9),add=o=>{s.add(o);return o;};
+   if(buildings.length)this.farCity=Array.from({length:high?18:12},(_,i)=>({obj:add(building(buildings,rnd,{x:0,z:-(30+rnd()*24),height:18+rnd()*28})),base:i*13}));
+   const fleet=cars.filter(Boolean);if(fleet.length)this.traffic=Array.from({length:high?10:6},(_,i)=>{const dir=i%2?1:-1;return {obj:add(prop(fleet[i%fleet.length],{x:0,z:dir>0?2.4:-2.4,size:2.6,facing:dir>0?Math.PI/2:-Math.PI/2})),base:i*21,speed:dir*(2.5+rnd()*3)};});
+   if(set.lamp)this.lamps=Array.from({length:12},(_,i)=>{const side=i%2?1:-1;return {obj:add(prop(set.lamp,{x:0,z:side*5,size:4.2,facing:side>0?Math.PI:0})),base:i*9};});}).catch(()=>{});
  }
  // One gate: a wall of towers above and below the gap, trimmed with glowing frames at the opening.
  makeGate(){const g=new T.Group(),upper=new T.Mesh(this.towerGeo,this.facades[0]),lower=new T.Mesh(this.towerGeo,this.facades[1]),top=new T.Mesh(this.frameGeo,this.frameMat),bottom=new T.Mesh(this.frameGeo,this.frameMat);g.add(upper,lower,top,bottom);g.userData={upper,lower,top,bottom};this.scene.add(g);return g;}
@@ -62,7 +72,10 @@ export class ThreeFlappy {
   const S=8;for(let i=0;i<this.lanes.count;i++){const x=((i*S-this.travel)%(60*S/2)+60*S/2)%(60*S/2)-20;this.m4.makeTranslation(x,.01,(i%2?1:-1)*3);this.lanes.setMatrixAt(i,this.m4);}this.lanes.instanceMatrix.needsUpdate=true;
   // Background towers: slot a always holds the same tower, so the skyline is stable as it scrolls.
   const half=this.city.length/2,firstSlot=Math.floor(this.travel/7)-3;for(let j=0;j<half;j++){const a=firstSlot+j,slot=((a%half)+half)%half;for(let side=0;side<2;side++){const m=this.city[slot*2+side];if(m.userData.a!==a){m.userData.a=a;const sh=this.shells[Math.floor(hash(g.worldSeed,a*2+side+700)*this.shells.length)];m.geometry=sh.g;m.material=this.facades[Math.floor(hash(g.worldSeed,a*2+side+701)*4)];m.userData.z=(side?1:-1)*(WALL_DEPTH/2+4+hash(g.worldSeed,a*2+side+702)*14);}m.position.set(a*7-this.travel+30,-2,m.userData.z);}}
-  const p=fieldToWorld(g.x,g.y),tilt=Math.max(-.6,Math.min(.9,-g.vy/700));this.holder.position.set(p.x,p.y,0);this.holder.rotation.z=reduced?0:tilt;this.flame.position.set(-.45,-.15,0);this.flame.scale.setScalar(g.status==='playing'&&!reduced?.7+Math.random()*.4:.6);
+  const p=fieldToWorld(g.x,g.y),tilt=Math.max(-.6,Math.min(.9,-g.vy/700));this.trafficT+=dt;
+  // Loaded background art wraps around the bird: far city at half speed, street things at full speed.
+  const wrap=(list,step,rate)=>{const span=list.length*step;for(const it of list){it.obj.position.x=p.x+((it.base+(it.speed||0)*this.trafficT-this.travel*rate)%span+span)%span-span*.3;}};
+  if(this.farCity.length)wrap(this.farCity,13,.55);if(this.traffic.length)wrap(this.traffic,21,1);if(this.lamps.length)wrap(this.lamps,9,1);this.holder.position.set(p.x,p.y,0);this.holder.rotation.z=reduced?0:tilt;this.flame.position.set(-.45,-.15,0);this.flame.scale.setScalar(g.status==='playing'&&!reduced?.7+Math.random()*.4:.6);
   if(this.asset){this.asset.root.visible=this.rig.mix<.55;setDawgPose(this.asset,real,g.status==='playing'?'run':'idle');}
   const first={pos:new T.Vector3(p.x-.2,p.y+.12,0),at:new T.Vector3(p.x+10,p.y+(reduced?0:-g.vy/220),0)};
   const third={pos:new T.Vector3(p.x-4.2,p.y+1.6,7.5),at:new T.Vector3(p.x+4,p.y,0)};

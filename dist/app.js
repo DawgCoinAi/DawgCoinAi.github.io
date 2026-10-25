@@ -5,6 +5,7 @@ import {freshSeed,worldLook} from './world.js';
 import {sceneFor} from './scene-loader.js';
 import {HustleChat,hustleCast} from './hustle-chat.js';
 import {GameSheet} from './game-sheet.js';
+import {Discoveries} from './discoveries.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
 import {ArcadeRenderer,THEMES} from './renderer.js';
@@ -353,6 +354,19 @@ const gameSheet=new GameSheet({best:id=>records[id]||0,wall:id=>wallOf(id),
  play:id=>{if(mode!==id)selectMode(id);$('heroPlay').click();},board:id=>{if(mode!==id)selectMode(id);$('heroBoard').click();},
  demo:(host,id)=>{let d=null,dead=false;import('./game-demo.js').then(({GameDemo})=>{if(!dead)d=new GameDemo(host,id,{face,character:pack.renderer.character||renderer.character,view:viewFor(id,prefs.cameras)==='2d'?'2d':'third'});}).catch(()=>{});return {dispose(){dead=true;d?.dispose();}};}});
 document.querySelectorAll('.game-card[data-mode]').forEach(b=>b.addEventListener('click',()=>gameSheet.open(b.dataset.mode)));
+// Features introduce themselves as they're earned: after runs, levels, streaks and unlocks.
+const discoveries=new Discoveries({
+ ctx:()=>({runs:records.runs||0,level:levelOf(arcade.xp),minutes:Math.floor(arcade.seconds/60),streak:currentStreak(arcade.days||[],localDay()).days,bests:GAME_IDS.filter(id=>(records[id]||0)>0).length,open:GAME_IDS.filter(id=>!!arcade.unlocked[id]||(records[id]||0)>0),hasName:!!rankings.profile?.name,hasEmail:!!cloud.user?.email,owner:!!rankings.owner}),
+ busy:()=>!!document.querySelector('dialog[open]')||document.body.classList.contains('pack-session')||mobile.active||(isMaze()&&game.status==='playing')||shell.view!=='play'&&shell.view!=='me',
+ go:where=>{const me=()=>shell.show('me');
+  if(where==='kennel')$('kennelButton').click();else if(where==='atelier'){$('kennelButton').click();kennel.selectTab?.('fashion');}else if(where==='league')$('leagueButton').click();
+  else if(where==='share'){const best=GAME_IDS.filter(id=>(records[id]||0)>0).sort((a,b)=>records[b]-records[a])[0];if(best)shareRun(best,records[best],{best:true});}
+  else if(where==='rankings')shell.show('rankings');else if(where==='friends')shell.show('friends');else if(where==='cloud'){me();$('meAccount').click();}
+  else if(where==='passport'){me();$('passportPanel').open=true;$('passportPanel').scrollIntoView?.({behavior:'smooth',block:'start'});}else if(where==='owner'){me();$('ownerTools').scrollIntoView?.({behavior:'smooth',block:'start'});}
+  else if(where==='library'){shell.show('play');document.querySelector('.lib-group')?.scrollIntoView?.({behavior:'smooth',block:'start'});}
+  else if(GAME_IDS.includes(where)){shell.show('play');selectMode(where);scrollToHero();}}});
+discoveries.renderList();$('resultsDialog').addEventListener('close',()=>discover());const discover=()=>{clearTimeout(discover.t);discover.t=setTimeout(()=>discoveries.check(),1500);};
+
 // Play hero: the selected game with its best, weekly rank and top friend.
 function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallOf(shell.preview).open){shell.hero(shell.preview,{wall:wallOf(shell.preview),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
  shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
@@ -379,7 +393,7 @@ function showResults(kind,score,{prevBest=0,detail='',unit,format,again,title}={
  results.show({game:kind,score,unit,format,again,title,best:score>0&&score>prevBest,targets:medalTargets(kind),detail,xp:lastRun?.kind===kind?lastRun.xp:0,level:levelInfo(),unlock:nextUnlock(),askName:!!rankings.api&&!rankings.profile?.name,canChallenge:kind!=='story'});}
 function showInsight(kind,score){rankings.insight(kind,score).then(lines=>{if(results.run?.game===kind)results.social(lines);});}
 // Today rail: the daily run, your streak, the next unlock and any challenge waiting.
-function renderToday(){const items=[],st=currentStreak(arcade.days||[],localDay()),dbest=dailyRecords[challenge.day]?.best||0,m=medalState(dbest,challenge.targets);
+function renderToday(){discover();const items=[],st=currentStreak(arcade.days||[],localDay()),dbest=dailyRecords[challenge.day]?.best||0,m=medalState(dbest,challenge.targets);
  items.push({id:'daily',icon:'✦',title:'Daily Run · '+challenge.name,sub:dbest?`Best ${fmtNum(dbest)} · `+(m.next?`${fmtNum(m.toNext)} to ${['bronze','silver','gold'][m.earned]}`:'gold earned'):'New today. Same maze for everyone.',tone:dbest?'':'hot'});
  items.push({id:'streak',icon:'🔥',title:st.days?`${st.days}-day streak`:'Start a streak',sub:st.today?'Kept today ✓':st.days?'Play today to keep it alive':'Play any game today',tone:st.days&&!st.today?'warn':''});
  const u=nextUnlock();if(u)items.push({id:'unlock:'+u.id,icon:'🔓',title:'Next: '+u.title,sub:u.left,pct:u.pct});

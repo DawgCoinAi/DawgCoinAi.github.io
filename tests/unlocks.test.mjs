@@ -43,7 +43,7 @@ test('Cloud sync keeps the newest copy of each save section',()=>{
 });
 test('The database unlock ladder matches the game’s rules',()=>{
  // The newest migration that defines the ladder is the one the database runs.
- const files=fs.readdirSync(new URL('../supabase/migrations/',import.meta.url)).sort(),sql=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).filter(s=>s.includes('arcade_ladder()')).at(-1),all=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).join('\n');
+ const files=fs.readdirSync(new URL('../supabase/migrations/',import.meta.url)).sort(),sql=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).filter(s=>s.includes('function public.arcade_ladder()')).at(-1),all=files.map(f=>fs.readFileSync(new URL('../supabase/migrations/'+f,import.meta.url),'utf8')).join('\n');
  const rows=[...sql.matchAll(/\('([a-z]+)', (\d+), (\d+), (null::int|\d+), (null::text|'[a-z0-9]+')\)/g)].map(m=>[m[1],{level:+m[2],minutes:+m[3],streak:m[4].startsWith('null')?undefined:+m[4],challenge:m[5].startsWith('null')?undefined:m[5].slice(1,-1)}]);
  const locked=Object.entries(LADDER).filter(([,r])=>r).map(([id,r])=>[id,{level:r.level,minutes:r.minutes,streak:r.streak,challenge:r.challenge}]);
  assert.deepEqual(Object.fromEntries(rows),Object.fromEntries(locked));
@@ -60,4 +60,10 @@ test('Runs finished while an upload is in flight are all uploaded, none lost',as
  for(const [i,game]of ['flappy','classic','snake'].entries())cloud.recordRun({game,day:'2026-10-24',startedAt:new Date(1e12+i*1e4).toISOString(),endedAt:new Date(1e12+i*1e4+5e3).toISOString(),seconds:5,score:1,xp:15});
  await new Promise(r=>setTimeout(r,60));await cloud.flushRuns();
  assert.deepEqual(sent,['flappy','classic','snake']);assert.deepEqual(JSON.parse(store.get('dawg-session-queue')),[]);delete globalThis.localStorage;
+});
+test('The arcade owner is stored by account id and gets every game through claim_unlocks',()=>{
+ const sql=fs.readFileSync(new URL('../supabase/migrations/20261024070000_owner.sql',import.meta.url),'utf8');
+ assert.match(sql,/enable row level security/);assert.match(sql,/revoke all on public\.arcade_owners from public, anon, authenticated/);
+ const fn=sql.slice(sql.indexOf('create or replace function public.claim_unlocks'));assert.match(fn,/from arcade_owners where user_id = uid/);assert.doesNotMatch(fn,/display_name/,'never by name at claim time');
+ assert.match(sql,/security definer/);
 });

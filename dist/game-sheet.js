@@ -14,7 +14,7 @@ export const HOW={
  snake:['Swipe or use arrows to turn','Eat to grow; don’t hit yourself or the stones','In first person, ← → turn relative to your head'],
  runner:['← → change lanes','↑ jump crates, ↓ slide under arches','Grab gold and power-ups as the city speeds up'],
  turbo:['→ to boost, ← to brake','↑ to jump, ↓ to roll or stomp in the air','Hit loops and springs at speed'],
- pinball:['Hold ← → (or each side of the screen) to flip','↑ launches the ball and nudges the table','Light the targets for bonuses'],
+ pinball:['Hold ← → (or each side of the screen) to flip','Shoot the lit arrows: ramps and wireforms carry the ball over the table','Finish the mission (bumpers, ramps, targets, D-A-W-G) to level up'],
  kart:['Hold ← → to steer, ↓ to drift','Drift through corners to charge a mini-turbo','↑ fires your item'],
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']
 };

@@ -18,7 +18,7 @@ export const BLURBS={
  snake:'Ride the light trail through a neon arena. Grow your pack and don’t bite your tail.',
  runner:'Three lanes, one night, no brakes. Jump, slide and stack gold through the city.',
  turbo:'Loops, springs and pure speed. Roll into bots and launch off kickers.',
- pinball:'Hold the flippers, light D-A-W-G and send the DAWG House into multiball.',
+ pinball:'Three tables, endless levels. Fly the ball over the playfield on ramps and wireforms, pound the bumpers and finish each mission to change the table.',
  kart:'Three laps against five rival DAWGs. Drift for mini-turbos and bonk the leader.',
  story:'One velvet suit, one night, ten places to make bad decisions. Win over Nova, steal the rooftop show, and find all six endings before sunrise.'
 };

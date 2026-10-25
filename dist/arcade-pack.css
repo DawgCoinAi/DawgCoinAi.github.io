@@ -74,3 +74,6 @@ body.pack-session.pack-landscape #packPanel{grid-template-areas:'header header' 
 @keyframes ah-pop{from{opacity:0;transform:translate(-50%,-92%) scale(.92)}}@keyframes ah-rise{from{opacity:0;transform:translateY(8px)}}@keyframes ah-fade{to{opacity:0}}
 @media(max-width:480px){.ah-bubble{font-size:13px;max-width:80%;padding:8px 11px}.ah-narrator{font-size:13px;left:8px;right:8px;bottom:8px;padding:9px 11px}}
 @media(prefers-reduced-motion:reduce){.ah-bubble,.ah-narrator,.ah-toast,.ah-scene .ah-choices{animation:none}}
+.d3-mission{position:absolute;left:50%;top:calc(var(--d3-top,10px) + 54px);transform:translateX(-50%);display:grid;justify-items:center;gap:2px;padding:6px 12px;border-radius:999px;background:#0b081699;border:1px solid #ffffff22;pointer-events:none;max-width:calc(100% - 180px)}
+.d3-mission b{font:800 11px var(--ui-mono,var(--mono));letter-spacing:1px;color:#ffe45e}.d3-mission small{font:700 9px var(--ui-mono,var(--mono));letter-spacing:.5px;color:#dff6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media(max-width:480px){.d3-mission{top:calc(var(--d3-top,10px) + 50px);max-width:calc(100% - 24px)}}

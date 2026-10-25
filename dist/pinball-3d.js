@@ -1,10 +1,11 @@
 // Three.js presentation for Neon Pinball. PinballGame owns every rule; this module draws the
-// table as a neon cabinet. Third person is the classic standing-at-the-cabinet view; first
+// table as a neon cabinet, rebuilding the level's pieces (bumpers, targets, ramps and wireforms)
+// whenever the game moves up a table. Third person is the classic standing-at-the-cabinet view; first
 // person is Ball Cam, chasing the lead ball around the playfield.
 // World units: one table unit is one meter. Table (x, y) sits at world (x - 5, 0, 10 - y), so
 // the flippers are nearest the player and the backglass is far away at -z.
 import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
-import {TABLE,FLIPPERS,BUMPERS,TARGETS,LANES,LANE_Y,HOLE,WALLS,flipperAngle} from './pinball-engine.js';
+import {TABLE,FLIPPERS,LANES,LANE_Y,HOLE,WALLS,flipperAngle,rampPoint} from './pinball-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
 
@@ -36,11 +37,11 @@ function backglassArt(c,w,h){
 }
 
 export class ThreePinball {
- constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.cameraMode='third';this.clock=performance.now();this.status='';this.statusSince=performance.now();this.flash={bumpers:[0,0,0],slings:[0,0]};this.follow=new T.Vector3(0,0,6);}
+ constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.cameraMode='third';this.clock=performance.now();this.status='';this.statusSince=performance.now();this.flash={bumpers:[],slings:[0,0]};this.follow=new T.Vector3(0,0,6);this.level=0;}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d pinball3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
-  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">1</b><small>BALL</small></div><div class="d3-gold"><i></i><b>×1</b></div>');this.view.append(this.hud.root);
-  this.ui={ball:this.hud.q('.d3-dist'),mult:this.hud.q('.d3-gold b')};
+  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">1</b><small>BALL</small></div><div class="d3-gold"><i></i><b>×1</b></div><div class="d3-mission"><b class="d3-level">LEVEL 1</b><small class="d3-goal"></small></div>');this.view.append(this.hud.root);
+  this.ui={ball:this.hud.q('.d3-dist'),mult:this.hud.q('.d3-gold b'),level:this.hud.q('.d3-level'),goal:this.hud.q('.d3-goal')};
   this.rig=new CameraRig(this.camera);this.rig.setMode(this.cameraMode);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D TABLE · LIVE');return this;
  }
@@ -66,21 +67,43 @@ export class ThreePinball {
    const tall=kind==='gate'?.2:.5,thick=kind==='gate'?.05:.12;const body=new T.Mesh(new T.BoxGeometry(len+thick,tall,thick).translate(0,tall/2,0),kind==='sling'?new T.MeshStandardMaterial({color:0xff5fc8,emissive:0xff2fae,emissiveIntensity:.8,metalness:.2,roughness:.3}):wallMat);
    body.position.set(mid[0],0,mid[1]);body.rotation.y=yaw;s.add(body);if(kind==='sling')this.slings.push(body);
    const rail=new T.Mesh(new T.BoxGeometry(len+thick,.04,thick+.02),this.railMat);rail.position.set(mid[0],tall+.02,mid[1]);rail.rotation.y=yaw;s.add(rail);}
+  this.glowTex=radial(glowStops);this.chromeMat=new T.MeshStandardMaterial({color:0xdde4ff,metalness:1,roughness:.15});this.chromeMat.userData.shared=true;this.table=new T.Group();s.add(this.table);
+  // Inserts: D-A-W-G lane letters and multiplier lamps.
+  this.lanes=LANES.map(l=>{const m=new T.Mesh(new T.PlaneGeometry(.75,.75).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph(l.label,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(l.x),.02,wz(LANE_Y-1.1));s.add(m);return m;});
+  this.mults=[2,3,4,5].map((n,i)=>{const m=new T.Mesh(new T.PlaneGeometry(.62,.62).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph('×'+n,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(3+i),.02,wz(8.6));s.add(m);return m;});
+  this.buildHole(s);this.buildFlippers(s);this.buildBalls(s);
+ }
+ // The level's own pieces: bumpers, drop targets, ramps and wireforms, and its name on the apron.
+ buildTable(t){const s=this.table;for(const o of [...s.children]){o.removeFromParent();o.traverse?.(m=>{m.geometry?.dispose?.();if(m.material&&!m.material.userData.shared)[].concat(m.material).forEach(x=>x.dispose?.());});}
+  this.flash.bumpers=t.bumpers.map(()=>0);const tint=new T.Color(t.color);
   // Pop bumpers: a chrome skirt, a glowing body and a cap that flashes when hit.
-  this.bumpers=BUMPERS.map(b=>{const g=new T.Group(),mat=new T.MeshStandardMaterial({color:0x5ee7ff,emissive:0x2fc8ff,emissiveIntensity:.6,metalness:.3,roughness:.25});
+  this.bumpers=t.bumpers.map(b=>{const g=new T.Group(),mat=new T.MeshStandardMaterial({color:0x5ee7ff,emissive:0x2fc8ff,emissiveIntensity:.6,metalness:.3,roughness:.25});
    g.add(new T.Mesh(new T.CylinderGeometry(b.r+.08,b.r+.12,.12,28).translate(0,.06,0),new T.MeshStandardMaterial({color:0xdde4ff,metalness:1,roughness:.15})));
    g.add(new T.Mesh(new T.CylinderGeometry(b.r*.82,b.r*.9,.42,28).translate(0,.33,0),mat));const cap=new T.Mesh(new T.CylinderGeometry(b.r,b.r*.9,.1,28).translate(0,.58,0),new T.MeshBasicMaterial({color:new T.Color(.5,1.1,1.4),toneMapped:false}));g.add(cap);
    g.position.set(wx(b.x),0,wz(b.y));s.add(g);return {g,mat,cap};});
-  // Drop targets on the left wall.
-  this.targetMat=TARGETS.map(()=>new T.MeshStandardMaterial({color:0xffe45e,emissive:0xffb800,emissiveIntensity:1,metalness:.2,roughness:.3}));
-  this.targets=TARGETS.map((t,i)=>{const m=new T.Mesh(new T.BoxGeometry(.14,.5,.72).translate(0,.25,0),this.targetMat[i]);m.position.set(wx(t.x)+.05,0,wz(t.y));s.add(m);return m;});
-  // Inserts: D-A-W-G lane letters, target lamps, multiplier lamps and the DAWG House ring.
-  this.lanes=LANES.map(l=>{const m=new T.Mesh(new T.PlaneGeometry(.75,.75).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph(l.label,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(l.x),.02,wz(LANE_Y-1.1));s.add(m);return m;});
-  this.mults=[2,3,4,5].map((n,i)=>{const m=new T.Mesh(new T.PlaneGeometry(.62,.62).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph('×'+n,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(3+i),.02,wz(8.6));s.add(m);return m;});
-  this.glowTex=radial(glowStops);
+  // Drop targets on the side walls.
+  this.targetMat=t.targets.map(()=>new T.MeshStandardMaterial({color:0xffe45e,emissive:0xffb800,emissiveIntensity:1,metalness:.2,roughness:.3}));
+  this.targets=t.targets.map((tg,i)=>{const m=new T.Mesh(new T.BoxGeometry(.14,.5,.72).translate(0,.25,0),this.targetMat[i]);m.position.set(wx(tg.x)+(tg.x<4.5?.05:-.05),0,wz(tg.y));s.add(m);return m;});
+  // Ramps are translucent neon ribbons on posts; wireforms are twin chrome rails with hoops.
+  this.ramps=t.ramps.map(r=>{const pts=r.path.map(([x,y,z])=>new T.Vector3(wx(x),z+.02,wz(y))),curve=new T.CatmullRomCurve3(pts,false,'catmullrom',.3),g=new T.Group(),n=Math.max(24,Math.round(r.length*6));
+   if(r.kind==='ramp'){const tube=new T.Mesh(new T.TubeGeometry(curve,n,.36,8,false),new T.MeshStandardMaterial({color:tint,emissive:tint,emissiveIntensity:.35,transparent:true,opacity:.42,metalness:.3,roughness:.3,side:T.DoubleSide,depthWrite:false}));tube.scale.y=.22;g.add(tube);
+    for(const side of [-1,1]){const rail=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p=>p.clone()),false,'catmullrom',.3),n,.035,6,false),this.chromeMat);rail.position.x=side*.0;rail.userData.side=side;g.add(rail);}}
+   else{for(const dx of [-.16,.16]){const rail=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(p=>p.clone().add(new T.Vector3(dx,0,0))),false,'catmullrom',.3),n,.03,6,false),this.chromeMat);g.add(rail);}
+    for(let i=0;i<pts.length;i++){const hoop=new T.Mesh(new T.TorusGeometry(.3,.025,6,16),this.chromeMat);hoop.position.copy(curve.getPointAt(i/(pts.length-1)));const tan=curve.getTangentAt(i/(pts.length-1));hoop.lookAt(hoop.position.clone().add(tan));g.add(hoop);}}
+   // Posts hold the path up wherever it leaves the playfield.
+   for(let i=0;i<=8;i++){const p=curve.getPointAt(i/8);if(p.y<.3)continue;const post=new T.Mesh(new T.CylinderGeometry(.03,.03,p.y,6),this.chromeMat);post.position.set(p.x,p.y/2,p.z);g.add(post);}
+   // The entry arrow and lamp on the playfield.
+   const e=r.entry,lamp=new T.Mesh(new T.PlaneGeometry(.7,.5).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph('▲',r.kind==='ramp'?'#ffffff':'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:tint.clone().multiplyScalar(1.6)}));lamp.position.set(wx((e[0]+e[2])/2),.02,wz(e[1]-.6));g.add(lamp);
+   g.userData.curve=curve;s.add(g);return {g,curve,r,lamp};});
+  // The level's name on the apron.
+  const name=new T.Mesh(new T.PlaneGeometry(4.2,.7),new T.MeshBasicMaterial({map:texture(512,96,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 44px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle=t.color;c.shadowColor=t.color;c.shadowBlur=14;c.fillText('LEVEL '+t.level+' · '+t.name,w/2,h/2+2,w-20);}),transparent:true,toneMapped:false}));name.rotation.x=-Math.PI/2;name.position.set(0,.03,wz(.55));s.add(name);
+ }
+ buildHole(s){
   this.hole=new T.Mesh(new T.RingGeometry(HOLE.r*.7,HOLE.r*1.25,32).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(1.5,.4,1.2),toneMapped:false,transparent:true}));this.hole.position.set(wx(HOLE.x),.02,wz(HOLE.y));s.add(this.hole);
   const pit=new T.Mesh(new T.CircleGeometry(HOLE.r*.7,24).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0x000000}));pit.position.set(wx(HOLE.x),.025,wz(HOLE.y));s.add(pit);
   this.holeGlow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.6,.4,1.3),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.holeGlow.scale.set(2.4,2.4,1);this.holeGlow.position.set(wx(HOLE.x),.3,wz(HOLE.y));s.add(this.holeGlow);
+ }
+ buildFlippers(s){
   // Flippers: tapered bats that swing about their pivots.
   const shape=new T.Shape(),R=.17,r=.08;FLIPPERS[0];const len=FLIPPERS[0].len;shape.absarc(0,0,R,Math.PI/2,Math.PI*1.5,false);shape.lineTo(len,-r);shape.absarc(len,0,r,-Math.PI/2,Math.PI/2,false);shape.lineTo(0,R);
   const bat=new T.ExtrudeGeometry(shape,{depth:.28,bevelEnabled:false,curveSegments:10}).rotateX(-Math.PI/2);
@@ -88,6 +111,8 @@ export class ThreePinball {
   this.flippers=FLIPPERS.map(f=>{const m=new T.Mesh(bat,this.flipperMat);m.position.set(wx(f.px),.02,wz(f.py));s.add(m);return m;});
   // Plunger spring in the shooter lane.
   this.plunger=new T.Mesh(new T.CylinderGeometry(.16,.16,1,14).rotateX(Math.PI/2),new T.MeshStandardMaterial({color:0xdde4ff,metalness:1,roughness:.2}));this.plunger.position.set(wx(9.5),.25,wz(.2));s.add(this.plunger);
+ }
+ buildBalls(s){
   // Balls: polished chrome, up to six for multiball.
   const chrome=new T.MeshStandardMaterial({color:0xffffff,metalness:1,roughness:.06,envMapIntensity:1.6});const sphere=new T.SphereGeometry(TABLE.ball,28,18);
   this.balls=Array.from({length:6},()=>{const m=new T.Mesh(sphere,chrome);m.visible=false;s.add(m);return m;});
@@ -96,9 +121,9 @@ export class ThreePinball {
   this.particles=new Particles(s,this.quality==='high'?420:240,this.glowTex);
  }
  at(x,y,h=TABLE.ball){return new T.Vector3(wx(x),h,wz(y));}
- lead(g){return g.balls.find(b=>b.state==='play')||g.balls[0];}
+ lead(g){return g.balls.find(b=>b.state==='play'||b.state==='ramp')||g.balls[0];}
  event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,b=this.lead(g),p=b?this.at(b.x,b.y):this.at(4.5,5);
-  if(e.type==='bumper'){this.flash.bumpers[e.index]=1;const m=BUMPERS[e.index];this.particles.burst(wx(m.x),.6,wz(m.y),18,0x5ee7ff,{speed:4,life:.45});hud.pop('+'+e.points);st.shake(.06);}
+  if(e.type==='bumper'){this.flash.bumpers[e.index]=1;const m=g.table.bumpers[e.index];if(!m)return;this.particles.burst(wx(m.x),.6,wz(m.y),18,0x5ee7ff,{speed:4,life:.45});hud.pop('+'+e.points);st.shake(.06);}
   else if(e.type==='sling'){this.flash.slings[b&&b.x<4.5?0:1]=1;this.particles.burst(p.x,.3,p.z,10,0xff5fc8,{speed:3,life:.35});}
   else if(e.type==='target'){this.particles.burst(p.x,.4,p.z,16,0xffe45e,{speed:3.5,life:.5});hud.pop('+'+e.points);}
   else if(e.type==='targets'){hud.banner('DAWG HOUSE LIT');st.flashOnce(0xff5fc8,.2,this.reduced);}
@@ -107,6 +132,10 @@ export class ThreePinball {
   else if(e.type==='hole'){hud.pop('+'+e.points,'big');this.particles.burst(wx(HOLE.x),.4,wz(HOLE.y),26,0xff5fc8,{speed:3,life:.6});}
   else if(e.type==='multiball'){hud.banner('MULTIBALL!');st.shake(.4);st.flashOnce(0xffffff,.35,this.reduced);this.particles.burst(wx(HOLE.x),.5,wz(HOLE.y),80,0xb9ff5e,{speed:7,life:1});}
   else if(e.type==='ballsave')hud.banner('BALL SAVED');
+  else if(e.type==='ramp'){hud.pop(e.label+' +'+e.points);st.flashOnce(0x5ee7ff,.12,this.reduced);}
+  else if(e.type==='land'){this.particles.burst(wx(e.x),.3,wz(e.y),14,0xffffff,{speed:3,life:.4});st.shake(.08);}
+  else if(e.type==='goal')hud.pop(({bumps:'BUMPERS DONE',ramps:'RAMPS DONE',targets:'TARGETS DONE',lanes:'LANES DONE'})[e.kind]||'DONE','big');
+  else if(e.type==='levelup'){hud.banner('LEVEL '+e.level+' · '+e.name);st.shake(.5);st.flashOnce(0xffffff,.5,this.reduced);this.particles.burst(0,1,0,90,0xffe45e,{speed:8,life:1.2});}
   else if(e.type==='launch'){this.particles.burst(wx(9.5),.3,wz(1.2),14,0xffffff,{speed:3,life:.4});st.shake(.05);}
   else if(e.type==='drain'){st.shake(.25);st.flashOnce(0xff3355,.25,this.reduced);}
   else if(e.type==='nextball')hud.banner('BALL '+(4-e.left));
@@ -117,7 +146,7 @@ export class ThreePinball {
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<2500));return true;}
  render(g,now){
   this.stage.resize();const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
-  if(g.status!==this.status){this.status=g.status;this.statusSince=now;}
+  if(g.status!==this.status){this.status=g.status;this.statusSince=now;}if(g.level!==this.level){this.level=g.level;this.buildTable(g.table);}
   const look=worldLook(g.worldSeed),glow=new T.Color(look.glow),accent=new T.Color(look.accent);this.railMat.color.copy(glow).multiplyScalar(1.7);
   const u=this.sky.material.uniforms;u.uTop.value.set(0x04050c);u.uHorizon.value.copy(glow).multiplyScalar(.12);u.uGlow.value.copy(accent).multiplyScalar(.18);this.scene.fog.color.copy(glow).multiplyScalar(.05);
   const fade=Math.exp(-dt*(reduced?30:9));
@@ -128,14 +157,15 @@ export class ThreePinball {
   const pulse=g.holeLit?.6+(reduced?.4:Math.sin(real*8)*.4+.4):.15;this.hole.material.opacity=.35+pulse*.65;this.holeGlow.material.opacity=pulse;
   FLIPPERS.forEach((f,i)=>{this.flippers[i].rotation.y=flipperAngle(f,g.flips[i].angle);});this.flipperMat.emissiveIntensity=.9+(g.flips.some(f=>f.held)?.8:0);
   const waiting=g.balls.find(b=>b.state==='lane');this.plunger.scale.z=waiting&&!reduced?1-Math.min(.45,waiting.wait*.15):1;this.plunger.position.z=wz(.2)+(1-this.plunger.scale.z)*.5;
-  this.balls.forEach((m,i)=>{const b=g.balls[i],h=this.halos[i];m.visible=h.visible=!!b;if(!b)return;h.position.copy(this.at(b.x,b.y,TABLE.ball*1.2));m.position.copy(this.at(b.x,b.y,b.state==='held'?-.05:TABLE.ball));m.rotation.x-=b.vy*dt*2;m.rotation.z-=b.vx*dt*2;});
-  const lead=this.lead(g);if(lead){const p=this.at(lead.x,lead.y);this.ballLight.position.set(p.x,1.2,p.z);this.follow.lerp(p,Math.min(1,dt*(reduced?30:6)));}
+  this.ramps?.forEach(r=>{r.lamp.material.opacity=.5+(reduced?.3:Math.sin(real*6)*.3+.3);});
+  this.balls.forEach((m,i)=>{const b=g.balls[i],h=this.halos[i];m.visible=h.visible=!!b;if(!b)return;const z=b.z||0;h.position.copy(this.at(b.x,b.y,TABLE.ball*1.2+z));m.position.copy(this.at(b.x,b.y,(b.state==='held'?-.05:TABLE.ball)+z));h.scale.setScalar(1.3+z*.3);m.rotation.x-=(b.state==='ramp'?b.sp:b.vy)*dt*2;m.rotation.z-=b.vx*dt*2;});
+  const lead=this.lead(g);if(lead){const p=this.at(lead.x,lead.y,TABLE.ball+(lead.z||0));this.ballLight.position.set(p.x,1.2,p.z);this.follow.lerp(p,Math.min(1,dt*(reduced?30:6)));}
   // Third person stands at the cabinet; Ball Cam rides behind and above the lead ball.
   const f=this.follow,third={pos:new T.Vector3(0,19,17.5),at:new T.Vector3(0,0,.4)};
   const first={pos:new T.Vector3(f.x*.8,3.1,f.z+4.6),at:new T.Vector3(f.x,0,f.z-2.2)};
   this.rig.update(dt,third,first,{follow:this.rig.mix>.5?10:8});this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera;cam.fov+=(fitFov(this.rig.mix>.5?72:48,cam.aspect,this.rig.mix>.5?70:42)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
-  this.particles.update(dt);const hud=this.hud;hud.set(this.ui.ball,'b',String(Math.min(3,4-g.ballsLeft)));hud.set(this.ui.mult,'m','×'+g.mult);hud.live(g.status==='playing');
+  this.particles.update(dt);const hud=this.hud;hud.set(this.ui.ball,'b',String(Math.min(3,4-g.ballsLeft)));hud.set(this.ui.mult,'m','×'+g.mult);const goal=g.goal;hud.set(this.ui.level,'l','LEVEL '+g.level);hud.set(this.ui.goal,'g',goal.done?'MISSION COMPLETE':`BUMPERS ${goal.bumps[0]}/${goal.bumps[1]} · RAMPS ${goal.ramps[0]}/${goal.ramps[1]} · ${goal.targets?'✓':'○'} TARGETS · ${goal.lanes?'✓':'○'} D-A-W-G`);hud.live(g.status==='playing');
   this.stage.render(dt,real,{reduced,aberration:.0012});
  }
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}

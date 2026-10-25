@@ -5,7 +5,7 @@ import {worldLook,hash} from './world.js';
 import {drawLivingStory,drawLivingCity} from './living-renderer.js';
 import {ROOMS} from './story-engine.js';
 import {TURBO,turboChunk,chunkAt,groundAt,groundIn} from './turbo-engine.js';
-import {TABLE,FLIPPERS,BUMPERS,TARGETS,LANES,LANE_Y,HOLE,WALLS,flipperTip} from './pinball-engine.js';
+import {TABLE,FLIPPERS,LANES,LANE_Y,HOLE,WALLS,flipperTip} from './pinball-engine.js';
 import {KART,trackPoint,ordinal} from './kart-engine.js';
 const COLORS=['#f8bf66','#eb7fb5','#78dfd0','#b4a1ff'];
 export class PackRenderer {
@@ -63,8 +63,9 @@ export class PackRenderer {
   const bg=c.createLinearGradient(0,0,0,560);bg.addColorStop(0,'#1a0b33');bg.addColorStop(1,'#07121f');c.fillStyle=bg;c.fillRect(X(0),0,10*S,560);c.lineCap='round';
   this.text('DAWG HOUSE',X(HOLE.x),Y(HOLE.y+1),13,'#ff5fc8','center');c.lineWidth=3;c.strokeStyle=g.holeLit?'#ff5fc8':'#ff5fc855';c.beginPath();c.arc(X(HOLE.x),Y(HOLE.y),HOLE.r*S,0,Math.PI*2);c.stroke();
   for(const [x1,y1,x2,y2,kind]of WALLS){c.strokeStyle=kind==='sling'?'#ff5fc8':kind==='gate'?'#ffffff55':look.glow;c.lineWidth=kind==='post'?5:4;c.beginPath();c.moveTo(X(x1),Y(y1));c.lineTo(X(x2),Y(y2));c.stroke();}
-  BUMPERS.forEach(b=>{c.fillStyle='#2fc8ff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S,0,Math.PI*2);c.fill();c.fillStyle='#e8fbff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S*.55,0,Math.PI*2);c.fill();});
-  TARGETS.forEach((t,i)=>{if(!g.targets[i]&&!(g.reset>0))this.rect(X(t.x)-3,Y(t.y)-10,6,20,'#ffe45e',2);});
+  const table=g.table;c.setLineDash([]);for(const r of table.ramps){c.strokeStyle=r.kind==='ramp'?table.color+'99':'#dde4ffaa';c.lineWidth=r.kind==='ramp'?9:3;if(r.kind==='wire')c.setLineDash([5,4]);c.beginPath();r.path.forEach(([x,y],i)=>i?c.lineTo(X(x),Y(y)):c.moveTo(X(x),Y(y)));c.stroke();c.setLineDash([]);const e=r.entry;this.text('▲',X((e[0]+e[2])/2),Y(e[1]-.7),11,table.color,'center');}
+  table.bumpers.forEach(b=>{c.fillStyle='#2fc8ff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S,0,Math.PI*2);c.fill();c.fillStyle='#e8fbff';c.beginPath();c.arc(X(b.x),Y(b.y),b.r*S*.55,0,Math.PI*2);c.fill();});
+  table.targets.forEach((t,i)=>{if(!g.targets[i]&&!(g.reset>0))this.rect(X(t.x)-3,Y(t.y)-10,6,20,'#ffe45e',2);});
   LANES.forEach((l,i)=>this.text(l.label,X(l.x),Y(LANE_Y-1),16,g.lanes[i]?'#b9ff5e':'#ffffff44','center'));this.text('×'+g.mult,X(4.5),Y(8.4),16,g.mult>1?'#ff5fc8':'#ffffff55','center');
   c.strokeStyle='#e8ffd0';c.lineWidth=.3*S;FLIPPERS.forEach((f,i)=>{const t=flipperTip(f,g.flips[i].angle);c.beginPath();c.moveTo(X(f.px),Y(f.py));c.lineTo(X(t.x),Y(t.y));c.stroke();});
   for(const b of g.balls){const gr=c.createRadialGradient(X(b.x)-3,Y(b.y)-3,1,X(b.x),Y(b.y),TABLE.ball*S);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#8a90a8');c.fillStyle=gr;c.beginPath();c.arc(X(b.x),Y(b.y),TABLE.ball*S,0,Math.PI*2);c.fill();}

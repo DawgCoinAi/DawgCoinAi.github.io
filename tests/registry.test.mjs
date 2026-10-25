@@ -9,7 +9,7 @@ import {parseBackup} from '../dist/progress-backup.js';
 
 test('Every registered game has a tab, an XP discipline and a passport stamp',()=>{
  const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8'),tabs=[...html.matchAll(/data-mode="([a-z]+)"/g)].map(m=>m[1]);
- assert.deepEqual(tabs,GAME_IDS);for(const id of GAME_IDS)assert.match(html,new RegExp(`id="tab-${id}"`));
+ assert.deepEqual([...tabs].sort(),[...GAME_IDS].sort(),"every game has exactly one card");for(const id of GAME_IDS)assert.match(html,new RegExp(`id="tab-${id}"`));
  assert.deepEqual(DISCIPLINES.map(d=>d.id).sort(),[...GAME_IDS].sort());assert.deepEqual(STAMPS.map(s=>s.id).sort(),[...GAME_IDS].sort());
  assert.equal(new Set(GAME_IDS).size,GAME_IDS.length);for(const g of GAMES){assert.ok(['maze','pack','trade'].includes(g.kind));assert.ok(g.views.every(v=>VIEWS.includes(v)));if(g.views.length)assert.ok(g.views.includes('2d'),g.id+' plays in 2D too');}
 });

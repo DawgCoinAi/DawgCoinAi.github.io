@@ -4,6 +4,7 @@ import {LivingTradeGame,validLivingTrade,TRADE_PERKS} from './living-trade.js';
 import {freshSeed,worldLook} from './world.js';
 import {sceneFor} from './scene-loader.js';
 import {HustleChat,hustleCast} from './hustle-chat.js';
+import {GameSheet} from './game-sheet.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
 import {ArcadeRenderer,THEMES} from './renderer.js';
@@ -347,6 +348,11 @@ var socialStarted=false;const shareSheet=new ShareSheet({openDialog});
 // App shell: Play / Rankings / Friends / Me. Switching views pauses nothing; games run full-screen.
 const shell=new Shell({onView:v=>{rankings.openView(v);if(v==='me')renderMe();if(v==='play')renderHero();}});
 const rankings=new Rankings({onSocial:()=>renderToday(),cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:(id,o={})=>{if(o.trial)grantTrial(id);for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
+// Tapping a game opens its sheet: a live demo of it playing itself, how to play, and Play.
+const gameSheet=new GameSheet({best:id=>records[id]||0,wall:id=>wallOf(id),
+ play:id=>{if(mode!==id)selectMode(id);$('heroPlay').click();},board:id=>{if(mode!==id)selectMode(id);$('heroBoard').click();},
+ demo:(host,id)=>{let d=null,dead=false;import('./game-demo.js').then(({GameDemo})=>{if(!dead)d=new GameDemo(host,id,{face,character:pack.renderer.character||renderer.character,view:viewFor(id,prefs.cameras)==='2d'?'2d':'third'});}).catch(()=>{});return {dispose(){dead=true;d?.dispose();}};}});
+document.querySelectorAll('.game-card[data-mode]').forEach(b=>b.addEventListener('click',()=>gameSheet.open(b.dataset.mode)));
 // Play hero: the selected game with its best, weekly rank and top friend.
 function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallOf(shell.preview).open){shell.hero(shell.preview,{wall:wallOf(shell.preview),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
  shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}

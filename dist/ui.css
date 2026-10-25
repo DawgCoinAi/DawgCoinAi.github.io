@@ -468,3 +468,4 @@ html{scrollbar-color:#3a3050 #07060f}
 .discovery-row:not(.seen){opacity:.5;cursor:default;border-style:dashed}.discovery-row.seen{border-color:#b9ff5e55}
 /* Phones: the brand keeps its face and name, drops the word that doesn't fit */
 @media(max-width:430px){.brand-word b{display:none}.brand-word{font-size:17px}}
+@media(min-width:700px){.stat-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}

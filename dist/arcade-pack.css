@@ -55,7 +55,7 @@ body.pack-session.pack-landscape #packPanel{grid-template-areas:'header header' 
 @media(max-width:480px){.ah-scene{aspect-ratio:1/1;border-radius:10px}.ah-verbs button{padding:8px 9px;font-size:9px}.ah-hud b{font-size:13px}.ah-over h3{font-size:22px}.ah-over p{font-size:13px}}
 .story-card nav.ah-taxi{display:flex;flex-wrap:wrap;gap:6px}.story-card nav.ah-taxi button{width:auto}
 .ah-spot span{opacity:.72}.ah-spot:not(.ah-npc) span{opacity:.0}
-@media(pointer:coarse){.ah-spot:not(.ah-npc) span{opacity:.6}}
+@media(pointer:coarse){.ah-spot:not(.ah-npc) span{opacity:0}.ah-spot span{font-size:8px;padding:2px 6px}.ah-spot i{width:16px;height:16px}}
 .ah-spot:hover span,.ah-spot:focus-visible span,.ah-spot.speaking span{opacity:1!important}
 
 /* After Hours: bubbles over the scene */

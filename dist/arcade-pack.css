@@ -77,3 +77,8 @@ body.pack-session.pack-landscape #packPanel{grid-template-areas:'header header' 
 .d3-mission{position:absolute;left:50%;top:calc(var(--d3-top,10px) + 54px);transform:translateX(-50%);display:grid;justify-items:center;gap:2px;padding:6px 12px;border-radius:999px;background:#0b081699;border:1px solid #ffffff22;pointer-events:none;max-width:calc(100% - 180px)}
 .d3-mission b{font:800 11px var(--ui-mono,var(--mono));letter-spacing:1px;color:#ffe45e}.d3-mission small{font:700 9px var(--ui-mono,var(--mono));letter-spacing:.5px;color:#dff6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 @media(max-width:480px){.d3-mission{top:calc(var(--d3-top,10px) + 50px);max-width:calc(100% - 24px)}}
+/* After Hours on phones: one column where pockets and the taxi sit right under the verbs */
+@media(max-width:900px){.ah-grid{display:grid;grid-template-columns:minmax(0,1fr)}.ah-main,.ah-side{display:contents}
+ .ah-scene{order:1}.ah-verbs{order:2}.ah-action{order:3}.ah-side .story-card:nth-child(1){order:4}.ah-side .story-card:nth-child(2){order:5}.ah-form{order:6}.ah-transcript{order:7}.ah-side .story-card:nth-child(3){order:8}.ah-side details.story-card{order:9}
+ .ah-side .story-card{padding:10px 14px}.ah-side .story-card p{display:none}.ah-side .story-card h3{font:700 11px var(--ui-mono,var(--mono));letter-spacing:1px;text-transform:uppercase;color:#b9a8cf}
+ .story-card nav.ah-taxi,.story-card .ah-inventory{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:8px -14px 0;padding:0 14px 4px;scrollbar-width:none}.ah-taxi::-webkit-scrollbar,.ah-inventory::-webkit-scrollbar{display:none}.story-card nav.ah-taxi button,.story-card .ah-inventory button{flex:0 0 auto;width:auto}.ah-inventory button{min-height:40px}}

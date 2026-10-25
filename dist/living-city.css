@@ -22,3 +22,4 @@
 .hustle-chat [hidden]{display:none!important}
 .hustle-encounter{top:auto!important;bottom:10px;transform:translateX(-50%)}.hustle-encounter::after{bottom:auto;top:-8px;box-shadow:-3px -3px 0 -1px #ff5fc8}
 .hustle-encounter p{color:#3a2c4a;margin:2px 0 0}.hustle-encounter .encounter-options{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+@media(max-width:700px){.trade-top{flex-direction:column;align-items:flex-start;gap:8px;margin:14px 0 16px}.trade-top h2{font-size:30px;margin:6px 0}.trade-top p{font-size:13px}.trade-day{display:flex;align-items:baseline;gap:10px}}

@@ -76,3 +76,6 @@ body.maze-3d.mobile-session .cabinet-top{background:#0b0a16b8;backdrop-filter:bl
 @media (prefers-reduced-motion:reduce){.maze3d .m3-warn{animation:none}}
 body.maze-3d.mobile-session .board-wrap{background:transparent}
 body.maze-3d.mobile-session .game-overlay{background:radial-gradient(ellipse at center,#090b18d0 0%,#090b1866 55%,#090b1800 85%)}
+
+.d3-combo{position:absolute;right:16px;top:calc(var(--d3-top) + 58px);display:grid;justify-items:center;padding:6px 14px;border-radius:14px;background:#2a0838b8;border:1px solid #ff4fd866;box-shadow:0 0 22px #ff4fd844;pointer-events:none}
+.d3-combo b{font:900 22px var(--mono);color:#ffb3ec;text-shadow:0 0 12px #ff4fd8}.d3-combo small{font:700 9px var(--mono);letter-spacing:2px;color:#ffd6f5}.d3-combo[hidden]{display:none}

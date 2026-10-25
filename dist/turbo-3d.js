@@ -5,9 +5,11 @@ import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {T,smooth,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,buildingShells,facadeMaterials,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {TURBO,turboChunk,chunkAt,groundIn} from './turbo-engine.js';
 import {worldLook,hash} from './world.js';
+import {loadBuildings,building} from './city-art.js';
+import {seededRandom} from './mobile-core.js';
 import {heatLabel} from './difficulty.js';
 
-const W=1.8,DEPTH=3.2,AHEAD=6,BEHIND=2;
+const W=2.3,DEPTH=3.2,AHEAD=6,BEHIND=2;
 // Track surface between pits: one top strip and one front wall, sampled every half meter.
 function strips(c){const runs=[];let run=[];for(let x=c.x0;x<=c.x0+c.len+1e-6;x+=.5){const xx=Math.min(x,c.x0+c.len-1e-4),y=groundIn(c,xx);if(y===null){if(run.length>1)runs.push(run);run=[];}else run.push([xx,y]);}if(run.length>1)runs.push(run);return runs;}
 function ribbon(points,top){const pos=[],uv=[],idx=[];points.forEach(([x,y],i)=>{if(top){pos.push(x,y,W,x,y,-W);uv.push(x/4,0,x/4,1);}else{pos.push(x,y,W,x,y-DEPTH,W);uv.push(x/4,1,x/4,0);}if(i){const a=(i-1)*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}});
@@ -22,14 +24,14 @@ export class ThreeTurbo {
  constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.chunks=new Map();this.asset=null;this.assetKey='';this.cameraMode='first';this.status='';this.statusSince=performance.now();this.clock=performance.now();this.district=-1;this.combo=0;}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
-  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-power" hidden><span>TURBO</span><em><s></s></em></div>');this.view.append(this.hud.root);
-  this.ui={dist:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),zone:this.hud.q('.d3-zone'),power:this.hud.q('.d3-power'),bar:this.hud.q('.d3-power s')};
+  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-combo" hidden><b>×2</b><small>COMBO</small></div><div class="d3-power" hidden><span>TURBO</span><em><s></s></em></div>');this.view.append(this.hud.root);
+  this.ui={dist:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),zone:this.hud.q('.d3-zone'),power:this.hud.q('.d3-power'),bar:this.hud.q('.d3-power s'),combo:this.hud.q('.d3-combo'),comboN:this.hud.q('.d3-combo b')};
   this.rig=new CameraRig(this.camera);this.rig.setMode(this.cameraMode);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D TRACK · LIVE');return this;
  }
  setCamera(mode){this.cameraMode=mode==='third'?'third':'first';this.rig?.setMode(this.cameraMode);}
  build(){
-  const s=this.scene,high=this.quality==='high';this.stage.neonEnvironment(.8);s.fog=new T.FogExp2(0x141831,.0085);
+  const s=this.scene,high=this.quality==='high';this.stage.neonEnvironment(.8);this.stage.hdrEnvironment(undefined,.5);s.fog=new T.FogExp2(0x141831,.0085);
   this.sky=new T.Mesh(new T.SphereGeometry(470,32,16),skyMaterial());s.add(this.sky);
   this.skyline=new T.Mesh(new T.CylinderGeometry(260,260,150,64,1,true),new T.MeshBasicMaterial({map:skylineTexture(),transparent:true,side:T.BackSide,fog:false,depthWrite:false}));this.skyline.material.map.repeat.set(5,1);s.add(this.skyline);
   this.moon=new T.Sprite(new T.SpriteMaterial({map:radial([[0,'#fffaf0'],[.32,'#fff2d6'],[.36,'#ffe3b366'],[1,'#ffd09000']]),fog:false,depthWrite:false,color:new T.Color(1.6,1.5,1.4)}));this.moon.scale.set(60,60,1);s.add(this.moon);
@@ -43,6 +45,8 @@ export class ThreeTurbo {
   this.springMat=new T.MeshStandardMaterial({color:0xffd25e,emissive:0xffa000,emissiveIntensity:1.2,metalness:.8,roughness:.25});this.springPad=new T.MeshStandardMaterial({color:0xff3d6a,emissive:0xff2448,emissiveIntensity:1.6});
   this.boostMat=new T.MeshBasicMaterial({map:chevrons('#7ff3ff'),transparent:true,toneMapped:false,color:new T.Color(2.2,2.6,2.8),depthWrite:false});this.rampMat=new T.MeshBasicMaterial({map:chevrons('#ffd25e'),transparent:true,toneMapped:false,color:new T.Color(2.4,2,1),depthWrite:false});
   this.loopMat=new T.MeshStandardMaterial({map:tex,metalness:.55,roughness:.38,envMapIntensity:.9,color:0x9aa3c2,side:T.DoubleSide});this.ringGeo=new T.TorusGeometry(TURBO.loopRadius,.07,8,96);this.ringOuter=new T.TorusGeometry(TURBO.loopRadius+.35,.05,8,96);
+  // Air rings: a neon hoop to fly through, with a soft glow behind it.
+  this.hoopGeo=new T.TorusGeometry(1.1,.09,10,40);this.hoopMat=new T.MeshBasicMaterial({color:new T.Color(2.4,1.2,3),toneMapped:false});this.hoopInner=new T.MeshBasicMaterial({color:new T.Color(.8,.3,1),toneMapped:false,transparent:true,opacity:.15,side:T.DoubleSide,depthWrite:false});this.hoopDisc=new T.CircleGeometry(1.0,32);
   // Gold coins and the bots are pooled: coins as one instanced mesh, bots as small groups.
   this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.22,emissive:0xff8a00,emissiveIntensity:.3,envMapIntensity:1.2});
   this.coinCap=320;this.coins=new T.InstancedMesh(new T.CylinderGeometry(.42,.42,.1,28).rotateX(Math.PI/2),this.goldMat,this.coinCap);this.coins.frustumCulled=false;s.add(this.coins);
@@ -52,6 +56,8 @@ export class ThreeTurbo {
   this.ball=new T.Mesh(new T.SphereGeometry(.62,24,16),new T.MeshStandardMaterial({color:0xc58a4d,metalness:.3,roughness:.4,emissive:0x3a1a08}));const band=new T.Mesh(new T.TorusGeometry(.62,.08,8,32),new T.MeshBasicMaterial({color:new T.Color(1.6,2.6,1),toneMapped:false}));this.ball.add(band);this.ball.visible=false;this.pivot.add(this.ball);
   this.shadow=new T.Mesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:radial([[0,'#000000b0'],[.6,'#00000050'],[1,'#00000000']]),transparent:true,depthWrite:false}));s.add(this.shadow);
   // A neon city far below the track: rooftops behind it in the side view, towers either side in the chase view.
+  // The city below: Kenney's CC0 buildings once they load; simple shells until then.
+  this.kenney=null;this.kTowers=new Map();loadBuildings().then(b=>{if(!this.dead&&b.length){this.kenney=b;for(const m of this.towers)m.visible=false;this.key.intensity=1.4;this.hemi.intensity=.8;this.scene.fog.density=.011;}}).catch(()=>{});
   this.facades=facadeMaterials();this.shells=buildingShells();this.stage.extraGeometries.push(...this.shells.map(sh=>sh.g));this.towers=[];this.CITY_SPACING=11;this.CITY_COUNT=high?26:18;
   for(let side=0;side<2;side++)for(let i=0;i<this.CITY_COUNT;i++){const m=new T.Mesh(this.shells[0].g,this.facades[0]);m.userData={a:null,side};this.towers.push(m);s.add(m);}
   this.colors={sky:new T.Color(),floor:new T.Color(),glow:new T.Color(),accent:new T.Color()};this.goal={sky:new T.Color(),floor:new T.Color(),glow:new T.Color(),accent:new T.Color()};this.m4=new T.Matrix4();this.q=new T.Quaternion();this.v=new T.Vector3();this.sc=new T.Vector3();
@@ -66,6 +72,7 @@ export class ThreeTurbo {
   const decal=(x,y,len,mat,slope=0)=>{const geo=new T.PlaneGeometry(len,W*1.6).rotateX(-Math.PI/2);geos.push(geo);const m=new T.Mesh(geo,mat);m.position.set(x,y+.03,0);m.rotation.z=Math.atan(slope);g.add(m);};
   for(const bx of c.boosts)decal(bx,groundIn(c,bx)??0,3,this.boostMat);
   if(c.ramp){const r=c.ramp,mid=(r.x0+r.x1)/2;decal(mid,groundIn(c,mid)??0,r.x1-r.x0,this.rampMat,r.h/(r.x1-r.x0));}
+  g.userData.rings=[];for(const r of c.rings){const hoop=new T.Mesh(this.hoopGeo,this.hoopMat),disc=new T.Mesh(this.hoopDisc,this.hoopInner);hoop.position.set(r.x,r.y,0);disc.position.set(r.x,r.y,0);hoop.rotation.y=disc.rotation.y=Math.PI/2;hoop.userData.ring=r.id;disc.userData.ring=r.id;g.add(hoop,disc);g.userData.rings.push(hoop,disc);}
   if(c.loop){const cx=c.loop.cx,R=TURBO.loopRadius;add(loopRibbon(cx,R,true),this.loopMat);add(loopRibbon(cx,R,false),this.wallMat);for(const z of [W,-W]){const ring=new T.Mesh(this.ringGeo,z>0?this.edgeA:this.edgeB);ring.position.set(cx,R,z);g.add(ring);const o=new T.Mesh(this.ringOuter,z>0?this.edgeB:this.edgeA);o.position.set(cx,R,z);g.add(o);}}
   g.traverse(o=>{if(o.isMesh&&o.material!==this.edgeA&&o.material!==this.edgeB)o.castShadow=this.stage.quality==='high';});this.scene.add(g);return g;
  }
@@ -75,10 +82,13 @@ export class ThreeTurbo {
  event(e,g){
   if(!this.ready)return;const c=g.center,st=this.stage,hud=this.hud,fp=this.rig.first,bz=fp?-.5:0;
   if(e.type==='coin'){this.particles.burst(c.x,c.y,bz,e.regained?10:16,0xffc14d,{speed:5,up:2});if(!e.regained)hud.pop('+10');}
-  else if(e.type==='bot'){this.particles.burst(c.x,c.y,bz,50,0xff4fd8,{speed:10,life:.8});hud.pop('BOT SMASHED +100','dodge');st.shake(.3);}
-  else if(e.type==='loop'){this.combo++;hud.pop('LOOP! +250','big');st.flashOnce(0x48e6ff,.18,this.reduced);}
+  else if(e.type==='bot'){this.particles.burst(c.x,c.y,bz,50,0xff4fd8,{speed:10,life:.8});hud.pop('BOT SMASHED +'+e.points,'dodge');st.shake(.3);}
+  else if(e.type==='loop'){hud.pop('LOOP! +'+e.points,'big');st.flashOnce(0x48e6ff,.18,this.reduced);}
+  else if(e.type==='ring'){this.particles.burst(e.x,e.y,bz,40,0xc77dff,{speed:6,life:.7,gravity:2,up:0,spread:1.2});hud.pop('RING +'+e.points,'magnet');st.flashOnce(0xb46bff,.1,this.reduced);}
+  else if(e.type==='combo'){hud.pop('×'+Math.min(5,e.n)+' COMBO','big');st.shake(.1);}
+  else if(e.type==='combobreak'){hud.pop('COMBO OVER','dodge');}
   else if(e.type==='boost'||e.type==='boostpad'){this.particles.burst(c.x-.6,c.y,bz,30,0x7ff3ff,{speed:7,life:.5,gravity:0,up:.3});if(e.type==='boost')hud.pop('TURBO!','shield');st.shake(.15);}
-  else if(e.type==='kicker'){hud.pop('AIR!','magnet');this.particles.burst(c.x,c.y-.6,bz,24,0xffd25e,{speed:6});}
+  else if(e.type==='kicker'){hud.pop('AIR! +'+e.points,'magnet');this.particles.burst(c.x,c.y-.6,bz,24,0xffd25e,{speed:6});}
   else if(e.type==='spring'){hud.pop('BOING!','magnet');st.shake(.2);this.springAt=performance.now();}
   else if(e.type==='hurt'){hud.pop(`OUCH! −${e.lost} GOLD`,'big');st.shake(.6);st.flashOnce(0xff3355,.35,this.reduced);}
   else if(e.type==='slam'){this.particles.burst(c.x,g.y+.1,bz,36,0xb9ff5e,{speed:8,life:.6,up:1});st.shake(.4);}
@@ -101,12 +111,18 @@ export class ThreeTurbo {
   for(let i=Math.max(0,k-1);i<=k+AHEAD&&n<this.coinCap;i++)for(const coin of turboChunk(g.worldSeed,i).coins){if(n>=this.coinCap)break;if(g.collected.includes(coin.id))continue;this.m4.compose(this.v.set(coin.x,coin.y+(reduced?0:Math.sin(real*3+coin.x)*.08),0),this.q,this.sc);this.coins.setMatrixAt(n++,this.m4);}
   for(const s of g.scatter){if(n>=this.coinCap)break;this.m4.compose(this.v.set(s.x,s.y,0),this.q,this.sc.set(.8,.8,.8));this.coins.setMatrixAt(n++,this.m4);this.sc.set(1,1,1);}
   this.coins.count=n;this.coins.instanceMatrix.needsUpdate=true;
+  // Rings spin slowly and vanish once flown through.
+  for(const grp of this.chunks.values())for(const m of grp.userData.rings||[]){m.visible=!g.collected.includes(m.userData.ring);if(!reduced)m.rotation.y=Math.PI/2+Math.sin(real*1.6+m.position.x)*.25;}
   this.placeCity(g.x,g.worldSeed);this.placeBots(g,k,real);this.placePup(g,real,since);
   this.particles.update(dt);if(g.status==='playing'&&!reduced&&g.vx>24&&Math.random()<.5)this.particles.burst(g.center.x-.5,g.center.y,(Math.random()-.5)*2,1,0x7ff3ff,{speed:1,life:.3,gravity:0,up:0});
   this.placeCamera(g,dt,since,real);this.updateHud(g,look);
   this.stage.render(dt,real,{reduced,aberration:.0022+Math.max(0,(g.vx-22)/12)*.004});
  }
- placeCity(x,seed){const S=this.CITY_SPACING,n=this.CITY_COUNT,first=Math.floor(x/S)-4;for(let j=0;j<n;j++){const a=first+j,slot=((a%n)+n)%n;for(let side=0;side<2;side++){const m=this.towers[side*n+slot];if(m.userData.a!==a){m.userData.a=a;const h=hash(seed,a*2+side+500),sh=this.shells[Math.floor(h*this.shells.length)];m.geometry=sh.g;m.material=this.facades[Math.floor(hash(seed,a*2+side+501)*4)];m.userData.z=side?24+hash(seed,a+502)*20:-(14+hash(seed,a+502)*26);m.userData.base=-34-hash(seed,a+503)*10;}m.position.set(a*S,m.userData.base,m.userData.z);}}}
+ placeCity(x,seed){const S=this.CITY_SPACING,n=this.CITY_COUNT,first=Math.floor(x/S)-4;
+  if(this.kenney){// Real buildings: one per slot each side, swapped as the course scrolls.
+   for(let j=0;j<n;j++){const a=first+j;for(let side=0;side<2;side++){const key=side+':'+(((a%n)+n)%n);let t=this.kTowers.get(key);if(t&&t.userData.a===a)continue;t?.removeFromParent();
+    const rnd=seededRandom(((seed>>>0)+a*7919+side*104729)>>>0),h=18+rnd()*34,z=side?26+rnd()*22:-(16+rnd()*28),b=building(this.kenney,rnd,{x:a*S+(rnd()-.5)*4,z,height:h,facing:side?-Math.PI/2:Math.PI/2});b.position.y=-32-rnd()*8;b.userData.a=a;b.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.envMapIntensity=.15;o.material.color.multiplyScalar(.6);}});this.scene.add(b);this.kTowers.set(key,b);}}return;}
+  for(let j=0;j<n;j++){const a=first+j,slot=((a%n)+n)%n;for(let side=0;side<2;side++){const m=this.towers[side*n+slot];if(m.userData.a!==a){m.userData.a=a;const h=hash(seed,a*2+side+500),sh=this.shells[Math.floor(h*this.shells.length)];m.geometry=sh.g;m.material=this.facades[Math.floor(hash(seed,a*2+side+501)*4)];m.userData.z=side?24+hash(seed,a+502)*20:-(14+hash(seed,a+502)*26);m.userData.base=-34-hash(seed,a+503)*10;}m.position.set(a*S,m.userData.base,m.userData.z);}}}
  placeBots(g,k,real){let used=0;for(let i=Math.max(0,k-1);i<=k+AHEAD;i++){const ch=turboChunk(g.worldSeed,i);for(const b of ch.bots){if(g.defeated.includes(b.id))continue;let bot=this.bots[used];if(!bot){bot=this.makeBot();this.bots.push(bot);}bot.visible=true;const bx=b.x+Math.sin(g.time*b.speed+b.phase)*b.range,by=groundIn(ch,bx)??0;bot.position.set(bx,by+(this.reduced?0:Math.abs(Math.sin(real*8+b.phase))*.08),0);bot.rotation.y=Math.cos(g.time*b.speed+b.phase)>0?-Math.PI/2:Math.PI/2;used++;}}for(let i=used;i<this.bots.length;i++)this.bots[i].visible=false;}
  makeBot(){const g=new T.Group(),body=new T.Mesh(new T.BoxGeometry(.9,.7,.8).translate(0,.55,0),this.botBody),eye=new T.Mesh(new T.BoxGeometry(.5,.14,.05),this.botEye),ant=new T.Mesh(new T.CylinderGeometry(.03,.03,.4,6).translate(0,1.1,0),this.botBody),tip=new T.Mesh(new T.SphereGeometry(.08,8,6),this.botEye);eye.position.set(0,.65,.42);tip.position.y=1.32;for(const x of [-.32,.32]){const w=new T.Mesh(new T.CylinderGeometry(.18,.18,.12,12).rotateZ(Math.PI/2),this.pillarMat);w.position.set(x,.18,0);w.rotation.y=Math.PI/2;g.add(w);}g.add(body,eye,ant,tip);g.traverse(o=>{if(o.isMesh)o.castShadow=true;});this.scene.add(g);return g;}
  placePup(g,real,since){
@@ -136,7 +152,8 @@ export class ThreeTurbo {
   this.sky.position.copy(cam.position);this.skyline.position.set(cam.position.x,-30,cam.position.z);this.moon.position.set(cam.position.x+120,150,cam.position.z-320);
  }
  updateHud(g,look){const h=this.hud,ui=this.ui;h.set(ui.dist,'d',String(Math.floor(g.distance)));h.set(ui.gold,'g',String(g.gold));h.set(ui.zone,'z','ZONE '+(Math.floor(g.distance/800)+1)+' · '+look.label.toUpperCase());
-  const charging=g.boostCooldown>0;ui.power.hidden=g.status!=='playing';ui.power.dataset.kind=charging?'magnet':'shield';ui.bar.style.transform=`scaleX(${(1-g.boostCooldown/2.5).toFixed(3)})`;h.live(g.status==='playing');}
+  const ready=g.turbo>=TURBO.boostCost;ui.power.hidden=g.status!=='playing';ui.power.dataset.kind=ready?'shield':'magnet';ui.bar.style.transform=`scaleX(${g.turbo.toFixed(3)})`;
+  ui.combo.hidden=!(g.combo>=2&&g.status==='playing');if(g.combo>=2){h.set(ui.comboN,'c','×'+Math.min(5,g.combo));ui.combo.style.opacity=String(.45+.55*Math.min(1,g.comboTime/TURBO.comboWindow));}h.live(g.status==='playing');}
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}
  dispose(){if(this.dead)return;this.dead=true;this.ready=false;this.ambient?.stop();this.hud?.dispose();try{this.asset?.dispose();for(const grp of this.chunks.values())for(const geo of grp.userData.geos)geo.dispose();}catch{}this.stage?.dispose();}
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TurboGame,TURBO,turboChunk,chunkAt,groundAt} from '../dist/turbo-engine.js';
+import {TurboGame,TRICKS,TURBO,turboChunk,chunkAt,groundAt} from '../dist/turbo-engine.js';
 import {createQuickGame,snapshotQuick,restoreQuick} from '../dist/pack-checkpoint.js';
 
 // A fair autopilot: rides kicker ramps, jumps gaps and spikes, rolls into bots.
@@ -38,4 +38,13 @@ test('Turbo runs pause and resume exactly, and corrupt saves are refused',()=>{
  assert.ok(h);g.start();h.start();for(let i=0;i<600;i++){pilot(g);pilot(h);g.tick(1/120);h.tick(1/120);}
  assert.equal(h.x,g.x);assert.equal(h.score,g.score);assert.equal(h.status,g.status);
  for(const patch of [{vx:999},{score:snap.score+1},{collected:['<x>']},{gold:-1},{loop:{cx:1,phi:9,v0:10}}])assert.equal(restoreQuick({...snap,...patch}),null,JSON.stringify(patch));
+});
+test('Held jumps go higher, the turbo meter is fed by gold and tricks, and tricks chain into combos',()=>{
+ const g=new TurboGame(Math.random,5);g.start();g.tick(.01);
+ assert.ok(g.press('up',true));assert.equal(g.vy,TURBO.jump);g.press('up',false);assert.equal(g.vy,TURBO.shortHop,'letting go early cuts the jump');
+ const h=new TurboGame(Math.random,5);h.start();h.tick(.01);h.press('up',true);for(let i=0;i<10;i++)h.tick(1/60);assert.ok(h.vy>TURBO.shortHop,'held, the jump keeps its lift');
+ const b=new TurboGame(Math.random,5);b.start();assert.equal(b.turbo,.5);assert.ok(b.move('right'));assert.ok(b.turbo<.2);assert.equal(b.move('right'),false,'the meter is spent');b.fuel(.3);assert.ok(b.move('right'),'refilled by gold and tricks');assert.equal(b.boostCooldown>0,true);
+ const c=new TurboGame(Math.random,5);c.start();c.trick('bot');c.trick('bot');c.trick('loop');assert.equal(c.combo,3);assert.equal(c.bonus,TRICKS.bot+TRICKS.bot*2+TRICKS.loop*3);assert.ok(c.events.some(e=>e.type==='combo'&&e.n===3));
+ c.tick(TURBO.comboWindow+.1);assert.equal(c.combo,0);assert.ok(c.events.some(e=>e.type==='combobreak'));
+ const ringed=[];for(let k=0;k<40;k++){const ch=turboChunk(5,k);for(const r of ch.rings){ringed.push(r);const gy=groundAt(5,r.x);assert.ok(gy===null||r.y>gy+1.5,'rings hang well above the track');}}assert.ok(ringed.length>3,'the course has rings');
 });

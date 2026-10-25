@@ -17,7 +17,7 @@ function validValue(key,v){
  if(key==='sound')return typeof v==='boolean';
  if(key==='records')return object(v)&&Object.entries(v).every(([k,n])=>[...GAME_IDS,'runs'].includes(k)&&(k==='trade'?(n===null||Number.isSafeInteger(n)&&Math.abs(n)<=1e12):count(n)));
  if(key==='profile')return object(v)&&Object.entries(v).every(([k,n])=>k==='theme'?['district','mint','sunset','ice'].includes(n):['rep','dots','caught','loot','clears','dashes','profitable'].includes(k)&&count(n));
- if(key==='settings')return object(v)&&Object.entries(v).every(([k,n])=>k==='controls'?['stick','pad'].includes(n):k==='hand'?['left','right'].includes(n):k==='haptics'?typeof n==='boolean':k==='fx'?['auto','low'].includes(n):k==='curveballs'?['on','off'].includes(n):k==='volume'?typeof n==='number'&&n>=0&&n<=1:k==='cameras'?object(n)&&Object.entries(n).every(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)):false);
+ if(key==='settings')return object(v)&&Object.entries(v).every(([k,n])=>k==='controls'?['stick','pad'].includes(n):k==='controlsChosen'?typeof n==='boolean':k==='hand'?['left','right'].includes(n):k==='haptics'?typeof n==='boolean':k==='fx'?['auto','low'].includes(n):k==='curveballs'?['on','off'].includes(n):k==='volume'?typeof n==='number'&&n>=0&&n<=1:k==='cameras'?object(n)&&Object.entries(n).every(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)):false);
  if(key==='daily')return object(v)&&Object.keys(v).length<=100&&Object.entries(v).every(([day,r])=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&object(r)&&count(r.best)&&count(r.medal,3)&&count(r.claimed,3)&&count(r.runs));
  if(key==='trade')return v===null||v?.version===1&&validLivingTrade(v.state);
  if(key==='mazeRun')return v===null||!!restoreMaze(v,v?.challenge?.day);

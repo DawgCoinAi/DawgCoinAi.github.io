@@ -20,7 +20,7 @@ import {Rankings,challengeLink} from './rankings.js';
 import {Shell,fmt as fmtNum,unlockProgress} from './shell.js';
 import {music} from './arcade-music.js';
 import {ShareSheet,drawScoreCard,shareBase,playLink,gamePage,readPlayLink,fmt} from './share.js';
-import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
+import {GAME_IDS,VIEWS,VIEW_LABEL,canSwitchView,gameById,viewFor,nextView,viewAria,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
@@ -51,7 +51,7 @@ let lastTime=0,toastUntil=0,blinkTime=0,lastProfileSave=0,musicBeat=0,nextMusicB
 let focused=false,profileDirty=false,countdownUntil=0,wakeLock=null,runOutcome=null;
 let challenge=dailyChallenge(),dailyRecords=read('daily',{});
 if(!dailyRecords||typeof dailyRecords!=='object'||Array.isArray(dailyRecords))dailyRecords={};
-const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controls==='pad'?'pad':'stick',hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',curveballs:savedPrefs?.curveballs==='off'?'off':'on',volume:Number.isFinite(savedPrefs?.volume)?Math.min(1,Math.max(0,savedPrefs.volume)):.8,cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
+const savedPrefs=read('settings',{}),prefs={controls:savedPrefs?.controlsChosen&&savedPrefs.controls==='stick'?'stick':'pad',controlsChosen:savedPrefs?.controlsChosen===true,hand:savedPrefs?.hand==='left'?'left':'right',haptics:savedPrefs?.haptics!==false,fx:savedPrefs?.fx==='low'?'low':'auto',curveballs:savedPrefs?.curveballs==='off'?'off':'on',volume:Number.isFinite(savedPrefs?.volume)?Math.min(1,Math.max(0,savedPrefs.volume)):.8,cameras:Object.fromEntries(Object.entries(savedPrefs?.cameras||{}).filter(([id,view])=>canSwitchView(id)&&VIEWS.includes(view)))};
 const BADGES=[{id:'dots',target:100,name:'Block cleaner',desc:'Collect 100 coins'},{id:'caught',target:5,name:'Pack leader',desc:'Catch 5 rivals'},{id:'loot',target:3,name:'Bag chaser',desc:'Grab 3 gold bags'},{id:'clears',target:3,name:'City legend',desc:'Clear 3 districts'},{id:'dashes',target:25,name:'Fast & furrious',desc:'Use dash 25 times'},{id:'profitable',target:1,name:'Self-made DAWG',desc:'Finish a profitable hustle'}];
 const savedProfile=read('profile',{}),profile={rep:0,dots:0,caught:0,loot:0,clears:0,dashes:0,profitable:0,theme:'district'};
 for(const k of Object.keys(profile)){if(k!=='theme'&&Number.isFinite(savedProfile?.[k])&&savedProfile[k]>=0)profile[k]=Math.floor(savedProfile[k]);}
@@ -155,13 +155,14 @@ const keyDirections={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'
 const maze3d={gpu:null,state:'canvas'};
 async function upgradeMaze3D(){if(maze3d.state!=='canvas')return;if(typeof WebGL2RenderingContext==='undefined'){maze3d.state='unsupported';return;}maze3d.state='loading';
  try{const {ThreeMaze}=await import('./maze-3d.js');const gpu=new ThreeMaze($('arcadePanel'),()=>{maze3d.state='failed';maze3d.gpu=null;document.body.classList.remove('maze-3d');canvas.style.opacity='';});await gpu.init();if(gpu.ready){maze3d.gpu=gpu;maze3d.state='ready';}else maze3d.state='failed';}catch{maze3d.state='failed';}}
-function drawMaze3D(){const on=mobile.active&&isMaze(),gpu=maze3d.gpu,live=!!(on&&gpu?.ready);if(on)upgradeMaze3D();document.body.classList.toggle('maze-3d',live);$('mazeView').hidden=!live;if(gpu?.view)gpu.view.hidden=!live;if(!live)return false;
- const view=viewFor(mode,prefs.cameras);gpu.setCamera(view);$('mazeView').textContent=view==='first'?'1P':'3P';$('mazeView').setAttribute('aria-label',view==='first'?'Switch to third-person view':'Switch to first-person view');
+function mazeViewLabel(){const b=$('mazeView');b.textContent=VIEW_LABEL[viewFor(mode,prefs.cameras)];b.setAttribute('aria-label',viewAria(mode,prefs.cameras));}
+function drawMaze3D(){mazeViewLabel();const flat=viewFor(mode,prefs.cameras)==='2d',on=mobile.active&&isMaze(),gpu=maze3d.gpu,live=!!(on&&gpu?.ready&&!flat);if(on&&!flat)upgradeMaze3D();document.body.classList.toggle('maze-3d',live);$('mazeView').hidden=!(live||on&&flat&&maze3d.state!=='failed');if(gpu?.view)gpu.view.hidden=!live;if(!live)return false;
+ const view=viewFor(mode,prefs.cameras);gpu.setCamera(view);
  try{return gpu.draw(game,renderer.character,renderer.reduced);}catch{gpu.fail();return false;}}
 // Corridors feel far faster from the inside, so first person moves everyone at 75% speed.
-const FIRST_PERSON_PACE=.75;
+const FIRST_PERSON_PACE=.62;
 function mazeFirstPerson(){return mobile.active&&isMaze()&&maze3d.gpu?.ready&&viewFor(mode,prefs.cameras)==='first';}
-function toggleMazeView(){if(!isMaze())return;prefs.cameras={...prefs.cameras,[mode]:viewFor(mode,prefs.cameras)==='first'?'third':'first'};saveSettings();}
+function toggleMazeView(){if(!isMaze())return;prefs.cameras={...prefs.cameras,[mode]:nextView(mode,prefs.cameras)};saveSettings();}
 $('mazeView').onclick=toggleMazeView;
 // Maze curveballs share the pack games' rules: announced, timed, presentation and input only.
 const curve=new Curveballs({target:()=>$('maze')?.parentElement,enabled:()=>prefs.curveballs!=='off',reduced:()=>renderer.reduced,cue:(kind,m)=>{if(kind==='warn')sound(520,.12,'square',.03);else if(kind==='start')sound(m.time>1?880:m.time<1?220:660,.35,'sawtooth',.03);else sound(440,.15,'triangle',.025);}});let curveGame=null;
@@ -403,7 +404,7 @@ $('backupFile').addEventListener('change',async e=>{
 $('settingsDone').onclick=()=>$('settingsDialog').close();$('settingsSound').onclick=()=>$('soundButton').click();
 $('settingsVolume').addEventListener('change',e=>{prefs.volume=Math.min(1,Math.max(0,Number(e.target.value)/100));saveSettings();sound(660,.1);});
 $('hapticsToggle').onclick=()=>{prefs.haptics=!prefs.haptics;saveSettings();mobile.haptic(15);};
-document.querySelectorAll('[data-setting]').forEach(b=>b.onclick=()=>{prefs[b.dataset.setting]=b.dataset.value;saveSettings();});
+document.querySelectorAll('[data-setting]').forEach(b=>b.onclick=()=>{prefs[b.dataset.setting]=b.dataset.value;if(b.dataset.setting==='controls')prefs.controlsChosen=true;saveSettings();});
 window.addEventListener('pagehide',()=>{saveProfile();saveCheckpoint();releaseWakeLock();});
 $('tabReload').onclick=()=>location.reload();$('tabDialog').addEventListener('cancel',e=>e.preventDefault());
 // A page restored from the back/forward cache may hold stale progress, so reload it to read and claim the latest save.

@@ -95,16 +95,16 @@ export class ThreeMaze {
  placePlayer(g,real,dt){
   const p=g.position(g.player),moving=g.player.moving&&g.status==='playing';if(STEP[g.player.dir])this.facing=g.player.dir;
   // Turn smoothly toward the heading instead of snapping on every corner.
-  const target=HEADING[this.facing];let diff=((target-this.yaw+Math.PI*3)%(Math.PI*2))-Math.PI;this.yaw+=diff*Math.min(1,dt*(this.reduced?30:12));
+  const target=HEADING[this.facing];let diff=((target-this.yaw+Math.PI*3)%(Math.PI*2))-Math.PI;this.yaw+=diff*Math.min(1,dt*(this.reduced?30:this.rig?.mix>.5?6.5:12));
   this.holder.position.set(p.x,0,p.y);this.holder.rotation.y=this.yaw;if(this.asset){this.asset.root.visible=this.rig.mix<.55;setDawgPose(this.asset,g.status==='ready'?real:g.time*1.4,moving?'run':'idle');}
   this.holder.visible=!(g.invincible>0&&!this.reduced&&Math.floor(real*10)%2===0);this.lamp.position.set(p.x,.9,p.y);this.px=p.x;this.py=p.y;
  }
  placeCamera(g,dt,real){
-  const p={x:this.px,y:this.py},f=[Math.sin(this.yaw),Math.cos(this.yaw)],bob=this.reduced||!g.player.moving||g.status!=='playing'?0:Math.abs(Math.sin(real*11))*.025;
+  const p={x:this.px,y:this.py},f=[Math.sin(this.yaw),Math.cos(this.yaw)],bob=this.reduced||!g.player.moving||g.status!=='playing'?0:Math.abs(Math.sin(real*7))*.018;
   const first={pos:new T.Vector3(p.x-f[0]*.42,EYE+.04+bob,p.y-f[1]*.42),at:new T.Vector3(p.x+f[0]*3,EYE-.12,p.y+f[1]*3)};
   const third={pos:new T.Vector3(p.x,7.5,p.y+4.6),at:new T.Vector3(p.x,0,p.y-.6)};
-  this.rig.update(dt,third,first,{follow:this.rig.mix>.5?40:7,snap:g.status==='ready'&&this.rig.mix>.99});this.stage.applyShake(real,this.reduced);this.rig.aim();
-  const cam=this.camera,fov=this.rig.mix>.5?78+(g.dashTime>0?8:0):50;cam.fov+=(fitFov(fov,cam.aspect,this.rig.mix>.5?70:56)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();
+  this.rig.update(dt,third,first,{follow:this.rig.mix>.5?16:7,snap:g.status==='ready'&&this.rig.mix>.99});this.stage.applyShake(real,this.reduced);this.rig.aim();
+  const cam=this.camera,fov=this.rig.mix>.5?64+(g.dashTime>0?6:0):50;cam.fov+=(fitFov(fov,cam.aspect,this.rig.mix>.5?60:56)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();
   this.sky.position.copy(cam.position);this.stars.position.copy(cam.position);
  }
  updateHud(g,real){

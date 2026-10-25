@@ -44,7 +44,7 @@ export class PackRenderer {
  upgradeDash(){return this.upgradeGPU('runner');}
  failDash(){this.failGPU('runner');}
  draw(game,kind,now=0){this.drawKind=kind;this.drawGame=game;
-  if(this.gpuLoaders(kind).length){this.upgradeGPU(kind);const gpu=this.gpus[kind];if(gpu?.ready){try{gpu.setCamera?.(this.views?.[kind]);if(gpu.draw(game,this.character,this.reduced)){gpu.view.hidden=false;for(const [k,o]of Object.entries(this.gpus))if(k!==kind&&o?.view)o.view.hidden=true;this.canvas.style.opacity='0';this.particles=[];this.last=now;return;}}catch{this.failGPU(kind);}}}
+  if(this.views?.[kind]!=='2d'&&this.gpuLoaders(kind).length){this.upgradeGPU(kind);const gpu=this.gpus[kind];if(gpu?.ready){try{gpu.setCamera?.(this.views?.[kind]);if(gpu.draw(game,this.character,this.reduced)){gpu.view.hidden=false;for(const [k,o]of Object.entries(this.gpus))if(k!==kind&&o?.view)o.view.hidden=true;this.canvas.style.opacity='0';this.particles=[];this.last=now;return;}}catch{this.failGPU(kind);}}}
   for(const o of Object.values(this.gpus))if(o?.view)o.view.hidden=true;this.canvas.style.opacity='1';this.poseTime=game.time;const c=this.c,v=this.fit();
   // Wider or taller screens: the game's own sky fills the whole canvas, then the playfield is
   // drawn as large as fits, centred and framed, so the screen is always fully used.

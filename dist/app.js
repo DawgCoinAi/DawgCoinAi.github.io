@@ -18,6 +18,7 @@ import {Onboarding,needsOnboarding} from './onboarding.js';
 import {Cloud} from './cloud.js';
 import {Rankings,challengeLink} from './rankings.js';
 import {Shell,fmt as fmtNum,unlockProgress} from './shell.js';
+import {music} from './arcade-music.js';
 import {ShareSheet,drawScoreCard,shareBase,playLink,gamePage,readPlayLink,fmt} from './share.js';
 import {GAME_IDS,VIEWS,canSwitchView,gameById,viewFor,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
@@ -251,6 +252,7 @@ function frame(now){
  if(PACK_MODES.includes(mode))pack.frame(now);
  if(mode==='trade'&&trade&&!document.hidden&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;drawCity(now);lastCityFrame=now;}
  trackPlay(now,dt);
+ if(isMaze()){const on=game.status==='playing'&&soundEnabled&&!document.hidden;if(on){music.setTrack(mode);music.setVolume(prefs.volume??.8);}music.setPlaying(on);}else if(mode==='trade')music.setPlaying(false);
  if(now-lastProfileSave>2000){saveProfile();saveCheckpoint();lastProfileSave=now;}
  requestAnimationFrame(frame);
 }

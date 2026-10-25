@@ -4,6 +4,7 @@ import {AfterHoursPlay} from './after-hours-play.js';
 import {worldLook} from './world.js';
 import {PackRenderer} from './pack-renderer.js';
 import {DashAudio} from './dash-audio.js';
+import {music} from './arcade-music.js';
 import {PACK_IDS,viewFor,canSwitchView,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
@@ -54,7 +55,11 @@ export class ArcadePack {
   if(g.status==='over'){const medal=info.targets.filter(t=>g.score>=t).length,next=info.targets.find(t=>g.score<t);$('packResult').textContent=(g.score>0&&g.score===best?'PERSONAL BEST · ':'')+(['NEXT UP: BRONZE','BRONZE MEDAL','SILVER MEDAL','GOLD MEDAL'][medal])+(next?' · '+(next-g.score)+' TO '+next:'')+'\n'+this.statLine();}
  }
  // Dash music plays only while a run is live, sound is on and the page is visible.
- dashMusic(){const g=this.game,on=(this.kind==='runner'||this.kind==='turbo'||this.kind==='kart')&&this.session&&g?.status==='playing'&&!!this.io.soundOn?.()&&!document.hidden;if(on||this.dashAudio){(this.dashAudio??=new DashAudio()).setVolume(this.io.prefs?.volume??.8);this.dashAudio.setPlaying(on,g?.speed);}}
+ // The soundtrack: each game's own track while a run is live; After Hours' lounge while you play it.
+ // The maze games are scored from app.js, which owns them.
+ dashMusic(){if(!this.kind)return;const g=this.game,sound=!!this.io.soundOn?.()&&!document.hidden,story=this.kind==='story';
+  const on=sound&&(story?!$('storyPanel').hidden:QUICK_MODES.includes(this.kind)&&this.session&&g?.status==='playing');
+  if(on){music.setTrack(this.kind);music.setVolume(this.io.prefs?.volume??.8);}music.setPlaying(on,(this.kind==='runner'||this.kind==='turbo')?((g?.speed||25)-25)/15:this.kind==='kart'?(g?.speed||0)/40:0);}
  frame(now){this.dashMusic();if(this.kind==='story'){if(!document.hidden&&!this.storyRenderer.reduced&&now-(this.lastStoryFrame||0)>83){this.drawStory(now);this.lastStoryFrame=now;}return;}if(!INFO[this.kind]||!this.game)return;const dt=this.last?(now-this.last)/1000:0;this.last=now;const g=this.game,prior=g.status;if(this.countdown){const left=this.countdown-now;if(left<=0){this.countdown=0;const fresh=g.status==='ready';g.start();if(this.kind==='flappy'&&fresh)g.flap();this.sync();}else $('packCountdown').textContent=Math.ceil(left/500);}else{if(g!==this.curveGame){this.curveGame=g;this.curve.reset();}this.curve.tick(dt,g.status==='playing'&&this.kind!=='story');stepPack(g,dt*this.curve.timeScale);if(g.status==='over')this.curve.clear();}
   for(const e of g.events){this.renderer.event(e,g);if((this.kind==='runner'||this.kind==='turbo')&&this.io.soundOn?.())(this.dashAudio??=new DashAudio()).sfx(e.type==='bot'?'dodge':e.type==='loop'||e.type==='boostpad'||e.type==='kicker'?'power':e.type==='spring'?'jump':e.type==='hurt'?'shield':e.type==='slam'?'land':e.type);else if(this.kind==='pinball'&&PINBALL_SFX[e.type])this.io.sound(...PINBALL_SFX[e.type]);else if(this.kind==='kart'&&KART_SFX[e.type])this.io.sound(...KART_SFX[e.type]);else if(e.type==='score'||e.type==='coin')this.io.sound(e.perfect?950:700,.09);else if(e.type==='power')this.io.sound(1000,.15,'triangle',.025);else if(e.type==='shield')this.io.sound(180,.12,'triangle',.02);else if(e.type==='flap')this.io.sound(350,.04,'sine',.012);else if(e.type==='heat')this.io.sound(560+e.tier*110,.2,'square',.028);if(e.type==='heat')this.heatCallout(e.tier);else if(e.type==='over')this.io.sound(150,.25);if(e.type==='over'){if(this.io.prefs.haptics&&typeof navigator.vibrate==='function'){try{navigator.vibrate(25);}catch{}}}}
   g.events=[];if(g.status==='over'&&!this.recorded.has(g)){this.recorded.add(g);this.io.record(this.kind,g.score,Math.min(250,Math.floor(g.score/3)));this.saveRuns();}if(prior!==g.status||g.status==='playing'&&now-this.lastHud>80){this.sync();this.lastHud=now;}if(g.status==='playing'||prior!==g.status||this.renderer.particles.length||this.countdown)this.renderer.draw(g,this.kind,now);if(g.status==='playing'&&now-this.lastSave>2000){this.saveRuns();this.lastSave=now;}

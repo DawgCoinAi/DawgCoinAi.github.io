@@ -138,7 +138,7 @@ function endTrial(id){trial=null;try{localStorage.removeItem('dawg-trial');local
  setTimeout(()=>{selectMode('classic');selectMode(id);},0);}
 function selectMode(next){
  if(!GAME_IDS.includes(next))return;if(next===mode){if(shell.preview){shell.preview=null;renderHero();}return;}const wall=wallOf(next);if(!wall.open){shell.preview=next;renderHero();scrollToHero();return;}shell.preview=null;
- const change=()=>{
+ const change=()=>{if(document.body.classList.contains('story-focus'))storyFocus(false);
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();curve.clear();mode=next;
   $('dailyBrief').hidden=next!=='daily';$('mobileLaunch').hidden=!isMaze();$('arcadePanel').hidden=!isMaze();$('tradePanel').hidden=next!=='trade';
@@ -313,6 +313,10 @@ function renderProgress(){
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-theme]');if(!b||b.disabled)return;const id=b.dataset.theme;if(!(id in THEMES)||profile.rep<THEMES[id].unlock)return;const inLocker=!!b.closest('dialog');profile.theme=id;profileDirty=true;renderer.setTheme(id);renderProgress();saveProfile();sound(660,.12);const match=document.querySelector(`#${inLocker?'lockerThemes':'themeGrid'} [data-theme="${id}"]`);match?.focus({preventScroll:true});});
 $('lockerButton').onclick=()=>{renderProgress();openDialog('lockerDialog');};
+// Full-screen focus for the story games: only the panel stays, the rest of the arcade waits.
+function storyFocus(on,panelId){const panel=panelId&&$(panelId);document.querySelectorAll('.is-focus').forEach(p=>p.classList.remove('is-focus'));document.body.classList.toggle('story-focus',!!on);if(on&&panel)panel.classList.add('is-focus');$('storyFocusExit').hidden=!on;window.scrollTo({top:0,behavior:'instant'});}
+document.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>storyFocus(true,b.dataset.focus));$('storyFocusExit').onclick=()=>storyFocus(false);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('story-focus')&&!document.querySelector('dialog[open]'))storyFocus(false);});
 function setFocus(on){if(on&&mobile.coarse()){mobile.enter();return;}focused=on;document.body.classList.toggle('focus-mode',on);$('exitFocus').hidden=!on;$('focusButton').setAttribute('aria-label',on?'Exit focused game view':'Enter focused game view');canvas.focus({preventScroll:true});}
 $('focusButton').onclick=()=>setFocus(!focused);$('exitFocus').onclick=()=>setFocus(false);
 $('cityRoute').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(b&&!b.disabled)tradeAction(()=>trade.travel(Number(b.dataset.route)));});

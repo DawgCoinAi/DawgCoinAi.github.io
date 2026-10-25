@@ -13,7 +13,7 @@ export const HOW={
  cross:['Tap or swipe to hop; arrows work too','Dodge traffic, ride the floating decks','Grab gold in the parks'],
  snake:['Swipe or use arrows to turn','Eat to grow; don’t hit yourself or the stones','In first person, ← → turn relative to your head'],
  runner:['← → change lanes','↑ jump crates, ↓ slide under arches','Grab gold and power-ups as the city speeds up'],
- turbo:['→ to boost, ← to brake','↑ to jump, ↓ to roll or stomp in the air','Hit loops and springs at speed'],
+ turbo:['Tap or ↑ to jump; hold for height','↓ rolls, or stomps in the air; → spends turbo, which gold and tricks refill','Fly through rings and chain tricks for combos up to ×5'],
  pinball:['Hold ← → (or each side of the screen) to flip','Shoot the lit arrows: ramps and wireforms carry the ball over the table','Finish the mission (bumpers, ramps, targets, D-A-W-G) to level up'],
  kart:['Hold ← → to steer, ↓ to drift','Drift through corners to charge a mini-turbo','↑ fires your item'],
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']

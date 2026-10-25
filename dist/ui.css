@@ -55,7 +55,7 @@ main{max-width:1180px;margin:0 auto;padding:16px 16px 32px}
 .view{display:block}
 .view[hidden]{display:none!important}
 .eyebrow{display:inline-block;color:var(--ui-lime);font:800 11px/1.2 var(--ui-mono);letter-spacing:1.6px;text-transform:uppercase}
-.section-title{margin:0;font:900 20px/1.1 var(--ui-display);letter-spacing:.3px}
+.section-title{margin:0;font:900 22px/1.1 var(--ui-display);letter-spacing:.3px}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:28px 2px 12px}
 .section-meta{color:var(--ui-muted);font:700 12px/1 var(--ui-mono)}
 .view-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 2px 16px}

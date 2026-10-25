@@ -46,12 +46,14 @@ export class Rankings {
   $('friendTabs').addEventListener('click',e=>{const t=e.target.closest('[data-tab]')?.dataset.tab;if(t){this.tab=t;this.loadFriendsTab();}});
   $('profileFollow').onclick=()=>this.followShown();$('profileChallenge').onclick=()=>{const p=this.shown;if(p){$('profileDialog').close();this.pickGame(p);}};
   $('profilePlay').onclick=()=>{$('profileDialog').close();this.play(this.shown?.topGame||'runner');};
+  $('profileGift').onclick=()=>{const p=this.shown;if(p)this.giftAll(p.code,'profileNote');};
+  $('ownerGiftForm').onsubmit=e=>{e.preventDefault?.();const code=String($('ownerGiftCode').value||'').trim().toUpperCase().replace(/^GUEST\s+/,'');if(!/^[A-F0-9]{8}$/.test(code)){this.note('ownerGiftNote','Enter an 8-character friend code, like 9CCADAF1.');return;}this.giftAll(code,'ownerGiftNote');};
   $('heroBoard').onclick=()=>{const id=this.shell.preview||this.currentGame?.();if(id)this.game=id;this.shell.show('rankings');};
   $('heroChallenge').onclick=()=>this.pickFriend(this.currentGame?.());
   $('feedRow').addEventListener('click',e=>{const g=e.target.closest('[data-game]')?.dataset.game;if(g)this.play(g);});
  }
  // Called once the cloud is online: makes sure the player has a card with their current DAWG.
- async sync(){if(!this.api)return;try{this.profile=await this.rpc('ensure_profile');
+ async sync(){if(!this.api)return;try{this.profile=await this.rpc('ensure_profile');this.rpc('am_arcade_owner').then(v=>{this.owner=v===true;this.renderOwner();},()=>{});
    // A name picked before the cloud connected (during onboarding) is applied now.
    let pending=null;try{pending=localStorage.getItem('dawg-pending-name');}catch{}if(pending&&!this.profile?.name&&NAME_RULE.test(pending)){try{this.profile=await this.rpc('set_profile',{p_name:pending,p_avatar:this.kennel.active||null,p_public:this.profile?.public!==false});}catch{}}try{localStorage.removeItem('dawg-pending-name');}catch{}const d=this.kennel.active;if(d&&this.profile&&this.profile.avatar?.id!==d.id)this.profile=await this.rpc('set_profile',{p_name:this.profile.name,p_avatar:d,p_public:this.profile.public});}catch{}
   this.renderIdentity();this.refreshBadge();this.loadFeedStrip();this.openView(this.shell.view);clearInterval(this.poll);this.poll=setInterval(()=>{if(!document.hidden)this.refreshBadge();},120000);}
@@ -180,11 +182,14 @@ export class Rankings {
   this.avatar($('profileAvatar'),p.avatar,200);$('profileName').textContent=p.name||'Guest '+p.code;$('profileLevel').textContent=`Level ${fmt(p.level)} · friend code ${p.code}`;
   $('profileBests').replaceChildren(...bests.map(([g,s])=>{const li=el('li');li.append(el('span','',gameById(g).title),el('b','',fmt(s)));return li;}));
   if(!bests.length)$('profileBests').append(el('li','muted','No ranked runs yet.'));
-  const mine=p.code===this.profile?.code;$('profileFollow').hidden=mine;$('profileChallenge').hidden=mine;$('profileFollow').textContent=p.following?'FRIENDS ✓':'ADD FRIEND';$('profileFollow').disabled=!!p.following;$('profileNote').textContent=mine?'This is your own card.':'';this.openDialog('profileDialog');}
+  const mine=p.code===this.profile?.code;$('profileFollow').hidden=mine;$('profileChallenge').hidden=mine;$('profileFollow').textContent=p.following?'FRIENDS ✓':'ADD FRIEND';$('profileFollow').disabled=!!p.following;$('profileNote').textContent=mine?'This is your own card.':'';$('profileGift').hidden=mine||!this.owner;this.openDialog('profileDialog');}
+ // Arcade owner only: open every game for a player. The server refuses anyone who isn't an owner.
+ renderOwner(){$('ownerTools').hidden=!this.owner;}
+ async giftAll(code,noteId){try{const r=await this.rpc('owner_unlock_all',{p_code:code});this.note(noteId,r.added?`Opened every game for ${r.name}. They'll see it the next time they open the arcade.`:`${r.name} already has every game.`);if(noteId==='ownerGiftNote')$('ownerGiftCode').value='';}catch(e){this.note(noteId,e.message);}}
  async followShown(){const p=this.shown;if(!p||p.following)return;const r=await this.follow(p.code);if(r){p.following=true;$('profileFollow').textContent='FRIENDS ✓';$('profileFollow').disabled=true;$('profileNote').textContent='Added. Race them on the Friends board.';}}
  // A challenge link opened on this device: say who sent it, then offer to play and add them.
  async handleChallenge(){const ch=readChallenge(location.search);if(!ch)return;history.replaceState(null,'',location.pathname+location.hash);let from=null;try{from=await this.rpc('public_profile',{p_code:ch.from});}catch{}
-  const who=from?.name||'A friend',title=gameById(ch.game)?.title||ch.game;this.confirm(`${who} challenged you!`,`Beat ${fmt(ch.score)} in ${title}. Accepting adds ${who} to your friends so you can race on the Friends board.`,'ACCEPT & PLAY ↗',async()=>{if(from&&!from.following&&from.code!==this.profile?.code)await this.follow(ch.from);this.play(ch.game);});}
+  const who=from?.name||'A friend',title=gameById(ch.game)?.title||ch.game;this.confirm(`${who} challenged you!`,`Beat ${fmt(ch.score)} in ${title}. Accepting adds ${who} to your friends so you can race on the Friends board.`,'ACCEPT & PLAY ↗',async()=>{if(from&&!from.following&&from.code!==this.profile?.code)await this.follow(ch.from);this.play(ch.game,{trial:true});});}
 
  // ── Social lines for the Play hero and game-over screens ──────────────────────────────────
  async heroStats(game){if(!this.api||!gameById(game))return null;try{return await this.cached('hero:'+game,60000,async()=>{

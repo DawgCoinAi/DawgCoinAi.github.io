@@ -440,3 +440,5 @@ dialog .dialog-close{border-radius:50%;width:38px;height:38px;border:1px solid v
 *::-webkit-scrollbar-corner{background:transparent}
 html{scrollbar-color:#3a3050 #07060f}
 @media(max-width:400px){.app-header{min-width:0}.top-actions{gap:4px;flex-shrink:0}.brand{min-width:0;overflow:hidden}.brand strong,.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+
+.owner-gift{display:grid;gap:8px;padding:16px}.owner-gift label{font-weight:700}.owner-gift p{margin:0;font-size:13px;color:var(--ui-muted)}.owner-gift div{display:flex;gap:8px;flex-wrap:wrap}.owner-gift input{flex:1;min-width:140px;padding:11px 12px;border-radius:10px;border:1px solid var(--ui-line);background:var(--ui-bg);color:var(--ui-text);font:15px var(--ui-mono);text-transform:uppercase}.owner-gift small{color:var(--ui-lime);min-height:16px}

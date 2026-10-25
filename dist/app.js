@@ -122,8 +122,18 @@ $('pauseButton').onclick=togglePause;
 function confirm(title,text,label,action){pack.pause();cancelCountdown();if(game.status==='playing')game.pause();if(isMaze())showState();saveCheckpoint();releaseWakeLock();$('confirmTitle').textContent=title;$('confirmText').textContent=text;$('acceptConfirm').textContent=label;confirmAction=action;$('confirmDialog').showModal();}
 $('acceptConfirm').onclick=()=>{const action=confirmAction;confirmAction=null;$('confirmDialog').close();action?.();};$('cancelConfirm').onclick=()=>{$('confirmDialog').close();confirmAction=null;};
 $('restartButton').onclick=()=>{if(game.status==='ready'||game.status==='over')newArcade();else confirm('Fresh start?','This resets the current maze run and its score.','RESTART RUN ↗',newArcade);};
+// A free run from a shared link: opening a link to a game you haven't unlocked lets you play it
+// once on this device. When that run ends, the game's normal play wall applies again.
+let trial=null;try{trial=JSON.parse(localStorage.getItem('dawg-trial')||'null');}catch{}if(!GAME_IDS.includes(trial))trial=null;
+function trialsUsed(){try{const v=JSON.parse(localStorage.getItem('dawg-trials')||'[]');return Array.isArray(v)?v:[];}catch{return [];}}
+function grantTrial(id){if(!GAME_IDS.includes(id)||wallFor(id,arcade,records).open||trialsUsed().includes(id))return false;trial=id;try{localStorage.setItem('dawg-trial',JSON.stringify(id));}catch{}announce('FREE RUN · '+(gameById(id)?.title||id).toUpperCase()+' IS YOURS TO TRY ONCE');return true;}
+function wallOf(id){return trial===id?{open:true,reason:'trial',routes:[]}:wallFor(id,arcade,records);}
+function endTrial(id){trial=null;try{localStorage.removeItem('dawg-trial');localStorage.setItem('dawg-trials',JSON.stringify([...trialsUsed().filter(x=>x!==id),id].slice(-20)));}catch{}
+ if(wallFor(id,arcade,records).open)return;renderLocks();
+ // Back to an open game, with the one you tried showing what it takes to unlock it.
+ setTimeout(()=>{selectMode('classic');selectMode(id);},0);}
 function selectMode(next){
- if(!GAME_IDS.includes(next))return;if(next===mode){if(shell.preview){shell.preview=null;renderHero();}return;}const wall=wallFor(next,arcade,records);if(!wall.open){shell.preview=next;renderHero();scrollToHero();return;}shell.preview=null;
+ if(!GAME_IDS.includes(next))return;if(next===mode){if(shell.preview){shell.preview=null;renderHero();}return;}const wall=wallOf(next);if(!wall.open){shell.preview=next;renderHero();scrollToHero();return;}shell.preview=null;
  const change=()=>{
   if(isMaze()){cancelCountdown();game.pause();saveProfile();saveCheckpoint();releaseWakeLock();}
   if(mobile.active)mobile.exit();if(focused)setFocus(false);pack.exit();curve.clear();mode=next;
@@ -262,7 +272,7 @@ function finishRun(kind,score,gold=0){
  renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
  lastRun={kind,xp};if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);renderToday();
 }
-function renderLocks(){shell.cards(id=>wallFor(id,arcade,records));const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);if(shell.preview&&wallFor(shell.preview,arcade,records).open){shell.preview=null;}}
+function renderLocks(){shell.cards(id=>wallOf(id));const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);if(shell.preview&&wallOf(shell.preview).open){shell.preview=null;}}
 // Bring the hero into view after picking a game further down the page.
 function scrollToHero(){const hero=$('playHero');if(!hero.getBoundingClientRect)return;const top=hero.getBoundingClientRect().top;if(top<0||top>window.innerHeight*.5)$('playHero').scrollIntoView({behavior:renderer.reduced?'auto':'smooth',block:'start'});}
 function showWall(id,wall){
@@ -332,9 +342,9 @@ $('accountButton').onclick=()=>{renderAccount();openDialog('accountDialog');};
 var socialStarted=false;const shareSheet=new ShareSheet({openDialog});
 // App shell: Play / Rankings / Friends / Me. Switching views pauses nothing; games run full-screen.
 const shell=new Shell({onView:v=>{rankings.openView(v);if(v==='me')renderMe();if(v==='play')renderHero();}});
-const rankings=new Rankings({onSocial:()=>renderToday(),cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:id=>{for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
+const rankings=new Rankings({onSocial:()=>renderToday(),cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:(id,o={})=>{if(o.trial)grantTrial(id);for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
 // Play hero: the selected game with its best, weekly rank and top friend.
-function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallFor(shell.preview,arcade,records).open){shell.hero(shell.preview,{wall:wallFor(shell.preview,arcade,records),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
+function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallOf(shell.preview).open){shell.hero(shell.preview,{wall:wallOf(shell.preview),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
  shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
 $('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade'||mode==='story')$(mode==='trade'?'tradePanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
 $('meSettings').onclick=()=>openDialog('settingsDialog');$('meHelp').onclick=()=>openDialog('helpDialog');$('meBackup').onclick=()=>openDialog('backupDialog');$('meDelete').onclick=()=>{renderAccount();openDialog('accountDialog');$('accountDelete').focus();};$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
@@ -345,7 +355,7 @@ function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp
 // the crash or finish can land, then fills in where the run sits socially once it's uploaded.
 var lastRun=null,resultsTimer=0;
 const results=new ResultsSheet({openDialog,reduced:()=>renderer.reduced,
- onRematch:r=>{if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')pack.story.newNight();else pack.play();},
+ onRematch:r=>{if(!wallOf(r.game).open){selectMode(r.game);return;}if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')pack.story.newNight();else pack.play();},
  onHome:r=>{if(isMaze(r.game))returnToArcade();else pack.exit();shell.show('play');window.scrollTo({top:0});},
  onShare:r=>{const m=medalState(r.score,r.targets);shareRun(r.game,r.score,{best:r.best,medal:m.earned?m.label:'',detail:r.detail});},
  onChallenge:r=>rankings.pickFriend(r.game),
@@ -354,7 +364,7 @@ function medalTargets(id){if(id==='daily')return challenge.targets;const quick=p
 // The locked game closest to opening, with its quickest route.
 function nextUnlock(){let best=null;for(const id of GAME_IDS){const w=wallFor(id,arcade,records);if(w.open)continue;const pct=unlockProgress(w);if(!best||pct>best.pct){const r=[...w.routes].sort((a,b)=>b.have/Math.max(1,b.need)-a.have/Math.max(1,a.need))[0];best={id,title:gameById(id)?.title||id,pct,left:r?r.left:''};}}return best;}
 function levelInfo(){const s=statsOf(arcade),prev=xpForLevel(s.level),next=xpForLevel(s.level+1);return {level:s.level,pct:Math.min(100,Math.round((arcade.xp-prev)/Math.max(1,next-prev)*100)),text:`LEVEL ${s.level} · ${fmtNum(Math.max(0,next-arcade.xp))} XP TO LEVEL ${s.level+1}`};}
-function queueResults(kind,score,opts={}){clearTimeout(resultsTimer);resultsTimer=setTimeout(()=>showResults(kind,score,opts),kind==='trade'||kind==='story'?200:900);}
+function queueResults(kind,score,opts={}){if(trial===kind)endTrial(kind);clearTimeout(resultsTimer);resultsTimer=setTimeout(()=>showResults(kind,score,opts),kind==='trade'||kind==='story'?200:900);}
 function showResults(kind,score,{prevBest=0,detail='',unit,format,again,title}={}){
  results.show({game:kind,score,unit,format,again,title,best:score>0&&score>prevBest,targets:medalTargets(kind),detail,xp:lastRun?.kind===kind?lastRun.xp:0,level:levelInfo(),unlock:nextUnlock(),askName:!!rankings.api&&!rankings.profile?.name,canChallenge:kind!=='story'});}
 function showInsight(kind,score){rankings.insight(kind,score).then(lines=>{if(results.run?.game===kind)results.social(lines);});}
@@ -405,7 +415,7 @@ document.addEventListener('click',e=>{if(prefs.haptics&&e.target.closest?.('.app
 renderer.character=kennel.prepare(mode,game);
 $('dailyBrief').hidden=mode!=='daily';setLaunchText();renderDaily();renderSettings();awardPassport();renderProgress();updateBest();showState();requestAnimationFrame(frame);
 // ?play=<game> links open straight to that game.
-const linked=readPlayLink(globalThis.location?.search||'');if(linked){const u=new URL(location.href);u.searchParams.delete('play');history.replaceState(null,'',u.pathname+u.search+u.hash);if(linked!==mode)selectMode(linked);}
+const linked=readPlayLink(globalThis.location?.search||'');if(linked){const u=new URL(location.href);u.searchParams.delete('play');history.replaceState(null,'',u.pathname+u.search+u.hash);grantTrial(linked);if(linked!==mode)selectMode(linked);}
 rankings.renderIdentity();renderHero();renderToday();shell.initial();
 if(needsOnboarding(records,Onboarding.seen())&&!linked)onboarding.start();
 if(kennelDamaged)announce('Saved DAWG roster was damaged and has been reset; the old copy was kept.');

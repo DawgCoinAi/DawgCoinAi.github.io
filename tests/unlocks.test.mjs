@@ -67,3 +67,9 @@ test('The arcade owner is stored by account id and gets every game through claim
  const fn=sql.slice(sql.indexOf('create or replace function public.claim_unlocks'));assert.match(fn,/from arcade_owners where user_id = uid/);assert.doesNotMatch(fn,/display_name/,'never by name at claim time');
  assert.match(sql,/security definer/);
 });
+test('Only arcade owners can gift every game, by friend code',()=>{
+ const sql=fs.readFileSync(new URL('../supabase/migrations/20261024080000_owner_gifts.sql',import.meta.url),'utf8'),fn=sql.slice(sql.indexOf('function public.owner_unlock_all'),sql.indexOf('end $$;',sql.indexOf('function public.owner_unlock_all')));
+ assert.ok(fn.indexOf('arcade_owners where user_id = auth.uid()')<fn.indexOf('insert into unlocks'),'checks ownership before granting');assert.match(fn,/security definer/);
+ assert.match(sql,/revoke all on function public\.owner_unlock_all\(text\) from public, anon/);
+ const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');assert.match(html,/id="ownerTools" hidden/);assert.match(html,/id="profileGift" type="button" class="btn" hidden/);
+});

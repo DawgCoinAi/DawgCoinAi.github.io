@@ -5,14 +5,12 @@
 import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,loadModel,cloneModel,fitModel} from './three-kit.js';
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {loadBuildings,building} from './city-art.js';
-import {makeDawg} from './dawg-career.js';
 import {seededRandom} from './mobile-core.js';
 
 const signTexture=(text,color)=>texture(512,128,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#0b0a16e6';c.beginPath();c.roundRect(4,4,w-8,h-8,22);c.fill();c.lineWidth=6;c.strokeStyle=color;c.shadowColor=color;c.shadowBlur=18;c.stroke();
  c.font='900 64px "DAWG display","Arial Narrow",Impact,sans-serif';c.textAlign='center';c.textBaseline='middle';const s=Math.min(1,(w-60)/Math.max(1,c.measureText(text).width));c.save();c.translate(w/2,h/2+4);c.scale(s,1);c.fillStyle=color;c.shadowBlur=24;c.fillText(text,0,0);c.restore();});
-// A stable 32-hex DNA for a character name, so Nova always looks like Nova.
-export function dnaFor(name){let h=0x811c9dc5;const out=[];for(let i=0;i<16;i++){for(const ch of name+'#'+i){h^=ch.charCodeAt(0);h=Math.imul(h,0x01000193)>>>0;}out.push((h>>>((i%4)*8))&255);}return out.map(x=>x.toString(16).padStart(2,'0')).join('');}
-export const npcDawg=name=>{const d=makeDawg(dnaFor(name),0);d.name=name;return d;};
+export {dnaFor,npcDawg} from './npc-dawg.js';
+import {npcDawg} from './npc-dawg.js';
 // Story ground coordinates (x across, z depth) to world space, shared with the 2D fallback.
 export const SET={width:14,depth:9,back:-4.2};
 // Framed art for the walls: a few lines of neon-ish text on a dark card, picked per location.
@@ -94,7 +92,7 @@ export class ThreeAfterHours {
   const cam=this.camera,aspect=cam.aspect||1.6;cam.position.set(0,set.roof?3.6:4.1,aspect<1?12.5:9.6);if(!reduced){cam.position.x+=Math.sin(real*.2)*.35;cam.position.y+=Math.sin(real*.33)*.08;}cam.lookAt(0,set.roof?1.2:1.3,-1);cam.fov=fitFov(46,aspect,58);cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
   this.particles.update(dt);this.stage.render(dt,real,{reduced,aberration:.0012});
   // Project each hotspot to a percentage of the view, for the play screen's buttons.
-  const p=new T.Vector3(),out={};for(const h of v.hotspots){const [x,z]=h.at;p.set(x,h.npc?1.9*(h.npc.scale||1):Math.max(.6,(h.size||1.4)*.6),z).project(cam);out[h.id]={x:(p.x+1)*50,y:(1-p.y)*50,visible:p.z<1};}this.anchors=out;
+  const p=new T.Vector3(),out={};for(const h of v.hotspots){const [x,z]=h.at;p.set(x,h.npc?1.9*(h.npc.scale||1):Math.max(.6,(h.size||1.4)*.6),z).project(cam);out[h.id]={x:(p.x+1)*50,y:(1-p.y)*50,visible:p.z<1};}p.set(this.player.position.x,2.1,this.player.position.z).project(cam);out.player={x:(p.x+1)*50,y:(1-p.y)*50,visible:true};this.anchors=out;
   return true;}
  fail(){if(this.dead)return;this.onFailure?.();this.dispose();}
  dispose(){if(this.dead)return;this.dead=true;this.ready=false;for(const n of this.npcs.values())n?.asset.dispose();this.asset?.dispose();this.view?.remove();this.stage?.dispose();}

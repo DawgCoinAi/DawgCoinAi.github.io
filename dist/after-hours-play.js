@@ -19,10 +19,10 @@ function setFor(host){let state='idle',set=null;
   if(state!=='ready'||!set)return null;try{return set.draw(view)?set.anchors:null;}catch{state='failed';set.dispose();set=null;return null;}};}
 
 export class AfterHoursPlay {
- constructor(io){this.io=io;this.verb='look';this.item=null;this.fresh=new Set();this.mood=null;this.speaker=null;
-  this.game=new Adventure(CONTENT,io.read('afterHours',null),{seed:Date.now()});if(!this.game.state.log.length)this.game.start();
+ constructor(io){this.io=io;this.verb='look';this.item=null;this.fresh=new Set();this.mood=null;this.speaker=null;this.beats=[];this.beat=null;
+  this.game=new Adventure(CONTENT,io.read('afterHours',null),{seed:Date.now()});let opening;if(!this.game.state.log.length)opening=this.game.start();else{this.game.lines=[];this.game.describe();opening=this.game.lines;}
   const ends=io.read('storyEndings',[]);this.endings=validEndings(ends)?[...ends]:[];this.recorded=!!this.game.state.ending;
-  this.draw3d=setFor($('ahScene'));this.wire();}
+  this.draw3d=setFor($('ahScene'));this.wire();if(!this.game.over)this.queue(opening);}
  wire(){
   $('ahVerbs').onclick=e=>{const b=e.target.closest('[data-verb]');if(!b)return;this.verb=b.dataset.verb;if(!['use','give'].includes(this.verb))this.item=null;this.render();};
   $('ahHotspots').onclick=e=>{const b=e.target.closest('[data-hotspot]');if(b)this.click(b.dataset.hotspot);};
@@ -31,9 +31,10 @@ export class AfterHoursPlay {
   $('ahTaxi').onclick=e=>{const b=e.target.closest('[data-place]');if(b)this.after(this.game.act('go',b.dataset.place));};
   $('ahForm').onsubmit=e=>{e.preventDefault?.();const text=String($('ahInput').value||'').trim();if(!text)return;$('ahInput').value='';this.type(text);};
   $('ahHint').onclick=()=>this.type('hint');
-  $('ahRetry').onclick=()=>{if(this.game.retry()){this.fresh=new Set(this.game.lines.map(l=>l.text));this.save();this.render();}};
+  $('ahRetry').onclick=()=>{if(this.game.retry()){this.fresh=new Set(this.game.lines.map(l=>l.text));this.save();this.queue(this.game.lines);this.render();}};
   $('ahAgain').onclick=()=>this.newNight();$('ahReset').onclick=()=>this.io.confirm?.('Start a new night?','Your DAWG wakes up at 10 PM at the Rusty Collar with $40 and a comb. Endings you have found stay found.','NEW NIGHT ↗',()=>this.newNight());
-  $('ahOverShare').onclick=()=>this.share();$('storyShare').onclick=()=>this.share();}
+  $('ahOverShare').onclick=()=>this.share();$('storyShare').onclick=()=>this.share();
+  $('ahBubbles').onclick=e=>{if(e.target.closest('[data-beat]'))this.nextBeat();};}
  get state(){return this.game.state;}
  type(text){this.after(this.game.command(text));}
  click(id){const g=this.game,h=g.hotspots().find(x=>x.id===id);if(!h)return;if(this.item){const verb=this.verb==='give'?'give':'use';this.after(g.act(verb,id,this.item));this.item=null;this.verb='look';return;}
@@ -44,9 +45,24 @@ export class AfterHoursPlay {
   if(lines.some(l=>l.who==='+'))this.io.sound?.(880,.12,'triangle',.03);else if(lines.some(l=>l.who==='*'))this.io.sound?.(660,.08,'square',.02);else this.io.sound?.(420,.04,'sine',.015);
   if(s.dead){this.mood='death';this.io.sound?.(110,.6,'sawtooth',.04);}
   if(s.ending&&!this.recorded){this.recorded=true;this.mood='ending';const first=!this.endings.includes(s.ending);if(first){this.endings.push(s.ending);this.io.write('storyEndings',this.endings);}this.io.record?.('story',s.score*10,first?200:0);[523,659,784,1046].forEach((f,i)=>setTimeout(()=>this.io.sound?.(f,.18,'triangle',.03),i*120));}
-  this.save();this.render();}
+  this.save();this.queue(lines);this.render();}
+ // ── Speech bubbles ─────────────────────────────────────────────────────────────────────────
+ // Each action's lines play as beats over the scene: narration in a caption box, characters in
+ // speech bubbles above their heads, items and points as quick toasts. Tap a bubble to skip on.
+ queue(lines){const beats=[];let narr=[];const flush=()=>{if(narr.length){beats.push({kind:'narration',text:narr.join(' ')});narr=[];}};
+  for(const l of lines){if(['>','☠','☀','↺'].includes(l.who))continue;if(l.who==='*'||l.who==='+'){this.toast(l);continue;}
+   if(l.who&&l.who.length>1){flush();beats.push({kind:'speech',who:l.who,text:l.text});}else if(l.who==='?'){flush();beats.push({kind:'hint',text:l.text});}else narr.push(l.text);}
+  flush();this.beats=beats;this.nextBeat();}
+ nextBeat(){clearTimeout(this.beatTimer);this.beat=this.beats.shift()||null;this.speaker=this.beat?.kind==='speech'?this.beat.who:null;this.drawBeat();
+  if(this.beat){const ms=Math.min(10000,Math.max(2800,1500+this.beat.text.length*40));this.beatTimer=setTimeout(()=>this.nextBeat(),ms);this.beatTimer?.unref?.();}else this.render();}
+ drawBeat(){const box=$('ahBubbles'),b=this.beat;box.replaceChildren();this.bubble=null;if(!b)return;
+  const el=document.createElement('div');el.dataset.beat='1';el.className=b.kind==='speech'?'ah-bubble':b.kind==='hint'?'ah-narrator ah-hintbox':'ah-narrator';el.setAttribute('role','status');
+  if(b.kind==='speech'){const n=document.createElement('b');n.textContent=b.who;el.append(n);}else if(b.kind==='hint'){const n=document.createElement('b');n.textContent='HINT';el.append(n);}
+  const t=document.createElement('span');t.textContent=b.text;el.append(t);if(this.beats.length){const m=document.createElement('i');m.textContent='▸ '+this.beats.length;m.setAttribute('aria-label',this.beats.length+' more');el.append(m);}
+  box.append(el);if(b.kind==='speech'){const h=this.game.hotspots().find(x=>x.npc&&x.name===b.who);this.bubble={el,anchor:b.who==='You'?'player':h?.id||null,at:h?.at};}this.place(this.anchors||null);}
+ toast(line){const box=$('ahToasts');if(!box)return;const el=document.createElement('div');el.className='ah-toast'+(line.who==='+'?' is-points':'');el.textContent=line.text;box.append(el);const t=setTimeout(()=>el.remove?.(),3400);t?.unref?.();}
  save(){this.io.write('afterHours',this.game.save());}
- newNight(){this.game=new Adventure(CONTENT,null,{seed:(Date.now()^Math.floor(Math.random()*2**30))>>>0});this.fresh=new Set(this.game.start().map(l=>l.text));this.recorded=false;this.item=null;this.verb='look';this.speaker=null;this.save();if(this.onNight)this.onNight();else this.render();}
+ newNight(){this.game=new Adventure(CONTENT,null,{seed:(Date.now()^Math.floor(Math.random()*2**30))>>>0});const opening=this.game.start();this.fresh=new Set(opening.map(l=>l.text));this.queue(opening);this.recorded=false;this.item=null;this.verb='look';this.speaker=null;this.save();if(this.onNight)this.onNight();else this.render();}
  share(){const s=this.state;if(!s.ending||!this.io.share)return;const e=ENDINGS[s.ending];this.io.share('story',s.score*10,{detail:'ending: '+e.title,text:`I got the “${e.title}” ending in After Hours on the DAWG Arcade 🐶 ${s.score}/${MAX_SCORE} points, ${this.found()}/${Object.keys(ENDINGS).length} endings found.`});}
  found(){return this.endings.filter(id=>Object.hasOwn(ENDINGS,id)).length;}
  // ── Drawing ─────────────────────────────────────────────────────────────────────────────────
@@ -62,7 +78,9 @@ export class AfterHoursPlay {
  place(anchors){const g=this.game,box=$('ahHotspots'),list=g.hotspots(),key=[g.state.loc,list.map(h=>h.id),this.verb,this.item,this.speaker,g.over,g.state.choice].join('|');
   if(key!==this.spotKey){this.spotKey=key;this.spots=new Map();box.replaceChildren();for(const h of list){const b=document.createElement('button');b.type='button';b.dataset.hotspot=h.id;b.className='ah-spot'+(h.npc?' ah-npc':'')+(this.speaker===h.name?' speaking':'');
     const i=document.createElement('i');i.setAttribute('aria-hidden','true');const span=document.createElement('span');span.textContent=h.name;b.append(i,span);b.setAttribute('aria-label',`${this.actionLabel()} ${h.name}`);b.disabled=g.over||!!g.state.choice;box.append(b);this.spots.set(h.id,{b,h});}}
-  for(const {b,h} of this.spots.values()){const a=anchors?.[h.id]||fallback(h.at);b.hidden=a.visible===false;b.style.left=Math.max(4,Math.min(96,a.x)).toFixed(1)+'%';b.style.top=Math.max(6,Math.min(92,a.y)).toFixed(1)+'%';}}
+  for(const {b,h} of this.spots.values()){const a=anchors?.[h.id]||fallback(h.at);b.hidden=a.visible===false;b.style.left=Math.max(4,Math.min(96,a.x)).toFixed(1)+'%';b.style.top=Math.max(6,Math.min(92,a.y)).toFixed(1)+'%';}
+  // The speaker's bubble rides above their head (or below it, near the top of the frame).
+  const bub=this.bubble;if(bub){const a=bub.anchor&&anchors?.[bub.anchor]||(bub.anchor==='player'?fallback(PLAYER_AT):bub.at?fallback(bub.at):{x:50,y:40});const below=a.y<34,x=Math.max(24,Math.min(76,a.x));bub.el.classList.toggle('below',below);bub.el.style.left=x.toFixed(1)+'%';bub.el.style.top=(below?Math.min(80,a.y+7):Math.max(8,a.y-5)).toFixed(1)+'%';bub.el.style.setProperty?.('--tail',(a.x-x).toFixed(1)+'%');}}
  actionLabel(){const it=this.item&&CONTENT.items[this.item];return it?`${this.verb==='give'?'Give':'Use'} ${it.name} ${this.verb==='give'?'to':'on'}`:AH_VERBS.find(v=>v[0]===this.verb)[1][0]+AH_VERBS.find(v=>v[0]===this.verb)[1].slice(1).toLowerCase();}
  render(){const g=this.game,s=g.state,l=g.location,over=g.over,opts=g.options();
   $('ahTime').textContent=clock(s.minute);$('ahMoney').textContent='$'+s.money;$('ahScore').textContent=s.score+' / '+MAX_SCORE;$('ahEndings').textContent=this.found()+' / '+Object.keys(ENDINGS).length+' ENDINGS';
@@ -72,7 +90,7 @@ export class AfterHoursPlay {
   const log=s.log.slice(-28);$('ahLog').replaceChildren(...log.map(line=>{const p=document.createElement('p');p.className='ah-line'+(this.fresh.has(line.text)?' fresh':'')+(line.who&&line.who.length===1?' ah-'+({'>':'you','›':'narration','*':'got','+':'points','☠':'death','?':'hint','↺':'retry','☀':'sun'}[line.who]||'note'):line.who?' ah-talk':'');
    if(line.who&&line.who.length>1){const b=document.createElement('b');b.textContent=line.who;p.append(b);}const t=document.createElement('span');t.textContent=line.text;p.append(t);return p;}));
   $('ahLog').scrollTop=1e6;
-  $('ahChoices').hidden=!opts;$('ahChoices').replaceChildren();if(opts){const head=document.createElement('p');head.className='ah-prompt';head.textContent=(opts.who?opts.who+': ':'')+opts.prompt;$('ahChoices').append(head);for(const o of opts.options){const b=document.createElement('button');b.type='button';b.dataset.option=o.id;b.textContent=o.label;$('ahChoices').append(b);}}
+  $('ahChoices').hidden=!opts||!!this.beat;$('ahChoices').replaceChildren();if(opts){const head=document.createElement('p');head.className='ah-prompt';head.textContent=(opts.who?opts.who+': ':'')+opts.prompt;$('ahChoices').append(head);for(const o of opts.options){const b=document.createElement('button');b.type='button';b.dataset.option=o.id;b.textContent=o.label;$('ahChoices').append(b);}}
   $('ahInventory').replaceChildren(...g.items().map(it=>{const b=document.createElement('button');b.type='button';b.dataset.item=it.id;b.title=it.description;b.setAttribute('aria-pressed',String(this.item===it.id));b.disabled=over||!!opts;const i=document.createElement('b');i.textContent=it.icon||'•';const n=document.createElement('span');n.textContent=it.name;b.append(i,n);return b;}));
   $('ahTaxi').replaceChildren(...[...Object.entries(CONTENT.places),...Object.entries(EXITS)].map(([id,name])=>{const b=document.createElement('button');b.type='button';b.dataset.place=id;b.textContent=name;b.setAttribute('aria-current',String(id===s.loc));b.disabled=over||!!opts||id===s.loc;if(EXITS[id])b.className='ah-exit';return b;}));
   $('ahInput').disabled=over;$('ahHint').disabled=over;
@@ -81,4 +99,4 @@ export class AfterHoursPlay {
   $('ahJournal').replaceChildren(...Object.entries(ENDINGS).map(([id,e])=>{const span=document.createElement('span');const got=this.endings.includes(id);span.className=got?'found':'';span.textContent=got?'✦ '+e.title:'◇ UNDISCOVERED ENDING';return span;}));
   this.place(this.anchors||null);}
 }
-const fallback=([x,z])=>({x:50+x/7*44,y:58+(z+1)/4.5*30});
+const fallback=([x,z])=>({x:50+x/7*44,y:58+(z+1)/4.5*30}),PLAYER_AT=[-1.2,1.2];

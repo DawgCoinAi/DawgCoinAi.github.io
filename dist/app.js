@@ -3,6 +3,7 @@ import {STAMPS,updatePassport} from './passport.js';
 import {LivingTradeGame,validLivingTrade,TRADE_PERKS} from './living-trade.js';
 import {freshSeed,worldLook} from './world.js';
 import {sceneFor} from './scene-loader.js';
+import {HustleChat,hustleCast} from './hustle-chat.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
 import {ArcadeRenderer,THEMES} from './renderer.js';
@@ -178,8 +179,8 @@ window.addEventListener('blur',()=>pauseForInterruption('PAUSED · YOUR RUN IS S
 function openDialog(id){pack.pause();if(isMaze()){cancelCountdown();if(game.status==='playing')game.pause();showState();saveCheckpoint();releaseWakeLock();}if(id==='settingsDialog')renderSettings();$(id).showModal();}
 $('helpButton').onclick=()=>openDialog('helpDialog');$('recordsButton').onclick=()=>{$('achievementsContent').innerHTML=`<div class="badge-grid">${badgesHTML()}</div>`;$('recordsContent').innerHTML=`<div class="record-row"><span>01 / Maze Munch</span><strong>${padded(records.classic||0)}</strong></div><div class="record-row"><span>02 / 60-Second Rush</span><strong>${padded(records.rush||0)}</strong></div><div class="record-row"><span>03 / Street Hustle</span><strong>${records.trade===null||records.trade===undefined?'—':money(records.trade)}</strong></div><div class="record-row"><span>Daily Run / all-time</span><strong>${padded(records.daily||0)}</strong></div>${[['flappy','Flappy DAWG'],['cross','DAWG Cross'],['snake','Neon Snake'],['runner','DAWG Dash'],['story','After Hours']].map(([id,name])=>`<div class="record-row"><span>${name}</span><strong>${padded(records[id]||0)}</strong></div>`).join('')}<div class="record-row"><span>Completed runs</span><strong>${records.runs||0}</strong></div>`;openDialog('recordsDialog');};document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 // Street Hustle's scene: the 3D street when it's available, otherwise the 2D city.
-const cityScene=sceneFor($('cityCanvas'));
-function drawCity(now){if(!trade)return;const seed=trade.world.seed+trade.district*771;if(!cityScene({seed,title:$('citySceneTitle').textContent,tint:worldLook(seed).glow,rain:/rain/i.test($('cityWeather').textContent),dawg:cityRenderer.character,reduced:renderer.reduced}))cityRenderer.city(trade,now);}
+const cityScene=sceneFor($('cityCanvas')),hustleChat=new HustleChat();
+function drawCity(now){if(!trade)return;const seed=trade.world.seed+trade.district*771;const anchors=cityScene({seed,title:$('citySceneTitle').textContent,tint:worldLook(seed).glow,rain:/rain/i.test($('cityWeather').textContent),dawg:cityRenderer.character,reduced:renderer.reduced,cast:hustleCast(trade)});if(!anchors)cityRenderer.city(trade,now);hustleChat.place(anchors||null);}
 function validSavedTrade(s){return s?.version===1&&validLivingTrade(s.state);}
 function loadTrade(){if(keepDamaged('trade',validSavedTrade))announce('Street Hustle save was damaged. A new campaign started; the old copy was kept.');const saved=read('trade',null);const valid=validSavedTrade(saved);trade=new LivingTradeGame(valid?saved.state:null);enrollTrade(!valid);saveTrade();}
 function enrollTrade(fresh=false){cityRenderer.character=kennel.prepare('trade',trade,fresh);if(fresh){trade.cash+=trade.career.cash;trade.world.contract.reward=Math.round(trade.world.contract.reward*(1+trade.career.order));if(trade.career.cash)trade.log('Career Hustle bonus: +$'+trade.career.cash+' starting cash.');}}
@@ -205,7 +206,7 @@ function renderLivingTrade(){
  $('tradeEncounter').hidden=!encounter;
  $('encounterOptions').replaceChildren();
  if(encounter){$('encounterTitle').textContent=encounter.title;$('encounterText').textContent=encounter.text;for(const option of encounter.options){const b=document.createElement('button'),title=document.createElement('strong'),detail=document.createElement('small');b.dataset.encounter=option.id;b.disabled=!!option.disabled;title.textContent=option.label;detail.textContent=option.detail;b.append(title,detail);$('encounterOptions').append(b);}}
- cityRenderer.reduced=renderer.reduced;drawCity(performance.now());
+ hustleChat.render(trade);cityRenderer.reduced=renderer.reduced;drawCity(performance.now());
 }
 function renderMarketIntel(){const i=Math.max(0,Math.min(5,Number($('intelGood').value)||0)),quotes=trade.world.markets.map(m=>m.prices[i]),lo=Math.min(...quotes),hi=Math.max(...quotes),basis=trade.averageCost(i);$('marketIntel').innerHTML=DISTRICTS.map((d,j)=>{const m=trade.world.markets[j],difference=m.prices[i]-basis;return `<article class="intel-place"><h4>${d.name}</h4><b>${money(m.prices[i])}</b><em>${m.prices[i]===lo?'LOWEST QUOTE':m.prices[i]===hi?'HIGHEST QUOTE':'CURRENT QUOTE'}</em><small>${m.stock[i]} units available</small><small>${trade.bag[i]?`${difference>=0?'+':'−'}${money(Math.abs(difference))} / unit vs your cost`:'No units in your bag'}</small><button data-intel="${j}" ${trade.blocked||j===trade.district||trade.day>=30?'disabled':''}>${j===trade.district?'YOU ARE HERE':'TRAVEL · '+Math.round(trade.travelRisk(j)*100)+'% RISK'}</button></article>`;}).join('');}
 $('intelGood').addEventListener('change',()=>{if(trade)renderMarketIntel();});

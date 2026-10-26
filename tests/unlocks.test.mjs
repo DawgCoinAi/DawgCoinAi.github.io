@@ -6,9 +6,9 @@ import {GAME_IDS} from '../dist/games.js';
 import {plan,validSection} from '../dist/cloud.js';
 import {parseBackup,SAVE_KEYS} from '../dist/progress-backup.js';
 
-test('Every game has a play-wall rule and four games (including Daily Run) are open from the start',()=>{
+test('Every game has a play-wall rule and five games (including Daily Run and chess) are open from the start',()=>{
  assert.deepEqual(Object.keys(LADDER).sort(),[...GAME_IDS].sort());const a=freshArcade();
- assert.deepEqual(GAME_IDS.filter(id=>wallFor(id,a).open).sort(),['classic','daily','flappy','runner']);
+ assert.deepEqual(GAME_IDS.filter(id=>wallFor(id,a).open).sort(),['chess','classic','daily','flappy','runner']);
  assert.ok(validArcade(a));assert.ok(SAVE_KEYS.includes('arcade'));assert.ok(parseBackup(JSON.stringify({format:'dawg-arcade-backup',version:1,saves:{arcade:a}})));
 });
 test('Levels, XP and streaks follow the published curve',()=>{

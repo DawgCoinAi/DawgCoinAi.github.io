@@ -15,7 +15,8 @@ export const GAMES=[
  {id:'turbo',title:'Turbo Pup',kind:'pack',views:['first','third','2d']},
  {id:'pinball',title:'Neon Pinball',kind:'pack',views:['third','first','2d']},
  {id:'kart',title:'Drift Dawgs',kind:'pack',views:['third','first','2d']},
- {id:'story',title:'After Hours',kind:'pack',views:[]}
+ {id:'story',title:'After Hours',kind:'pack',views:[]},
+ {id:'chess',title:'DAWG Chess',kind:'pack',views:[]}
 ];
 export const GAME_IDS=GAMES.map(g=>g.id);
 export const PACK_IDS=GAMES.filter(g=>g.kind==='pack').map(g=>g.id);

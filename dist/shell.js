@@ -20,9 +20,10 @@ export const BLURBS={
  turbo:'Loops, springs and pure speed. Roll into bots and launch off kickers.',
  pinball:'Three tables, endless levels. Fly the ball over the playfield on ramps and wireforms, pound the bumpers and finish each mission to change the table.',
  kart:'Three laps against five rival DAWGs. Drift for mini-turbos and bonk the leader.',
+ chess:'Five rival DAWGs, one crown. Every capture is a battle: pieces become warriors and fight it out on the square in slow motion.',
  story:'One velvet suit, one night, ten places to make bad decisions. Win over Nova, steal the rooftop show, and find all six endings before sunrise.'
 };
-const HOT={kart:'NEW',pinball:'NEW',turbo:'HOT'};
+const HOT={chess:'NEW',kart:'NEW',pinball:'NEW',turbo:'HOT'};
 export const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString('en-US');
 export function timeAgo(when,now=Date.now()){const s=Math.max(0,(now-new Date(when).getTime())/1000);return s<60?'just now':s<3600?Math.floor(s/60)+' min ago':s<86400?Math.floor(s/3600)+' h ago':Math.floor(s/86400)+' d ago';}
 // Rank movement between two places (lower is better): '▲ 3', '▼ 1' or ''.
@@ -49,7 +50,7 @@ export class Shell {
   $('heroArt').style.setProperty('--hero-poster',`url(${posterOf(id)})`);$('heroTitle').textContent=g.title;this.gameTitle=g.title;this.title();
   $('heroTag').textContent=document.querySelector(`#tab-${id} .card-body small`)?.textContent||'';$('heroDesc').textContent=BLURBS[id]||'';
   $('heroBest').textContent=bestLabel??fmt(best);$('heroLock').hidden=!locked;
-  const play=$('heroPlay');play.disabled=!!locked;$('heroPlayLabel').textContent=locked?'LOCKED':id==='trade'||id==='story'?'CONTINUE':'PLAY NOW';
+  const play=$('heroPlay');play.disabled=!!locked;$('heroPlayLabel').textContent=locked?'LOCKED':id==='trade'||id==='story'||id==='chess'?'CONTINUE':'PLAY NOW';
   if(locked){$('heroLockTitle').textContent='Unlock '+g.title+' — any one of these opens it:';$('heroRoutes').replaceChildren(...wall.routes.map(r=>{const row=document.createElement('div');row.className='hero-route'+(r.done?' done':'');const head=document.createElement('header'),label=document.createElement('span'),left=document.createElement('small'),bar=document.createElement('div'),fill=document.createElement('i');label.textContent=r.label;left.textContent=r.done?'DONE':r.left;bar.className='meter';fill.style.setProperty('--p',Math.min(100,Math.round(r.have/Math.max(1,r.need)*100))+'%');bar.append(fill);head.append(label,left);row.append(head,bar);return row;}));}
   for(const b of document.querySelectorAll('.game-card'))b.classList.toggle('previewing',b.dataset.mode===id&&locked);}
  // Pass 'loading' while the weekly rank and top friend are being fetched.

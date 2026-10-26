@@ -10,7 +10,8 @@ export const STAMPS=[
  {id:'turbo',name:'Loop legend',game:'Turbo Pup',target:1500,icon:'∞'},
  {id:'pinball',name:'Table wizard',game:'Neon Pinball',target:10000,icon:'◎'},
  {id:'kart',name:'Podium pup',game:'Drift Dawgs',target:4000,icon:'⚑'},
- {id:'story',name:'Main character',game:'After Hours',target:1,icon:'☾'}
+ {id:'story',name:'Main character',game:'After Hours',target:1,icon:'☾'},
+ {id:'chess',name:'Checkmate',game:'DAWG Chess',target:500,icon:'♞'}
 ];
 export function validPassport(s){return s?.version===1&&Array.isArray(s.stamps)&&s.stamps.length<=STAMPS.length&&new Set(s.stamps).size===s.stamps.length&&s.stamps.every(id=>STAMPS.some(m=>m.id===id))&&typeof s.complete==='boolean'&&(!s.complete||s.stamps.length===STAMPS.length);}
 export function updatePassport(saved,records){const state=validPassport(saved)?{version:1,stamps:[...saved.stamps],complete:saved.complete}:{version:1,stamps:[],complete:false},unlocked=STAMPS.filter(m=>!state.stamps.includes(m.id)&&Number.isFinite(records?.[m.id])&&records[m.id]>=m.target);state.stamps.push(...unlocked.map(m=>m.id));const completed=!state.complete&&state.stamps.length===STAMPS.length;if(completed)state.complete=true;return {state,unlocked,reward:unlocked.length*100+(completed?300:0),completed};}

@@ -13,8 +13,8 @@ test('Every registered game has a tab, an XP discipline and a passport stamp',()
  assert.deepEqual(DISCIPLINES.map(d=>d.id).sort(),[...GAME_IDS].sort());assert.deepEqual(STAMPS.map(s=>s.id).sort(),[...GAME_IDS].sort());
  assert.equal(new Set(GAME_IDS).size,GAME_IDS.length);for(const g of GAMES){assert.ok(['maze','pack','trade'].includes(g.kind));assert.ok(g.views.every(v=>VIEWS.includes(v)));if(g.views.length)assert.ok(g.views.includes('2d'),g.id+' plays in 2D too');}
 });
-test('Pack games in the registry all have quick-game checkpoints, except the story',()=>{
- for(const id of PACK_IDS)if(id!=='story')assert.ok(QUICK_MODES.includes(id),id);
+test('Pack games in the registry all have quick-game checkpoints, except the story and chess',()=>{
+ for(const id of PACK_IDS)if(id!=='story'&&id!=='chess')assert.ok(QUICK_MODES.includes(id),id);
 });
 test('Camera choices fall back to each game’s default and only switch where supported',()=>{
  assert.equal(viewFor('runner',{}),'first','first person is the default');assert.equal(viewFor('runner',{runner:'third'}),'third');assert.equal(viewFor('runner',{runner:'sideways'}),'first');

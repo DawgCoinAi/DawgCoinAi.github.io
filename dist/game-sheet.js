@@ -16,6 +16,7 @@ export const HOW={
  turbo:['Tap or ↑ to jump; hold for height','↓ rolls, or stomps in the air; → spends turbo, which gold and tricks refill','Fly through rings and chain tricks for combos up to ×5'],
  pinball:['Hold ← → (or each side of the screen) to flip','Shoot the lit arrows: ramps and wireforms carry the ball over the table','Finish the mission (bumpers, ramps, targets, D-A-W-G) to level up'],
  kart:['Hold ← → to steer, ↓ to drift','Drift through corners to charge a mini-turbo','↑ fires your item'],
+ chess:['Tap a piece, then tap where it goes','Every capture plays out as a battle; tap to skip, or switch battles off','Beat a rival to unlock the next one up the ladder'],
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']
 };
 
@@ -34,7 +35,7 @@ export class GameSheet {
   $('sheetPlay').disabled=!wall.open;$('sheetPlay').textContent=wall.open?'PLAY NOW ▶':'LOCKED';
   $('sheetDemo').style.setProperty?.('--poster',`url(${posterOf(id)})`);
   if(!$('gameSheet').open)$('gameSheet').showModal?.();this.startDemo(id);}
- startDemo(id){this.stopDemo();const host=$('sheetDemo');host.classList.toggle('is-poster',id==='story'||id==='trade');if(id==='story'||id==='trade')return;
+ startDemo(id){this.stopDemo();const host=$('sheetDemo');host.classList.toggle('is-poster',id==='story'||id==='trade'||id==='chess');if(id==='story'||id==='trade'||id==='chess')return;
   this.demo=this.io.demo(host,id);}
  stopDemo(){try{this.demo?.dispose();}catch{}this.demo=null;}
  close(){this.stopDemo();if($('gameSheet').open)$('gameSheet').close();}

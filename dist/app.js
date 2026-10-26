@@ -145,7 +145,7 @@ function selectMode(next){
   document.querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===next;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
   pack.select(PACK_MODES.includes(next)?next:null);
   if(next==='trade'){if(!trade)loadTrade();renderTrade();}
-  else if(PACK_MODES.includes(next)){const panel=$(next==='story'?'storyPanel':'packPanel');panel.setAttribute('aria-labelledby','tab-'+next);}
+  else if(PACK_MODES.includes(next)){const panel=$(next==='story'?'storyPanel':next==='chess'?'chessPanel':'packPanel');panel.setAttribute('aria-labelledby','tab-'+next);}
   else{$('arcadePanel').setAttribute('aria-labelledby','tab-'+next);if(game.mode!==next)newArcade();else{setLaunchText();renderDaily();updateBest();showState();}}
   renderHero();scrollToHero();
  };
@@ -251,7 +251,6 @@ function frame(now){
  if(isMaze()){
   const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);game.pace=mazeFirstPerson()?FIRST_PERSON_PACE:1;if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
   if(now-lastHud>80){updateHud();lastHud=now;}if(drawMaze3D())canvas.style.opacity='0';else{canvas.style.opacity='';renderer.draw(game,now);}if(now>toastUntil)$('gameToast').classList.remove('visible');
-  if(soundEnabled&&game.status==='playing'&&now>=nextMusicBeat){const notes=game.power>0?[220,330,440,660,440,330,277,415]:[110,165,220,165,131,196,262,196];sound(notes[musicBeat++%8],.12,'triangle',.009);nextMusicBeat=now+(game.power>0?180:260);}
  }
  if(PACK_MODES.includes(mode))pack.frame(now);
  if(mode==='trade'&&trade&&!document.hidden&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;drawCity(now);lastCityFrame=now;}
@@ -268,9 +267,9 @@ let achievementTimer=0;
 // interacting) and the page is visible. Leaving a game mid-run still banks the time.
 let runClock={game:null,seconds:0,startedAt:0},lastInput=-1e9;
 for(const type of ['pointerdown','keydown'])window.addEventListener(type,()=>{lastInput=performance.now();},{passive:true,capture:true});
-function activeGame(now){if(document.hidden||document.querySelector('dialog[open]'))return null;if(isMaze())return game.status==='playing'?mode:null;if(mode==='trade'||mode==='story')return now-lastInput<30000?mode:null;return pack.game?.status==='playing'?mode:null;}
+function activeGame(now){if(document.hidden||document.querySelector('dialog[open]'))return null;if(isMaze())return game.status==='playing'?mode:null;if(mode==='trade'||mode==='story'||mode==='chess')return now-lastInput<30000?mode:null;return pack.game?.status==='playing'?mode:null;}
 function trackPlay(now,dt){const id=activeGame(now);if(!id)return;if(runClock.game!==id){if(runClock.game&&runClock.seconds>=5)finishRun(runClock.game,0);runClock={game:id,seconds:0,startedAt:Date.now()};}runClock.seconds+=Math.min(.25,Math.max(0,dt));
- if((id==='trade'||id==='story')&&runClock.seconds>=120)finishRun(id,0);}
+ if((id==='trade'||id==='story'||id==='chess')&&runClock.seconds>=120)finishRun(id,0);}
 function finishRun(kind,score,gold=0){
  const mine=runClock.game===kind,seconds=mine?Math.round(runClock.seconds):0,startedAt=mine?runClock.startedAt:Date.now();runClock={game:null,seconds:0,startedAt:0};
  const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
@@ -300,7 +299,7 @@ function checkBadges(){for(const b of BADGES)if(profile[b.id]>=b.target&&!earned
 function badgesHTML(){return BADGES.map(b=>`<div class="badge ${profile[b.id]>=b.target?'earned':''}"><b>${profile[b.id]>=b.target?'✦ UNLOCKED':'◇ IN PROGRESS'}</b>${b.name}<small style="display:block;margin-top:6px;font-size:8px;line-height:1.6">${b.desc} · ${Math.min(profile[b.id],b.target)}/${b.target}</small></div>`).join('');}
 function awardPassport(){const result=updatePassport(passport,records);passport=result.state;write('passport',passport);if(result.reward){earnRep(result.reward);profileDirty=true;$('passportReward').textContent=(result.completed?'CITY LEGEND · ':result.unlocked.map(s=>s.name).join(' · ')+' · ')+'+'+result.reward+' REP';renderProgress();saveProfile();}else renderPassport();}
 function renderPassport(){const owned=passport?.stamps||[];$('passportCount').textContent=owned.length+' / '+STAMPS.length+(passport?.complete?' ✦':'');$('passportStamps').innerHTML=STAMPS.map(m=>{const earned=owned.includes(m.id),best=Math.max(0,records[m.id]||0),pct=Math.min(100,best/m.target*100),goal=m.id==='story'?'Finish any ending':m.id==='trade'?'Finish with '+money(m.target)+' net worth':m.target.toLocaleString()+' points in one completed run';return `<button class="passport-stamp ${earned?'earned':''}" data-passport="${m.id}" aria-label="${m.game}: ${earned?'stamp earned':goal}. Open game."><i>${earned?'✓':m.icon}</i><b>${m.game}</b><small>${earned?m.name+' · STAMP EARNED':goal}</small><div class="passport-track"><span style="width:${earned?100:pct}%"></span></div><small>${earned?'100 REP CLAIMED':m.id==='story'?'YOUR NEXT STORY AWAITS':'BEST '+(m.id==='trade'?money(records.trade||0):best.toLocaleString())+' · +100 REP'}</small></button>`;}).join('');}
-$('passportStamps').addEventListener('click',e=>{const b=e.target.closest('[data-passport]');if(!b)return;selectMode(b.dataset.passport);if(mode===b.dataset.passport)$(mode==='story'?'storyPanel':mode==='trade'?'tradePanel':PACK_MODES.includes(mode)?'packPanel':'mobileLaunch').scrollIntoView({behavior:renderer.reduced?'auto':'smooth',block:'start'});});
+$('passportStamps').addEventListener('click',e=>{const b=e.target.closest('[data-passport]');if(!b)return;selectMode(b.dataset.passport);if(mode===b.dataset.passport)$(mode==='story'?'storyPanel':mode==='chess'?'chessPanel':mode==='trade'?'tradePanel':PACK_MODES.includes(mode)?'packPanel':'mobileLaunch').scrollIntoView({behavior:renderer.reduced?'auto':'smooth',block:'start'});});
 function renderProgress(){
  renderPassport();
  const rep=profile.rep,next=Object.values(THEMES).find(t=>t.unlock>rep);
@@ -374,7 +373,7 @@ discoveries.renderList();$('resultsDialog').addEventListener('close',()=>discove
 // Play hero: the selected game with its best, weekly rank and top friend.
 function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallOf(shell.preview).open){shell.hero(shell.preview,{wall:wallOf(shell.preview),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
  shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
-$('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade'||mode==='story')$(mode==='trade'?'tradePanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
+$('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade'||mode==='story'||mode==='chess')$(mode==='trade'?'tradePanel':mode==='chess'?'chessPanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
 $('meSettings').onclick=()=>openDialog('settingsDialog');$('meHelp').onclick=()=>openDialog('helpDialog');$('meBackup').onclick=()=>openDialog('backupDialog');$('meDelete').onclick=()=>{renderAccount();openDialog('accountDialog');$('accountDelete').focus();};$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
 $('meBests').addEventListener('click',e=>{const id=e.target.closest('[data-game]')?.dataset.game;if(id){shell.show('play');if(id===mode)renderHero();else selectMode(id);}});
 function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp,next:xpForLevel(s.level+1),prev:xpForLevel(s.level),minutes:s.minutes,streak:s.streak,runs:records.runs||0,records,stamps:(passport?.stamps?.length||0)+'/'+STAMPS.length,rank:null});rankings.renderIdentity();
@@ -383,7 +382,7 @@ function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp
 // the crash or finish can land, then fills in where the run sits socially once it's uploaded.
 var lastRun=null,resultsTimer=0;
 const results=new ResultsSheet({openDialog,reduced:()=>renderer.reduced,
- onRematch:r=>{if(!wallOf(r.game).open){selectMode(r.game);return;}if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')pack.story.newNight();else pack.play();},
+ onRematch:r=>{if(!wallOf(r.game).open){selectMode(r.game);return;}if(isMaze(r.game))play();else if(r.game==='trade')$('againTradeButton').click();else if(r.game==='story')pack.story.newNight();else if(r.game==='chess')pack.chess.newGame();else pack.play();},
  onHome:r=>{if(isMaze(r.game))returnToArcade();else pack.exit();shell.show('play');window.scrollTo({top:0});},
  onShare:r=>{const m=medalState(r.score,r.targets);shareRun(r.game,r.score,{best:r.best,medal:m.earned?m.label:'',detail:r.detail});},
  onChallenge:r=>rankings.pickFriend(r.game),

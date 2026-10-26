@@ -8,7 +8,7 @@ const sql=fs.readFileSync(new URL('../supabase/migrations/20261024010000_social.
 test('Challenge links round-trip and reject anything malformed',()=>{
  const url=challengeLink('https://dawgcoinai.github.io/?old=1#x','runner',1234.7,'3FA9C210');assert.equal(url,'https://dawgcoinai.github.io/?challenge=runner&score=1234&from=3FA9C210');
  assert.deepEqual(readChallenge(new URL(url).search),{game:'runner',score:1234,from:'3FA9C210'});
- for(const bad of ['?challenge=chess&score=1&from=3FA9C210','?challenge=runner&score=-5&from=3FA9C210','?challenge=runner&score=1&from=<script>','?challenge=runner&score=1e99&from=3FA9C210',''])assert.equal(readChallenge(bad),null,bad);
+ for(const bad of ['?challenge=checkers&score=1&from=3FA9C210','?challenge=runner&score=-5&from=3FA9C210','?challenge=runner&score=1&from=<script>','?challenge=runner&score=1e99&from=3FA9C210',''])assert.equal(readChallenge(bad),null,bad);
 });
 test('Player names follow the same rule in the browser and the database',()=>{
  assert.ok(sql.includes(`'${NAME_RULE.source}'`),'regex matches the SQL check');

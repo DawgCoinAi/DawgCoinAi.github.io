@@ -199,11 +199,14 @@ export class ThreeChess {
   if(this.rival)setDawgPose(this.rival,real,reduced?'still':rivalPose);
   for(const w of this.fighters||[]){setDawgPose(w.a,real*(w.pose==='run'?1.6:1),w.pose||'idle');if(w.arm&&w.armX)w.arm.upper.rotateX(w.armX);if(w.t==='q')for(const o of w.wpn.children)if(o.userData.orb!==undefined){const a=real*3+o.userData.orb*2.1;o.position.set(Math.cos(a)*.45,.3+Math.sin(real*4+o.userData.orb)*.1,Math.sin(a)*.45);}}
   // The resting camera, or the cinema shot.
-  const flip=this.flipped?-1:1,top=this.view==='top',base=top?new T.Vector3(0,13.5,.01*flip):new T.Vector3(0,aspect<1?12:8.2,(aspect<1?10:8.9)*flip),aimBase=new T.Vector3(0,top?0:.1,top?0:-.4*flip);
+  // The resting camera is fitted to the view: far enough back that all eight ranks and both
+  // sides of the board show at any shape of screen, from a folded phone to a wide monitor.
+  const flip=this.flipped?-1:1,top=this.view==='top',vfov=top?36:40,tanV=Math.tan(vfov*Math.PI/360),tanH=tanV*aspect,el=top?Math.PI/2-.001:.92,d=Math.max(5.3/tanH,(top?5.3:4.7)/tanV)*(top?1:1.05);
+  const base=new T.Vector3(0,Math.sin(el)*d,Math.cos(el)*d*flip),aimBase=new T.Vector3(0,top?0:.35,top?0:-.15*flip);
   let pos=base,at=aimBase;if(this.cine){const c=this.cine,k=Math.min(1,(now-c.t0)/550),e=ease(k);pos=c.from.clone().lerp(c.pos,e);at=c.aimFrom.clone().lerp(c.at,e);if(c.orbit){const a=(now-c.t0)/1000*.6,r=c.pos.clone().sub(c.at);r.applyAxisAngle(new T.Vector3(0,1,0),a);pos=c.at.clone().add(r);}}
   else if(!reduced&&!top){pos=pos.clone();pos.x+=Math.sin(real*.15)*.25;}
   if(this.cine)cam.position.copy(pos);else cam.position.lerp(pos,Math.min(1,dt*4));this.aim=(this.aim||at.clone()).lerp(at,this.cine?1:Math.min(1,dt*4));this.stage.applyShake(real,reduced);cam.lookAt(this.aim);
-  cam.fov=fitFov(this.cine?40:top?34:42,aspect,top?40:46);cam.updateProjectionMatrix();
+  cam.fov=this.cine?fitFov(40,aspect,46):vfov;cam.updateProjectionMatrix();
   if(this.checkSq>=0&&!this.cine&&!reduced){const p=sqPos(this.checkSq);this.checkLight.position.set(p.x,1.4,p.z);this.checkLight.intensity=8+Math.sin(real*6)*6;}else if(!this.cine)this.checkLight.intensity=0;
   this.labels.visible=!this.cine;this.particles.update(dt*scale);this.stage.render(dt,real,{reduced,aberration:this.cine?.0025:.001});return true;}
  fail(){if(this.dead)return;this.onFailure?.();this.dispose();}

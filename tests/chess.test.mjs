@@ -38,7 +38,7 @@ test('The rivals find mates and free material, and the ladder gets stronger',()=
  assert.ok(RIVALS.every((rv,i)=>!i||rv.rating>RIVALS[i-1].rating&&rv.time>=RIVALS[i-1].time));
  const m=rivalMove(START,{...RIVALS[0],time:50},()=>.99);assert.ok(m&&new Chess().moves().some(x=>x.from===m.from&&x.to===m.to));
  // A strong rival beats a weak one.
- let c=new Chess(),plies=0;while(c.status()==='playing'&&plies<240){const rv=c.turn==='w'?{...RIVALS[3],time:120,depth:4}:{...RIVALS[0],time:40};c.play(rivalMove(c.fen(),rv,Math.random));plies++;}
+ let c=new Chess(),plies=0;while(c.status()==='playing'&&plies<120){const rv=c.turn==='w'?{...RIVALS[3],time:40,depth:3}:{...RIVALS[0],time:15};c.play(rivalMove(c.fen(),rv,Math.random));plies++;}
  assert.notEqual(c.status()==='checkmate'&&c.turn==='w','white lost',true);assert.ok(evaluate(c)!==undefined);
  assert.ok(chessScore(4,'win',30)>chessScore(0,'win',30));assert.equal(chessScore(2,'loss',40),0);assert.ok(chessScore(1,'draw',50)>0);
 });

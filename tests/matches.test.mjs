@@ -37,3 +37,9 @@ test('The server sets matches up safely',()=>{
  assert.match(sql.slice(sql.indexOf('function public.accept_invite')),/\(auth\.uid\(\), target\), \(target, auth\.uid\(\)\)/,'invites make friends both ways');
  assert.match(sql,/delete from matches where from_id = auth\.uid\(\) or to_id = auth\.uid\(\)/,'deleting your data removes your matches');
 });
+test('Every migration quotes its function bodies with paired $$ markers',()=>{
+ const dir=new URL('../supabase/migrations/',import.meta.url);
+ for(const f of fs.readdirSync(dir).filter(f=>f.endsWith('.sql'))){const s=fs.readFileSync(new URL(f,dir),'utf8');
+  assert.equal((s.match(/\$\$/g)||[]).length%2,0,f+' has an unpaired $$');
+  assert.doesNotMatch(s,/\bas \$\s*\n|^end \$;|^do \$\s*$/m,f+' has a single $ where $$ belongs');}
+});

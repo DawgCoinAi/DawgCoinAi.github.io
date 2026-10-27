@@ -148,7 +148,7 @@ end $$;
 
 -- Deleting your data removes your matches too.
 create or replace function public.delete_my_data()
-returns void language plpgsql security definer set search_path = public as $
+returns void language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'sign in first'; end if;
   delete from saves where user_id = auth.uid();
@@ -158,9 +158,9 @@ begin
   delete from challenges where from_id = auth.uid() or to_id = auth.uid();
   delete from matches where from_id = auth.uid() or to_id = auth.uid();
   delete from profiles where id = auth.uid();
-end $;
+end $$;
 
-do $
+do $$
 declare f text;
 begin
   foreach f in array array['create_match(text, text)', 'my_matches()', 'submit_match_score(bigint, bigint, int)',

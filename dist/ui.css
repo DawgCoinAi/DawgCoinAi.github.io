@@ -477,3 +477,4 @@ body.story-focus>.topbar,body.story-focus>.app-nav,body.story-focus main>:not(#v
 body.story-focus main{margin:0;padding:0;max-width:none}body.story-focus .is-focus{display:block!important;margin:0;padding:14px 16px calc(24px + env(safe-area-inset-bottom));min-height:100dvh;max-width:1180px;margin-inline:auto}
 .story-focus-exit{position:fixed;right:14px;top:12px;z-index:40;font:700 10px var(--ui-mono);letter-spacing:.8px;padding:9px 13px;border-radius:999px;border:1px solid var(--ui-lime);background:#0b0816e6;color:var(--ui-lime);cursor:pointer;backdrop-filter:blur(6px)}.story-focus-exit[hidden]{display:none}
 @media(max-width:480px){.story-focus-exit{top:auto;bottom:calc(12px + env(safe-area-inset-bottom));right:12px}}
+.tag.go{background:#ff4fd833;color:#ffb3ec}.challenge.match .who small{line-height:1.5}

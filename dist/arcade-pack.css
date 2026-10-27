@@ -111,3 +111,4 @@ body.pack-session.pack-landscape #packPanel{grid-template-areas:'header header' 
 @media(max-width:900px){.chess-grid{grid-template-columns:minmax(0,1fr)}.chess-head h2{font-size:34px}}
 
 body.story-focus .chess-stage{width:min(100%,max(300px,calc(100dvh - 150px)))}
+.chess-online .chess-side .story-card:nth-child(2),.chess-online .chess-side .story-card:nth-child(3),.chess-online #chessHint,.chess-online #chessUndo{display:none}.chess-online .chess-rival{border-color:#ff4fd8}

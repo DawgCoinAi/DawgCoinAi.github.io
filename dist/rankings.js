@@ -7,6 +7,7 @@ import {GAMES,gameById} from './games.js';
 import {validDawg} from './dawg-career.js';
 import {drawDawg} from './dawg-art.js';
 import {profileLink,readPlayerLink,shareBase,drawScoreCard} from './share.js';
+import {isMatchGame,MATCH_GAMES,matchState,myTurn,needsYou,summary,shown,rememberInvite,takeInvite} from './matches.js';
 import {posterOf,timeAgo,movement} from './shell.js';
 
 const $=id=>document.getElementById(id);
@@ -25,9 +26,11 @@ const missing=e=>/still being set up/.test(e?.message||'');
 
 export class Rankings {
  constructor({cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame,onSocial}){Object.assign(this,{cloud,kennel,records,stats,confirm,openDialog,announce,play,share,shell,currentGame,onSocial});
-  this.game='level';this.period='week';this.scope='global';this.tab='inbox';this.profile=null;this.friends=[];this.challenges=[];this.cache=new Map();this.wire();}
+  this.game='level';this.period='week';this.scope='global';this.tab='inbox';this.profile=null;this.friends=[];this.challenges=[];this.matches=[];this.cache=new Map();this.wire();
+  // An invite link opened before the cloud connects is kept until it can be accepted.
+  const invited=readPlayerLink(globalThis.location?.search||'');if(invited)rememberInvite(invited);}
  get api(){return this.cloud.client&&this.cloud.user?this.cloud.client:null;}
- async rpc(name,args){const api=this.api;if(!api)throw new Error('Rankings need the cloud connection. Your progress is still saved on this device.');const {data,error}=await api.rpc(name,args);if(error)throw new Error(/name taken/.test(error.message)?'That name is taken. Try another.':/not allowed/.test(error.message)?'That name isn’t allowed. Use 3–16 letters, numbers, spaces, _ . or -.':/no player/.test(error.message)?'No player has that code.':/own code/.test(error.message)?'That’s your own friend code.':/finish a ranked run/.test(error.message)?'Finish a run in that game first so there’s a score to beat.':/too many challenges/.test(error.message)?'That’s a lot of challenges for one day. Try again tomorrow.':/Could not find the function|does not exist/i.test(error.message)?'This part of the social layer is still being set up. Check back soon.':error.message);return data;}
+ async rpc(name,args){const api=this.api;if(!api)throw new Error('Rankings need the cloud connection. Your progress is still saved on this device.');const {data,error}=await api.rpc(name,args);if(error)throw new Error(/name taken/.test(error.message)?'That name is taken. Try another.':/not allowed/.test(error.message)?'That name isn’t allowed. Use 3–16 letters, numbers, spaces, _ . or -.':/no player/.test(error.message)?'No player has that code.':/own code/.test(error.message)?'That’s your own friend code.':/finish a ranked run/.test(error.message)?'Finish a run in that game first so there’s a score to beat.':/too many challenges|too many matches/.test(error.message)?'That’s a lot of challenges for one day. Try again tomorrow.':/not your turn|out of turn/.test(error.message)?'It’s not your move yet. Your board has been brought up to date.':/already played/.test(error.message)?'You already played your side of this match.':/match is finished/.test(error.message)?'That match is already over.':/Could not find the function|does not exist/i.test(error.message)?'This part of the social layer is still being set up. Check back soon.':error.message);return data;}
  // Short-lived cache so switching tabs and views doesn't refetch everything.
  async cached(key,ms,load){const hit=this.cache.get(key);if(hit&&Date.now()-hit.at<ms)return hit.value;const value=await load();this.cache.set(key,{at:Date.now(),value});return value;}
  forget(prefix){for(const k of [...this.cache.keys()])if(k.startsWith(prefix))this.cache.delete(k);}
@@ -105,12 +108,16 @@ export class Rankings {
   if(!this.api){this.note('friendNote','Connecting…');clearTimeout(this.offlineTimer);this.offlineTimer=setTimeout(()=>{if(!this.api)this.note('friendNote','Friends need the cloud connection. Your progress is still saved on this device.');},8000);return;}this.note('friendNote','');
   if(this.tab==='inbox')this.loadInbox();else if(this.tab==='feed')this.loadFeed();else this.loadPeople();}
  async loadInbox(){const box=$('friendInbox');box.replaceChildren(el('div','skeleton'),el('div','skeleton'));
+  let matches=[];try{matches=(await this.rpc('my_matches'))||[];this.matches=matches;if(matches.some(m=>!m.seen))this.rpc('mark_matches_seen').catch(()=>{});}catch{}
   try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];
    if(this.challenges.some(c=>c.direction==='in'&&!c.seen)){this.rpc('mark_challenges_seen').catch(()=>{});}
    const incoming=this.challenges.filter(c=>c.direction==='in'),outgoing=this.challenges.filter(c=>c.direction==='out'),open=incoming.filter(c=>!c.beaten),done=incoming.filter(c=>c.beaten);
    const parts=[];
-   if(!this.challenges.length)parts.push(this.emptyState('No challenges yet','Challenge a friend from their card, or from any game’s Play screen. When someone challenges you, it lands here.',button('CHALLENGE A FRIEND','primary',()=>this.pickFriend(this.currentGame?.()))));
-   if(open.length)parts.push(el('p','list-label','WAITING FOR YOU'),...open.map(c=>this.challengeRow(c)));
+   const groups=[['yours','YOUR TURN'],['theirs','WAITING ON THEM'],['won','RESULTS'],['lost',null],['draw',null],['declined',null]],byKey={};for(const m of matches)(byKey[matchState(m).key]??=[]).push(m);
+   const results=[...(byKey.won||[]),...(byKey.lost||[]),...(byKey.draw||[]),...(byKey.declined||[])].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,20);
+   if(byKey.yours?.length)parts.push(el('p','list-label','YOUR TURN'),...byKey.yours.map(m=>this.matchRow(m)));if(byKey.theirs?.length)parts.push(el('p','list-label','WAITING ON THEM'),...byKey.theirs.map(m=>this.matchRow(m)));if(results.length)parts.push(el('p','list-label','RESULTS'),...results.map(m=>this.matchRow(m)));
+   if(!this.challenges.length&&!matches.length)parts.push(this.emptyState('No matches yet','Start a match with a friend from their card or from any game: you both get the same course, and the higher score wins. Chess is a real game, played in turns.',button('START A MATCH','primary',()=>this.pickFriend(this.currentGame?.()||'runner'))));
+   if(this.challenges.length)parts.push(el('p','list-label','SCORE CHALLENGES'));if(open.length)parts.push(el('p','list-label','WAITING FOR YOU'),...open.map(c=>this.challengeRow(c)));
    if(outgoing.length)parts.push(el('p','list-label','YOU SENT'),...outgoing.map(c=>this.challengeRow(c)));
    if(done.length)parts.push(el('p','list-label','YOU WON'),...done.map(c=>this.challengeRow(c)));
    box.replaceChildren(...parts);this.unseen=0;this.badge();
@@ -122,6 +129,22 @@ export class Rankings {
   const acts=el('div','acts');if(inbound&&!c.beaten)acts.append(button('PLAY','primary',()=>this.play(c.game)));if(!inbound&&c.beaten)acts.append(button('REMATCH','pink',()=>this.sendChallenge({friend_code:c.friend_code,player:c.player},c.game)));
   acts.append(button('✕','',async()=>{try{await this.rpc('remove_challenge',{p_id:c.id});row.remove();}catch(e){this.note('friendNote',e.message);}}));acts.lastChild.setAttribute('aria-label',inbound?'Dismiss challenge':'Withdraw challenge');
   row.append(face,who,acts);return row;}
+ // One match in the inbox: who, what, the scores (theirs hidden till you play), and the next step.
+ matchRow(m){m=shown(m);const st=matchState(m),inbound=m.role==='to',row=el('div','challenge match'+(!m.seen?' new':'')+(st.key==='won'?' won':'')),who=el('div','who'),face=this.face(m.avatar,48);face.onclick=()=>this.showCode(m.friend_code);
+  who.append(el('b','',inbound?`${m.player} challenged you`:`You challenged ${m.player}`));const small=el('small','',summary(m)+' · '+timeAgo(m.updated_at)+' ');small.append(el('span','tag '+st.tone,st.label));who.append(small);
+  const acts=el('div','acts'),again=()=>this.startMatch({friend_code:m.friend_code,player:m.player},m.game);
+  if(st.key==='yours')acts.append(button(m.game==='chess'?'YOUR MOVE':'PLAY','primary',()=>this.onMatch?.(m)));
+  else if(m.game==='chess'&&m.status==='open')acts.append(button('VIEW','',()=>this.onMatch?.(m)));
+  else if(m.status!=='open')acts.append(button('REMATCH','pink',again));
+  if(m.status==='open'&&inbound&&(m.game==='chess'?!(m.moves?.length>1):m.my_score==null)){const x=button('✕','',async()=>{try{await this.rpc('decline_match',{p_id:m.id});this.loadInbox();}catch(e){this.note('friendNote',e.message);}});x.setAttribute('aria-label','Decline match');acts.append(x);}
+  row.append(face,who,acts);return row;}
+ // Starts a match with a friend; you can play your side straight away.
+ async startMatch(friend,game){if(!isMatchGame(game))return this.sendChallenge(friend,game);
+  try{const r=await this.rpc('create_match',{p_code:friend.friend_code,p_game:game});$('pickDialog').open&&$('pickDialog').close();this.friends=[];
+   this.announce(`MATCH SET UP · ${(r?.to||friend.player).toUpperCase()} · ${titleOf(game).toUpperCase()}`);if(this.shell.view==='friends'&&this.tab==='inbox')this.loadInbox();
+   const m={id:r.id,game,seed:r.seed,role:'from',player:r?.to||friend.player,friend_code:friend.friend_code,avatar:friend.avatar,my_score:null,their_score:null,moves:[],status:'open',seen:true};
+   if(game==='chess')this.onMatch?.(m);else this.confirm('Match set up!',`${m.player} gets the same ${titleOf(game)} course you do, whenever they’re next online. Play your side now?`,'PLAY MY SIDE ↗',()=>this.onMatch?.(m));return true;}
+  catch(error){if(/still being set up/.test(error.message))return this.sendChallenge(friend,game);if($('pickDialog').open)this.note('pickNote',error.message);else this.announce(error.message);return false;}}
  async loadFeed(){const box=$('friendFeed');box.replaceChildren(el('div','skeleton'),el('div','skeleton'));
   try{const rows=await this.cached('feed',30000,()=>this.rpc('friend_feed',{p_limit:40}));
    box.replaceChildren(...(rows?.length?rows.map(r=>this.feedItem(r)):[this.emptyState('Nothing new from your pack','When friends set a new personal best, it shows up here.',button('ADD FRIENDS','primary',()=>{this.tab='people';this.loadFriendsTab();$('friendCode').focus();}))]));
@@ -140,7 +163,8 @@ export class Rankings {
  emptyState(title,text,action){const d=el('div','empty-state');d.append(el('b','',title),el('span','',text));if(action)d.append(el('br'),action);return d;}
  // Friends badge: unseen incoming challenges plus new "added you" players.
  async refreshBadge(){if(!this.api)return;const viewing=tab=>this.shell.view==='friends'&&this.tab===tab;
-  try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];this.unseen=viewing('inbox')?0:this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length;}catch{}
+  try{this.matches=(await this.rpc('my_matches'))||[];}catch{}
+  try{const rows=await this.rpc('my_challenges');this.challenges=rows||[];this.unseen=viewing('inbox')?0:this.challenges.filter(c=>c.direction==='in'&&!c.seen&&!c.beaten).length+needsYou(this.matches);}catch{}
   try{const fans=await this.rpc('my_followers');let seen=0;try{seen=Number(localStorage.getItem('dawg-v1-fansSeen'))||0;}catch{}this.fans=viewing('people')?0:(fans||[]).filter(f=>new Date(f.added_at).getTime()>seen).length;}catch{}this.badge();this.onSocial?.();}
  // Friends tab badge counts both; the Challenges tab badge counts challenges only.
  badge(){const c=this.unseen||0,n=c+(this.fans||0);for(const [id,v] of [['friendsBadge',n],['inboxBadge',c]]){const b=$(id);if(!b)continue;b.hidden=!v;b.textContent=v>9?'9+':String(v);}$('friendsButton')?.setAttribute('aria-label',n?`Friends, ${n} new`:'Friends');}
@@ -152,14 +176,15 @@ export class Rankings {
  async sendChallenge(friend,game){try{const r=await this.rpc('send_challenge',{p_code:friend.friend_code,p_game:game});this.note('pickNote','');$('pickDialog').open&&$('pickDialog').close();this.announce(`CHALLENGE SENT · ${(r?.to||friend.player).toUpperCase()} · ${titleOf(game).toUpperCase()}`);if(this.shell.view==='friends'&&this.tab==='inbox')this.loadInbox();return true;}
   catch(error){if($('pickDialog').open)this.note('pickNote',error.message);else this.announce(error.message);return false;}}
  // Pick which game to challenge a friend in: games with a personal best first.
- pickGame(friend){if(!this.api){this.announce('Challenges need the cloud connection.');return;}const recs=this.records();const games=GAMES.filter(g=>g.id!=='story').sort((a,b)=>(recs[b.id]||0)-(recs[a.id]||0));
-  $('pickEyebrow').textContent='CHALLENGE '+friend.player.toUpperCase();$('pickTitle').textContent='Pick a game';$('pickText').textContent='They’ll get your best score in that game as the one to beat.';this.note('pickNote','');
-  $('pickList').replaceChildren(...games.map(g=>{const b=el('button');b.type='button';const img=el('img');img.src=posterOf(g.id);img.alt='';const t=el('span','',g.title);t.append(el('small','',recs[g.id]>0?'Your best':'No score yet'));b.append(img,t,el('b','',recs[g.id]>0?fmt(recs[g.id]):'—'));b.disabled=!(recs[g.id]>0);b.onclick=()=>this.sendChallenge(friend,g.id);return b;}));this.openDialog('pickDialog');}
+ pickGame(friend){// Player cards say name/code; friend rows say player/friend_code.
+  friend={player:friend.player||friend.name||'your friend',friend_code:friend.friend_code||friend.code,avatar:friend.avatar};if(!this.api){this.announce('Matches need the cloud connection. Try again in a moment.');return;}const recs=this.records();const games=GAMES.filter(g=>isMatchGame(g.id)).sort((a,b)=>(a.id==='chess'?-1:0)-(b.id==='chess'?-1:0)||(recs[b.id]||0)-(recs[a.id]||0));
+  $('pickEyebrow').textContent='MATCH WITH '+friend.player.toUpperCase();$('pickTitle').textContent='Pick a game';$('pickText').textContent='You both get the exact same course and the higher score wins. Chess is a real game: you play white, and you take turns whenever you’re online.';this.note('pickNote','');
+  $('pickList').replaceChildren(...games.map(g=>{const b=el('button');b.type='button';const img=el('img');img.src=posterOf(g.id);img.alt='';const t=el('span','',g.title);t.append(el('small','',g.id==='chess'?'Real game, in turns':recs[g.id]>0?'Your best':'Same course for both'));b.append(img,t,el('b','',g.id==='chess'?'♞':recs[g.id]>0?fmt(recs[g.id]):'GO ›'));b.onclick=()=>this.startMatch(friend,g.id);return b;}));this.openDialog('pickDialog');}
  // Pick which friend to challenge in a game.
- async pickFriend(game){if(!game||!gameById(game))return;if(!this.api){this.announce('Challenges need the cloud connection.');return;}const best=this.records()[game]||0;
-  $('pickEyebrow').textContent='CHALLENGE · '+titleOf(game).toUpperCase();$('pickTitle').textContent='Who’s up?';$('pickText').textContent=best>0?`They’ll need to beat your ${fmt(best)}.`:'Finish a run in this game first so there’s a score to beat.';this.note('pickNote','');$('pickList').replaceChildren(el('div','skeleton'));this.openDialog('pickDialog');
+ async pickFriend(game){if(!game||!gameById(game))return;if(!this.api){this.announce('Matches need the cloud connection. Try again in a moment.');return;}const best=this.records()[game]||0,match=isMatchGame(game);
+  $('pickEyebrow').textContent=(match?'MATCH · ':'CHALLENGE · ')+titleOf(game).toUpperCase();$('pickTitle').textContent='Who’s up?';$('pickText').textContent=match?(game==='chess'?'A real game of chess: you play white and take turns whenever you’re online.':'You both get the exact same course; the higher score wins.'):best>0?`They’ll need to beat your ${fmt(best)}.`:'Finish a run in this game first so there’s a score to beat.';this.note('pickNote','');$('pickList').replaceChildren(el('div','skeleton'));this.openDialog('pickDialog');
   try{const rows=this.friends.length?this.friends:await this.rpc('my_friends');this.friends=rows||[];
-   $('pickList').replaceChildren(...(this.friends.length?this.friends.map(f=>{const b=el('button');b.type='button';const t=el('span','',f.player);t.append(el('small','',`Level ${f.level}`));b.append(this.face(f.avatar,44),t,el('b','','SEND ›'));b.disabled=!(best>0);b.onclick=()=>this.sendChallenge(f,game);return b;}):[this.emptyState('No friends yet','Add friends by code, or send them your invite link.',button('INVITE FRIENDS','primary',()=>{$('pickDialog').close();this.shareProfile();}))]));
+   $('pickList').replaceChildren(...(this.friends.length?this.friends.map(f=>{const b=el('button');b.type='button';const t=el('span','',f.player);t.append(el('small','',`Level ${f.level}`));b.append(this.face(f.avatar,44),t,el('b','','SEND ›'));b.disabled=!match&&!(best>0);b.onclick=()=>this.startMatch(f,game);return b;}):[this.emptyState('No friends yet','Send your invite link: when they open it, you’re friends both ways, even if you’re offline.',button('INVITE FRIENDS','primary',()=>{$('pickDialog').close();this.shareProfile();}))]));
   }catch(error){$('pickList').replaceChildren();this.note('pickNote',error.message);}}
 
  // ── Player cards, names and links ─────────────────────────────────────────────────────────
@@ -176,8 +201,11 @@ export class Rankings {
  bestScore(){return Math.max(0,...Object.values(this.records()).filter(Number.isFinite));}
  async showCode(code){if(!code)return;try{const p=await this.rpc('public_profile',{p_code:code});if(p)this.showPlayer(p);else this.announce('That player card is private.');}catch(error){this.announce(error.message);}}
  // A profile link opened on this device: show that player's public card with an Add Friend button.
- async handlePlayer(){const code=readPlayerLink(location.search);if(!code)return;const u=new URL(location.href);u.searchParams.delete('player');history.replaceState(null,'',u.pathname+u.search+u.hash);
-  let p=null;try{p=await this.rpc('public_profile',{p_code:code});}catch(error){this.announce(error.message);return;}if(!p){this.announce('That player card is private or no longer exists.');return;}this.showPlayer(p);}
+ async handlePlayer(){let code=readPlayerLink(location.search);if(code){const u=new URL(location.href);u.searchParams.delete('player');history.replaceState(null,'',u.pathname+u.search+u.hash);}code=code||takeInvite();if(!code)return;
+  if(!this.api){rememberInvite(code);return;}takeInvite();let p=null;
+  try{p=await this.rpc('accept_invite',{p_code:code});}catch(error){if(!/still being set up/.test(error.message)){this.announce(error.message);return;}try{p=await this.rpc('public_profile',{p_code:code});}catch{}}
+  if(!p){this.announce('That player card is private or no longer exists.');return;}this.friends=[];this.forget('board:');this.forget('feed');this.showPlayer(p);
+  if(p.code!==this.profile?.code&&p.following){$('profileNote').textContent=`You and ${p.name} are friends now. Tap Challenge to start a match.`;this.announce('FRIENDS · '+String(p.name).toUpperCase());}}
  showPlayer(p){this.shown=p;const bests=Object.entries(p.best||{}).filter(([g,s])=>gameById(g)&&Number.isFinite(s)).sort((a,b)=>b[1]-a[1]);p.topGame=bests[0]?.[0];
   this.avatar($('profileAvatar'),p.avatar,200);$('profileName').textContent=p.name||'Guest '+p.code;$('profileLevel').textContent=`Level ${fmt(p.level)} · friend code ${p.code}`;
   $('profileBests').replaceChildren(...bests.map(([g,s])=>{const li=el('li');li.append(el('span','',gameById(g).title),el('b','',fmt(s)));return li;}));

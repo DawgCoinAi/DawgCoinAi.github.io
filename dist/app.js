@@ -6,6 +6,7 @@ import {sceneFor} from './scene-loader.js';
 import {HustleChat,hustleCast} from './hustle-chat.js';
 import {GameSheet} from './game-sheet.js';
 import {Discoveries} from './discoveries.js';
+import {createQuickGame} from './pack-checkpoint.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
 import {ArcadeRenderer,THEMES} from './renderer.js';
@@ -131,7 +132,22 @@ $('restartButton').onclick=()=>{if(game.status==='ready'||game.status==='over')n
 let trial=null;try{trial=JSON.parse(localStorage.getItem('dawg-trial')||'null');}catch{}if(!GAME_IDS.includes(trial))trial=null;
 function trialsUsed(){try{const v=JSON.parse(localStorage.getItem('dawg-trials')||'[]');return Array.isArray(v)?v:[];}catch{return [];}}
 function grantTrial(id){if(!GAME_IDS.includes(id)||wallFor(id,arcade,records).open||trialsUsed().includes(id))return false;trial=id;try{localStorage.setItem('dawg-trial',JSON.stringify(id));}catch{}announce('FREE RUN · '+(gameById(id)?.title||id).toUpperCase()+' IS YOURS TO TRY ONCE');return true;}
-function wallOf(id){return trial===id?{open:true,reason:'trial',routes:[]}:wallFor(id,arcade,records);}
+function wallOf(id){return trial===id||activeMatch?.game===id?{open:true,reason:activeMatch?.game===id?'match':'trial',routes:[]}:wallFor(id,arcade,records);}
+// A match with a friend: the game is set up on the match's seed, so both players get the same
+// course, and the first run that finishes is sent as this player's score. Matches open their game
+// even if it's still locked for this player.
+let activeMatch=null,lastRunSeconds=0;
+function playMatch(m){for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');
+ if(m.game==='chess'){activeMatch=null;if(mode!=='chess'){activeMatch={id:m.id,game:'chess',player:m.player};selectMode('chess');activeMatch=null;}pack.chess.playOnline(m,(n,a)=>rankings.rpc(n,a));$('chessPanel').scrollIntoView?.({behavior:'smooth',block:'start'});return;}
+ activeMatch={id:m.id,game:m.game,player:m.player,seed:m.seed};
+ const start=()=>{if(mode!==m.game)return;if(isMaze(m.game)){cancelCountdown();game=new MazeGame(m.game,seededRandom(m.seed),{worldSeed:m.seed});renderer.character=kennel.prepare(mode,game,true);renderer.reset();scoreRecorded=false;runOutcome=null;write('mazeRun',null);setLaunchText();updateBest();showState();drawMaze();play();}
+  else{pack.games[m.game]=createQuickGame(m.game,m.seed);pack.select(m.game);pack.play();}
+  announce('MATCH VS '+String(m.player).toUpperCase()+' · SAME COURSE');};
+ if(mode===m.game)start();else{selectMode(m.game);setTimeout(start,60);}}
+async function submitMatch(kind,score){const m=activeMatch;if(!m||m.game!==kind)return;activeMatch=null;
+ try{const r=await rankings.rpc('submit_match_score',{p_id:m.id,p_score:Math.max(0,Math.floor(score)||0),p_seconds:Math.max(1,lastRunSeconds)});
+  const vs=String(m.player).toUpperCase();announce(r.outcome==='win'?`MATCH WON VS ${vs} · ${fmt(r.my_score)} TO ${fmt(r.their_score)}`:r.outcome==='loss'?`${vs} WINS THE MATCH · ${fmt(r.their_score)} TO ${fmt(r.my_score)}`:r.outcome==='draw'?`MATCH DRAWN WITH ${vs}`:`MATCH SCORE IN · ${fmt(r.my_score)} · WAITING ON ${vs}`);rankings.refreshBadge();}
+ catch(error){announce(error.message);}}
 function endTrial(id){trial=null;try{localStorage.removeItem('dawg-trial');localStorage.setItem('dawg-trials',JSON.stringify([...trialsUsed().filter(x=>x!==id),id].slice(-20)));}catch{}
  if(wallFor(id,arcade,records).open)return;renderLocks();
  // Back to an open game, with the one you tried showing what it takes to unlock it.
@@ -271,7 +287,7 @@ function activeGame(now){if(document.hidden||document.querySelector('dialog[open
 function trackPlay(now,dt){const id=activeGame(now);if(!id)return;if(runClock.game!==id){if(runClock.game&&runClock.seconds>=5)finishRun(runClock.game,0);runClock={game:id,seconds:0,startedAt:Date.now()};}runClock.seconds+=Math.min(.25,Math.max(0,dt));
  if((id==='trade'||id==='story'||id==='chess')&&runClock.seconds>=120)finishRun(id,0);}
 function finishRun(kind,score,gold=0){
- const mine=runClock.game===kind,seconds=mine?Math.round(runClock.seconds):0,startedAt=mine?runClock.startedAt:Date.now();runClock={game:null,seconds:0,startedAt:0};
+ const mine=runClock.game===kind,seconds=mine?Math.round(runClock.seconds):0,startedAt=mine?runClock.startedAt:Date.now();runClock={game:null,seconds:0,startedAt:0};lastRunSeconds=seconds;
  const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
  cloud.recordRun({game:kind,day:localDay(),startedAt:new Date(startedAt).toISOString(),endedAt:new Date(Math.max(Date.now(),startedAt)).toISOString(),seconds,score:run.score,xp,gold});
  renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
@@ -353,6 +369,7 @@ var socialStarted=false;const shareSheet=new ShareSheet({openDialog});
 const shell=new Shell({onView:v=>{rankings.openView(v);if(v==='me')renderMe();if(v==='play')renderHero();}});
 const rankings=new Rankings({onSocial:()=>renderToday(),cloud,kennel,records:()=>records,stats:()=>statsOf(arcade),confirm,openDialog,announce,shell,currentGame:()=>mode,share:o=>shareSheet.open(o),play:(id,o={})=>{if(o.trial)grantTrial(id);for(const d of document.querySelectorAll('dialog[open]'))d.close();shell.show('play');if(id===mode)renderHero();else selectMode(id);window.scrollTo({top:0});}});
 // Tapping a game opens its sheet: a live demo of it playing itself, how to play, and Play.
+rankings.onMatch=m=>playMatch(m);pack.io.matchesChanged=()=>rankings.refreshBadge();
 const gameSheet=new GameSheet({best:id=>records[id]||0,wall:id=>wallOf(id),
  play:id=>{if(mode!==id)selectMode(id);$('heroPlay').click();},board:id=>{if(mode!==id)selectMode(id);$('heroBoard').click();},
  demo:(host,id)=>{let d=null,dead=false;import('./game-demo.js').then(({GameDemo})=>{if(!dead)d=new GameDemo(host,id,{face,character:pack.renderer.character||renderer.character,view:viewFor(id,prefs.cameras)==='2d'?'2d':'third'});}).catch(()=>{});return {dispose(){dead=true;d?.dispose();}};}});
@@ -391,7 +408,7 @@ function medalTargets(id){if(id==='daily')return challenge.targets;const quick=p
 // The locked game closest to opening, with its quickest route.
 function nextUnlock(){let best=null;for(const id of GAME_IDS){const w=wallFor(id,arcade,records);if(w.open)continue;const pct=unlockProgress(w);if(!best||pct>best.pct){const r=[...w.routes].sort((a,b)=>b.have/Math.max(1,b.need)-a.have/Math.max(1,a.need))[0];best={id,title:gameById(id)?.title||id,pct,left:r?r.left:''};}}return best;}
 function levelInfo(){const s=statsOf(arcade),prev=xpForLevel(s.level),next=xpForLevel(s.level+1);return {level:s.level,pct:Math.min(100,Math.round((arcade.xp-prev)/Math.max(1,next-prev)*100)),text:`LEVEL ${s.level} · ${fmtNum(Math.max(0,next-arcade.xp))} XP TO LEVEL ${s.level+1}`};}
-function queueResults(kind,score,opts={}){if(trial===kind)endTrial(kind);clearTimeout(resultsTimer);resultsTimer=setTimeout(()=>showResults(kind,score,opts),kind==='trade'||kind==='story'?200:900);}
+function queueResults(kind,score,opts={}){if(trial===kind)endTrial(kind);if(activeMatch?.game===kind)submitMatch(kind,score);clearTimeout(resultsTimer);resultsTimer=setTimeout(()=>showResults(kind,score,opts),kind==='trade'||kind==='story'?200:900);}
 function showResults(kind,score,{prevBest=0,detail='',unit,format,again,title}={}){
  results.show({game:kind,score,unit,format,again,title,best:score>0&&score>prevBest,targets:medalTargets(kind),detail,xp:lastRun?.kind===kind?lastRun.xp:0,level:levelInfo(),unlock:nextUnlock(),askName:!!rankings.api&&!rankings.profile?.name,canChallenge:kind!=='story'});}
 function showInsight(kind,score){rankings.insight(kind,score).then(lines=>{if(results.run?.game===kind)results.social(lines);});}

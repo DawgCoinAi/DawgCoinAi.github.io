@@ -1,0 +1,12 @@
+/* Domino Dynasty HUD: room name, fuses, the piece tray with the next piece lit, and the opening tip. */
+.domino3d .dm-top{position:absolute;left:16px;top:var(--d3-top,14px);max-width:62%;text-shadow:0 2px 10px #000d}
+.domino3d .dm-name{display:block;font:900 clamp(20px,4.6vw,34px)/1 var(--display);color:#fff;letter-spacing:-.5px}
+.domino3d .dm-room{display:block;margin-top:6px;font:800 11px/1.3 var(--mono);letter-spacing:1.5px;color:#ffd25e}
+.domino3d .dm-fuses{position:absolute;right:14px;top:var(--d3-top,14px);font:800 13px/1.2 var(--mono);letter-spacing:1px;color:#ffd25e;text-shadow:0 0 12px #ffd25e88,0 2px 8px #000d;max-width:34%;text-align:right;word-break:break-all}
+.domino3d .dm-tray{position:absolute;right:14px;top:calc(var(--d3-top,14px) + 30px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:46%}
+.domino3d .dm-pieces{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.domino3d .dm-pieces i{font:800 11px/1 var(--mono);letter-spacing:1.5px;font-style:normal;padding:7px 10px;border-radius:9px;background:#07080fcc;border:1px solid #ffffff22;color:#cfd6ff}
+.domino3d .dm-pieces i.dm-next{border-color:#5effc1;color:#5effc1;box-shadow:0 0 14px #5effc155}
+.domino3d .dm-pieces i.dm-used{opacity:.4;text-decoration:line-through}
+.domino3d .dm-hint{font:800 10px/1.35 var(--mono);letter-spacing:1px;color:#fff;text-shadow:0 2px 8px #000d;text-align:right}
+.domino3d .dm-tip{position:absolute;left:50%;top:22%;transform:translateX(-50%);width:min(88%,460px);margin:0;padding:10px 14px;border-radius:12px;background:#07080fd9;border:1px solid #ffd25e44;font:700 13px/1.4 var(--body,system-ui);color:#fff4df;text-align:center}

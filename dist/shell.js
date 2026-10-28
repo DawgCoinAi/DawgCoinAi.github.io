@@ -20,12 +20,15 @@ export const BLURBS={
  turbo:'Loops, springs and pure speed. Roll into bots and launch off kickers.',
  pinball:'Three tables, endless levels. Fly the ball over the playfield on ramps and wireforms, pound the bumpers and finish each mission to change the table.',
  kart:'Three laps against five rival DAWGs. Drift for mini-turbos and bonk the leader.',
+ bark:'Twenty DAWGs on a shrinking rooftop and one move: a charged bark that sends whoever is in front of you flying. Last one on the roof wins.',
+ paint:'Three minutes, one neon city, five crews with paint. Loop out and back to claim blocks, cut open trails, and own the most of the town when the whistle goes.',
+ domino:'Nine rooms, one push. Place a few pieces among the shelves and dominoes, hold GO, and get the golden bone into the bin. Every solution has a code.',
  heist:'Plan a heist 30 seconds at a time. Every loop adds one more of you, replaying your last loops exactly. Your past selves are your crew.',
  climb:'A 500-meter glass tower, one grappling leash and no checkpoints. Every fall is measured. Every meter is earned twice.',
  chess:'Five rival DAWGs, one crown. Every capture is a battle: pieces become warriors and fight it out on the square in slow motion.',
  story:'One velvet suit, one night, ten places to make bad decisions. Win over Nova, steal the rooftop show, and find all six endings before sunrise.'
 };
-const HOT={heist:'NEW',climb:'NEW',chess:'NEW',kart:'NEW',pinball:'NEW',turbo:'HOT'};
+const HOT={domino:'NEW',paint:'NEW',bark:'NEW',heist:'NEW',climb:'NEW',chess:'NEW',kart:'NEW',pinball:'NEW',turbo:'HOT'};
 export const fmt=n=>Math.max(0,Math.floor(Number(n)||0)).toLocaleString('en-US');
 export function timeAgo(when,now=Date.now()){const s=Math.max(0,(now-new Date(when).getTime())/1000);return s<60?'just now':s<3600?Math.floor(s/60)+' min ago':s<86400?Math.floor(s/3600)+' h ago':Math.floor(s/86400)+' d ago';}
 // Rank movement between two places (lower is better): '▲ 3', '▼ 1' or ''.

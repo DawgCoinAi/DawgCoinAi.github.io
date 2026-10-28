@@ -13,7 +13,10 @@ export const STAMPS=[
  {id:'story',name:'Main character',game:'After Hours',target:1,icon:'☾'},
  {id:'chess',name:'Checkmate',game:'DAWG Chess',target:500,icon:'♞'},
  {id:'climb',name:'Vertigo',game:'Don’t Look Down',target:1500,icon:'⇡'},
- {id:'heist',name:'Inside job',game:'Echo Heist',target:3000,icon:'◎'}
+ {id:'heist',name:'Inside job',game:'Echo Heist',target:3000,icon:'◎'},
+ {id:'domino',name:'Chain reaction',game:'Domino Dynasty',target:3000,icon:'⌇'},
+ {id:'paint',name:'Wet paint',game:'Paint the Town',target:2500,icon:'▣'},
+ {id:'bark',name:'Top dog',game:'Last Bark Standing',target:1500,icon:'♛'}
 ];
 export function validPassport(s){return s?.version===1&&Array.isArray(s.stamps)&&s.stamps.length<=STAMPS.length&&new Set(s.stamps).size===s.stamps.length&&s.stamps.every(id=>STAMPS.some(m=>m.id===id))&&typeof s.complete==='boolean'&&(!s.complete||s.stamps.length===STAMPS.length);}
 export function updatePassport(saved,records){const state=validPassport(saved)?{version:1,stamps:[...saved.stamps],complete:saved.complete}:{version:1,stamps:[],complete:false},unlocked=STAMPS.filter(m=>!state.stamps.includes(m.id)&&Number.isFinite(records?.[m.id])&&records[m.id]>=m.target);state.stamps.push(...unlocked.map(m=>m.id));const completed=!state.complete&&state.stamps.length===STAMPS.length;if(completed)state.complete=true;return {state,unlocked,reward:unlocked.length*100+(completed?300:0),completed};}

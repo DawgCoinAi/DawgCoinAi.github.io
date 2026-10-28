@@ -7,9 +7,12 @@ import {PinballGame,validPinballSnapshot,PINBALL_FIELDS} from './pinball-engine.
 import {KartGame,validKartSnapshot,KART_FIELDS} from './kart-engine.js';
 import {ClimbGame,validClimbSnapshot,CLIMB_FIELDS} from './climb-engine.js';
 import {HeistGame,validHeistSnapshot,resumeHeist,HEIST_FIELDS} from './heist-engine.js';
+import {DominoGame,validDominoSnapshot,DOMINO_FIELDS} from './domino-engine.js';
+import {PaintGame,validPaintSnapshot,resumePaint,PAINT_FIELDS} from './paint-engine.js';
+import {BarkGame,validBarkSnapshot,BARK_FIELDS} from './bark-engine.js';
 import {seededRandom} from './mobile-core.js';
-export const QUICK_MODES=['flappy','cross','snake','runner','turbo','pinball','kart','climb','heist'];
-export function createQuickGame(kind,seed=freshSeed()){return kind==='heist'?new HeistGame(seededRandom(seed),seed):kind==='climb'?new ClimbGame(seededRandom(seed),seed):kind==='kart'?new KartGame(seededRandom(seed),seed):kind==='pinball'?new PinballGame(seededRandom(seed),seed):kind==='turbo'?new TurboGame(seededRandom(seed),seed):kind==='runner'?new RunnerGame(seededRandom(seed),seed):kind==='flappy'?new FlappyGame(seededRandom(seed),seed):kind==='snake'?new SnakeGame(seededRandom(seed),seed):new CrossGame(seed);}
+export const QUICK_MODES=['flappy','cross','snake','runner','turbo','pinball','kart','climb','heist','domino','paint','bark'];
+export function createQuickGame(kind,seed=freshSeed()){return kind==='bark'?new BarkGame(seededRandom(seed),seed):kind==='paint'?new PaintGame(seededRandom(seed),seed):kind==='domino'?new DominoGame(seededRandom(seed),seed):kind==='heist'?new HeistGame(seededRandom(seed),seed):kind==='climb'?new ClimbGame(seededRandom(seed),seed):kind==='kart'?new KartGame(seededRandom(seed),seed):kind==='pinball'?new PinballGame(seededRandom(seed),seed):kind==='turbo'?new TurboGame(seededRandom(seed),seed):kind==='runner'?new RunnerGame(seededRandom(seed),seed):kind==='flappy'?new FlappyGame(seededRandom(seed),seed):kind==='snake'?new SnakeGame(seededRandom(seed),seed):new CrossGame(seed);}
 const finite=(n,a,b)=>Number.isFinite(n)&&n>=a&&n<=b;
 const int=(n,a,b)=>Number.isInteger(n)&&n>=a&&n<=b;
 const point=p=>p&&int(p.x,0,SNAKE_COLS-1)&&int(p.y,0,SNAKE_ROWS-1);
@@ -18,6 +21,9 @@ export function snapshotQuick(game,kind){if(!QUICK_MODES.includes(kind)||!['play
  if(kind==='runner')return {...base,...Object.fromEntries(RUNNER_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='kart')return {...base,...Object.fromEntries(KART_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='pinball')return {...base,...Object.fromEntries(PINBALL_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
+ if(kind==='bark')return {...base,...Object.fromEntries(BARK_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
+ if(kind==='paint')return {...base,...Object.fromEntries(PAINT_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
+ if(kind==='domino')return {...base,...Object.fromEntries(DOMINO_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='heist')return {...base,...Object.fromEntries(HEIST_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='climb')return {...base,...Object.fromEntries(CLIMB_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='turbo')return {...base,...Object.fromEntries(TURBO_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
@@ -33,6 +39,9 @@ export function restoreQuick(s){
  if(s.kind==='turbo')valid=validTurboSnapshot(s);
  if(s.kind==='climb')valid=validClimbSnapshot(s);
  if(s.kind==='heist')valid=validHeistSnapshot(s);
+ if(s.kind==='domino')valid=validDominoSnapshot(s);
+ if(s.kind==='paint')valid=validPaintSnapshot(s);
+ if(s.kind==='bark')valid=validBarkSnapshot(s);
  if(s.kind==='pinball')valid=validPinballSnapshot(s);
  if(s.kind==='kart')valid=validKartSnapshot(s);
  if(s.kind==='flappy')valid=finite(s.y,14,506)&&finite(s.vy,-1000,3000)&&int(s.gates,0,1e7)&&int(s.perfect,0,s.gates)&&Array.isArray(s.obstacles)&&s.obstacles.length>=1&&s.obstacles.length<=5&&s.obstacles.every(o=>o&&finite(o.x,-100,1000)&&finite(o.center,150,395)&&finite(o.gap,154,202)&&o.width===66&&typeof o.passed==='boolean'&&(o.baseCenter===undefined||finite(o.baseCenter,150,395)&&finite(o.amplitude,0,32)&&finite(o.phase,0,6.29)));
@@ -42,6 +51,9 @@ export function restoreQuick(s){
  if(s.kind==='runner')for(const k of RUNNER_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='kart')for(const k of KART_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='pinball')for(const k of PINBALL_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
+ if(s.kind==='bark')for(const k of BARK_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
+ if(s.kind==='paint'){for(const k of PAINT_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));resumePaint(g);}
+ if(s.kind==='domino'){for(const k of DOMINO_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));g.events=[];}
  if(s.kind==='heist'){for(const k of HEIST_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));resumeHeist(g);}
  if(s.kind==='climb')for(const k of CLIMB_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='turbo')for(const k of TURBO_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));

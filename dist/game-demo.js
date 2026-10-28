@@ -10,6 +10,7 @@ import {seededRandom,advanceGame} from './mobile-core.js';
 import {trackAt} from './kart-engine.js';
 import {CLIMB,tower,hookPos} from './climb-engine.js';
 import {HEIST_PLANS,planFrames} from './heist-engine.js';
+import {DOMINO_SOLUTIONS} from './domino-engine.js';
 
 const LOOKAHEAD={runner:[null,'left','right','up','down'],turbo:[null,'up','right','down'],snake:[null,'up','down','left','right'],cross:[null,'up','left','right']};
 // How a move plays out if nothing else is pressed: seconds survived, plus points, plus progress.
@@ -27,8 +28,14 @@ function kart(g){const t=g.track,k=g.you;if(!t||!k)return;const look=trackAt(t,k
 // Don't Look Down: reel in and pump the swing, let go once the next hook is in reach (or on a good upswing), then grab.
 function climb(g,mem,dt){if(g.hook>=0){mem.t=(mem.t||0)+dt;g.input.up=true;const lr=g.vx>=0?1:-1;g.input.left=lr<0;g.input.right=lr>0;const next=tower().hooks[g.hook+1];if(next){const p=hookPos(next,g.time);if(Math.hypot(p.x-g.x,p.y-g.y)<CLIMB.reach-.6||mem.t>1.4&&g.vy>5){mem.from=g.hook;mem.t=0;g.press('up',false);}}return;}
  g.input.left=g.input.right=false;const {hook}=g.target();if(g.grounded||hook&&hook.id>(mem.from??-1)&&g.vy<6)g.press('up',true);}
+// Last Bark Standing: stay central, square up to the nearest rival, bark when they're close.
+function bark(g){const you=g.you,n=g.nearest(you),I=g.input;I.left=you.x>.5;I.right=you.x<-.5;I.up=you.y>.5;I.down=you.y<-.5;if(n){const dx=n.x-you.x,dy=n.y-you.y,d=Math.hypot(dx,dy);if(d<3){I.left=dx<0;I.right=dx>0;I.up=dy<0;I.down=dy>0;}I.bark=d<3.2&&you.charge<.9;}else I.bark=false;}
 // Echo Heist: plays the proven plan for the current heist, one crew member per loop.
 function heist(g,mem){const plan=HEIST_PLANS[g.level]?.[g.recs.length];if(!plan){g.input={up:false,down:false,left:false,right:false};return;}const key=g.level+':'+g.recs.length;if(mem.key!==key){mem.key=key;mem.fr=planFrames(plan);}const b=mem.fr[g.frame]??0;g.input={up:!!(b&1),down:!!(b&2),left:!!(b&4),right:!!(b&8)};}
+// Paint the Town: the cautious crew's brain on your DAWG: small loops near home, bolting back when a rival is close.
+function paint(g){const d=g.think(g.you,Math.random,'cautious');if(d)g.move(d);}
+// Domino Dynasty: drops the stored solution for the room, pauses to show it, then holds GO.
+function domino(g,mem,dt){mem.t=(mem.t||0)+dt;if(g.phase!=='place'){mem.t=0;return;}if(!g.placed.length){if(mem.t>1.2){g.setPlaced(DOMINO_SOLUTIONS[g.level]||[]);mem.t=0;}}else if(mem.t>1)g.go();}
 // The maze: head for the nearest pellet, steering clear of rivals unless powered up.
 function maze(g,mem){const p=g.player;if(p.moving&&p.progress<.85)return;const sx=p.moving?p.tx:p.x,sy=p.moving?p.ty:p.y,danger=new Set();
  if(!(g.power>0))for(const gh of g.ghosts){const q=g.position(gh);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)danger.add(Math.round(q.x)+dx+','+(Math.round(q.y)+dy));}
@@ -49,7 +56,7 @@ export class GameDemo {
   if(QUICK_MODES.includes(this.kind)){this.game=createQuickGame(this.kind,seed);}else{this.game=new MazeGame(this.kind==='rush'?'rush':'classic',seededRandom(seed),{worldSeed:seed});}
   this.game.start?.();}
  frame(now){if(this.dead)return;const dt=this.last?Math.min(.05,(now-this.last)/1000):0;this.last=now;const g=this.game,k=this.kind;
-  if(g.status==='playing'){try{if(LOOKAHEAD[k])lookahead(k,g,this.mem,dt);else if(k==='flappy')flappy(g);else if(k==='pinball')pinball(g,this.mem,dt);else if(k==='kart')kart(g);else if(k==='climb')climb(g,this.mem,dt);else if(k==='heist')heist(g,this.mem);else maze(g,this.mem);}catch{}
+  if(g.status==='playing'){try{if(LOOKAHEAD[k])lookahead(k,g,this.mem,dt);else if(k==='flappy')flappy(g);else if(k==='pinball')pinball(g,this.mem,dt);else if(k==='kart')kart(g);else if(k==='climb')climb(g,this.mem,dt);else if(k==='heist')heist(g,this.mem);else if(k==='domino')domino(g,this.mem,dt);else if(k==='paint')paint(g);else if(k==='bark')bark(g);else maze(g,this.mem);}catch{}
    if(QUICK_MODES.includes(k))stepPack(g,dt);else advanceGame(g,dt);}
   else if(g.status==='over'||g.status==='won'){this.overAt||=now;if(now-this.overAt>1600)this.fresh();}
   else g.start?.();

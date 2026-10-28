@@ -28,7 +28,7 @@ ${tags.map(([k,n,v])=>`<meta ${k}="${n}" content="${esc(v)}">`).join('')}
 <body><p>Opening the DAWG Arcade… <a href="${fallback}">Tap here if nothing happens</a>.</p></body></html>
 `;}
 export const PAGES=[...GAMES.map(g=>({path:`play/${g.id}/`,game:g.id,title:`${g.title} — DAWG Arcade`,ogTitle:`${g.title} · play free on DAWG Arcade`,description:BLURBS[g.id],image:`assets/og/${g.id}.jpg`,imageAlt:`${g.title} on DAWG Arcade`})),
- {path:'invite/',title:'You’re invited — DAWG Arcade',ogTitle:'You’re invited to the DAWG Arcade',description:'Fifteen free neon games, global rankings and friend challenges. Add me and race me.',image:'assets/og/invite.jpg',imageAlt:'You’re invited to the DAWG Arcade'}];
+ {path:'invite/',title:'You’re invited — DAWG Arcade',ogTitle:'You’re invited to the DAWG Arcade',description:'Eighteen free neon games, global rankings and friend challenges. Add me and race me.',image:'assets/og/invite.jpg',imageAlt:'You’re invited to the DAWG Arcade'}];
 
 if(process.argv[1]?.endsWith('build-share-pages.mjs')){
  for(const p of PAGES){const dir=new URL(`../dist/${p.path}`,import.meta.url);await mkdir(dir,{recursive:true});await writeFile(new URL('index.html',dir),sharePage(p));}

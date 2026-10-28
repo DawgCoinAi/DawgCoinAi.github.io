@@ -4,7 +4,7 @@
 import {GAME_IDS} from './games.js';
 
 export const LADDER={
- classic:null,runner:null,flappy:null,daily:null,chess:null,climb:null,heist:null,
+ classic:null,runner:null,flappy:null,daily:null,chess:null,climb:null,heist:null,domino:null,paint:null,bark:null,
  snake:{level:3,minutes:20,streak:2},
  rush:{level:4,minutes:30},
  cross:{level:5,minutes:45,streak:3},

@@ -46,7 +46,7 @@ export class ThreeStreetScene {
  setLook(name){const L=SKIES[name]||SKIES.neon;this.look=L;const u=this.sky.material.uniforms;u.uTop.value.set(L.top);u.uHorizon.value.set(L.horizon);u.uGlow.value.set(L.glow);this.scene.fog.color.set(L.fog);this.scene.fog.density=L.fogDensity*1.4;
   this.hemi.color.set(L.hemi[0]);this.hemi.groundColor.set(L.hemi[1]);this.hemi.intensity=L.hemi[2];this.sunLight.color.set(L.key[0]);this.sunLight.intensity=L.key[1];this.stage.r.toneMappingExposure=L.night?.95:1.02;
   this.ocean.material.color.set(L.water);this.sand.material.color.set(L.sand);this.land.material.color.set(L.ground);this.walkMat.color.set(L.night?0x3a3648:0x9a8e8a);this.road.material.envMapIntensity=L.night?1.4:1;
-  this.sun.material.color.set(L.sun).multiplyScalar(L.night?.9:1.25);const sz=L.night?36:58;this.sun.scale.set(sz,sz,1);this.glitter.material.color.set(L.sun).multiplyScalar(L.night?.35:.75);
+  this.sun.material.color.set(L.sun).multiplyScalar(L.night?.45:.6);const sz=L.night?26:38;this.sun.scale.set(sz,sz,1);this.glitter.material.color.set(L.sun).multiplyScalar(L.night?.1:.16);
   this.lights.material.size=L.night?.6:.42;}
  // Rebuild the street for a new place: buildings, signs, palms, lamps, cars and walkers from a seed.
  setPlace({seed,look}){const s=this.scene,rnd=seededRandom((seed>>>0)||1);for(const o of this.items){o.removeFromParent();if(o.userData.own)o.traverse(c=>{c.geometry?.dispose();for(const m of [].concat(c.material||[])){m.map?.dispose();m.dispose();}});}this.items=[];for(const c of this.cars)c.obj.removeFromParent();this.cars=[];const add=o=>{s.add(o);this.items.push(o);return o;};

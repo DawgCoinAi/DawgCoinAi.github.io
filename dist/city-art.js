@@ -28,7 +28,7 @@ export function prop(scene,{x,y=0,z,size,facing=0}){const p=fitModel(cloneModel(
 export const SKIES={
  sunset:{top:0x2a1a58,horizon:0xff6a3d,glow:0xffa25a,sun:0xffd08a,fog:0x8a4a5a,fogDensity:.006,hemi:[0xffd2b0,0x40284a,1.35],key:[0xffb070,1.9],water:0x24467a,lamps:.55,night:false,ground:0x3a3140,sand:0xd2a274},
  neon:{top:0x05040f,horizon:0x4a1660,glow:0xff4fc0,sun:0xff7ad9,fog:0x1a0c2a,fogDensity:.012,hemi:[0x9a8cff,0x1a1028,1.05],key:[0xc8a8ff,.8],water:0x0c1430,lamps:1.2,night:true,ground:0x1b1824,sand:0x5a4a5e},
- harbor:{top:0x15233a,horizon:0x6a86a2,glow:0xb4dcff,sun:0xdcecff,fog:0x52627a,fogDensity:.009,hemi:[0xc4d6ee,0x2a3040,1.2],key:[0xc8dcff,1.1],water:0x1c3450,lamps:.9,night:false,ground:0x2c3138,sand:0x8a8478},
+ harbor:{top:0x0b1630,horizon:0x3a6a9a,glow:0x8fd0ff,sun:0xffd9a8,fog:0x1e2c44,fogDensity:.0055,hemi:[0xb4c8ee,0x1c2232,1.15],key:[0xffd2a0,1.3],water:0x15304e,lamps:1.1,night:false,ground:0x2c3138,sand:0x8a8478},
  golden:{top:0x3a5aa0,horizon:0xffb45a,glow:0xffd27a,sun:0xfff2c0,fog:0xb08a72,fogDensity:.004,hemi:[0xfff0d8,0x5a4838,1.6],key:[0xffd8a0,2.3],water:0x2c5a96,lamps:.3,night:false,ground:0x4a4040,sand:0xe2b886},
  midnight:{top:0x020309,horizon:0x16204a,glow:0x5ee7ff,sun:0xbcd0ff,fog:0x070a18,fogDensity:.014,hemi:[0x7a8cff,0x0c0a18,.9],key:[0x9fb8ff,.6],water:0x0a1226,lamps:1.3,night:true,ground:0x15151e,sand:0x3a3644}
 };

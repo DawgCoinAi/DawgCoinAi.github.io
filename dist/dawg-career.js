@@ -6,7 +6,7 @@ export const DISCIPLINES=[
  {id:'classic',name:'Maze Munch',target:5000,stat:'agility'}, {id:'rush',name:'60-Second Rush',target:3000,stat:'agility'},
  {id:'daily',name:'Daily Run',target:3000,stat:'focus'}, {id:'trade',name:'Street Hustle',target:20000,stat:'hustle'},
  {id:'flappy',name:'Flappy DAWG',target:300,stat:'agility'}, {id:'cross',name:'DAWG Cross',target:600,stat:'nerve'},
- {id:'snake',name:'Neon Snake',target:600,stat:'nerve'}, {id:'runner',name:'DAWG Dash',target:2500,stat:'focus'},{id:'turbo',name:'Turbo Pup',target:3500,stat:'agility'},{id:'pinball',name:'Neon Pinball',target:30000,stat:'focus'},{id:'kart',name:'Drift Dawgs',target:5000,stat:'nerve'},{id:'chess',name:'DAWG Chess',target:2500,stat:'focus'},{id:'climb',name:'Don’t Look Down',target:3000,stat:'nerve'},
+ {id:'snake',name:'Neon Snake',target:600,stat:'nerve'}, {id:'runner',name:'DAWG Dash',target:2500,stat:'focus'},{id:'turbo',name:'Turbo Pup',target:3500,stat:'agility'},{id:'pinball',name:'Neon Pinball',target:30000,stat:'focus'},{id:'kart',name:'Drift Dawgs',target:5000,stat:'nerve'},{id:'chess',name:'DAWG Chess',target:2500,stat:'focus'},{id:'climb',name:'Don’t Look Down',target:3000,stat:'nerve'},{id:'heist',name:'Echo Heist',target:8000,stat:'focus'},
  {id:'story',name:'After Hours',target:1200,stat:'charm'}
 ];
 export const ATTRIBUTES=[

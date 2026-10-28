@@ -6,6 +6,7 @@ import {drawLivingStory,drawLivingCity} from './living-renderer.js';
 import {ROOMS} from './story-engine.js';
 import {TURBO,turboChunk,chunkAt,groundAt,groundIn} from './turbo-engine.js';
 import {CLIMB,FLOORS,floorOf,tower,hookPos} from './climb-engine.js';
+import {HEIST,heistMap,guardAt} from './heist-engine.js';
 import {TABLE,FLIPPERS,LANES,LANE_Y,HOLE,WALLS,flipperTip} from './pinball-engine.js';
 import {KART,trackPoint,ordinal} from './kart-engine.js';
 const COLORS=['#f8bf66','#eb7fb5','#78dfd0','#b4a1ff'];
@@ -20,11 +21,12 @@ export class PackRenderer {
  sky(t=0,seed=0){const look=worldLook(seed);const c=this.c,g=c.createLinearGradient(0,0,0,560);g.addColorStop(0,look.sky);g.addColorStop(.65,look.floor);g.addColorStop(1,look.sky);c.fillStyle=g;c.fillRect(0,0,420,560);this.glow(320,85,155,'#9e65d52c');this.circle(328,74,29,'#e8dfbd');this.circle(318,64,29,'#171b3d');for(let i=0;i<28;i++)this.circle((i*97)%420,18+(i*37)%240,.7,'#c2c2e08c');
   for(let layer=0;layer<2;layer++)for(let i=-1;i<11;i++){const w=48+((i+12)*23)%22,x=((i*62-t*(layer+1)*8)%700+700)%700-90,h=seed?65+hash(seed,i+layer*77)*120:65+((i+12)*37)%120,y=layer?430-h:350-h;this.rect(x,y,w,560-y,layer?'#141d35':'#1e2442');this.rect(x+4,y-3,w-8,3,layer?'#775288':'#41506d');for(let a=0;a<4;a++)for(let b=0;b<6;b++)if((a+b+i)%3!==0)this.rect(x+8+a*11,y+15+b*20,4,7,layer?'#ffbf7838':'#9c92d52c');}
  }
- event(e,g){this.gpus[this.drawKind]?.event?.(e,g);if(this.reduced||this.drawKind==='turbo'||this.drawKind==='climb'||this.drawKind==='pinball'||this.drawKind==='kart')return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
+ event(e,g){this.gpus[this.drawKind]?.event?.(e,g);if(this.reduced||this.drawKind==='turbo'||this.drawKind==='climb'||this.drawKind==='heist'||this.drawKind==='pinball'||this.drawKind==='kart')return;const x=g.body?42+g.body[0].x*24:'row'in g?30+44*g.x:g.x,y=g.body?76+g.body[0].y*24:'row'in g?444-(g.row-this.camera)*48:g.y;const color=e.type==='over'?'#ff8ba6':e.perfect?'#ffdb7c':'#b9f786';const count=e.type==='over'?28:e.type==='flap'?3:10;for(let i=0;i<count;i++)this.particles.push({x,y,vx:(Math.random()-.5)*200,vy:(Math.random()-.6)*180,life:.5+Math.random()*.4,color});this.particles=this.particles.slice(-100);}
  effects(dt){for(const p of this.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;this.c.globalAlpha=Math.max(0,p.life);this.circle(p.x,p.y,2.3,p.color);}this.c.globalAlpha=1;this.particles=this.particles.filter(p=>p.life>0);}
  // 3D presentations per game, tried in order; Canvas stays the fallback for every game.
  gpuLoaders(kind){
   if(kind==='runner')return [async()=>new (await import('./dash-3d.js')).ThreeDash(this.canvas,()=>this.failGPU('runner')),async()=>new (await import('./dash-presentation.js')).PixiDash(this.canvas,()=>this.failGPU('runner'))];
+  if(kind==='heist')return [async()=>new (await import('./heist-3d.js')).ThreeHeist(this.canvas,()=>this.failGPU('heist'))];
   if(kind==='climb')return [async()=>new (await import('./climb-3d.js')).ThreeClimb(this.canvas,()=>this.failGPU('climb'))];
   if(kind==='turbo')return [async()=>new (await import('./turbo-3d.js')).ThreeTurbo(this.canvas,()=>this.failGPU('turbo'))];
   if(kind==='snake')return [async()=>new (await import('./snake-3d.js')).ThreeSnake(this.canvas,()=>this.failGPU('snake'))];
@@ -51,7 +53,7 @@ export class PackRenderer {
   // Wider or taller screens: the game's own sky fills the whole canvas, then the playfield is
   // drawn as large as fits, centred and framed, so the screen is always fully used.
   if(v.ox>1||v.oy>1){const k=Math.max(v.W/420,v.H/560);c.setTransform(k,0,0,k,(v.W-420*k)/2,(v.H-560*k)/2);this.sky(game.time||0,game.worldSeed||0);c.setTransform(1,0,0,1,0,0);c.fillStyle='#05060d8c';c.fillRect(0,0,v.W,v.H);}
-  c.setTransform(v.s,0,0,v.s,v.ox,v.oy);c.save();c.beginPath();c.rect(0,0,420,560);c.clip();const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='turbo')this.turbo2D(game);else if(kind==='climb')this.climb2D(game);else if(kind==='pinball')this.pinball2D(game);else if(kind==='kart')this.kart2D(game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);c.restore();if(v.ox>1||v.oy>1)this.frame(v);}
+  c.setTransform(v.s,0,0,v.s,v.ox,v.oy);c.save();c.beginPath();c.rect(0,0,420,560);c.clip();const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;if(kind==='runner')drawRunner(this,game);else if(kind==='turbo')this.turbo2D(game);else if(kind==='climb')this.climb2D(game);else if(kind==='heist')this.heist2D(game);else if(kind==='pinball')this.pinball2D(game);else if(kind==='kart')this.kart2D(game);else if(kind==='flappy')this.flappy(game);else if(kind==='snake')this.snake(game);else{const target=Math.max(0,game.furthest-5);if(game.furthest===0)this.camera=0;this.camera+=(target-this.camera)*Math.min(1,dt*14);this.cross(game);}this.effects(dt);c.restore();if(v.ox>1||v.oy>1)this.frame(v);}
  // Matches the canvas to its on-screen size (capped for speed) and fits the 420×560 field inside.
  fit(){const cv=this.canvas,w=cv.clientWidth,h=cv.clientHeight;if(w>0&&h>0){const ratio=Math.max(1,Math.min(globalThis.devicePixelRatio||1,2,Math.sqrt(2.6e6/(w*h)))),W=Math.round(w*ratio),H=Math.round(h*ratio);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}}
   const W=cv.width,H=cv.height,[top,bottom]=this.insets(W/Math.max(1,w||W)),s=Math.min(W/420,(H-top-bottom)/560);return {W,H,s,ox:(W-420*s)/2,oy:top+(H-top-bottom-560*s)/2};}
@@ -79,6 +81,15 @@ export class PackRenderer {
   t.boxes.forEach((b,i)=>{if(g.taken.some(x=>x.i===i))return;const p=trackPoint(t,b.s,b.d),[x,y]=P(p.x,p.y);this.rect(x-3,y-3,6,6,'#ff5fc8',1);});
   for(let i=g.karts.length-1;i>=0;i--){const k=g.karts[i],p=trackPoint(t,k.p,k.d),[x,y]=P(p.x,p.y);c.fillStyle=k.color;c.beginPath();c.arc(x,y,i?5:7,0,Math.PI*2);c.fill();if(!i){c.strokeStyle='#fff';c.lineWidth=2;c.stroke();}}
   this.text(ordinal(g.place)+' / '+g.karts.length,14,34,26,'#b9ff5e');this.text('LAP '+Math.min(KART.laps,g.lap+1)+' / '+KART.laps,14,58,14,'#ffffffcc');this.text(g.you.item?'ITEM: '+g.you.item.toUpperCase():'',406,34,14,'#5ee7ff','right');}
+ // Echo Heist, flat: the floor plan from above, ghosts in cyan, you in gold, guards with their cones.
+ heist2D(g){const c=this.c,m=heistMap(g.level),S=Math.min(400/m.W,420/m.H),ox=(420-m.W*S)/2,oy=110+(420-m.H*S)/2,X=x=>ox+x*S,Y=y=>oy+y*S,t=g.frame/HEIST.fps;c.fillStyle='#07080f';c.fillRect(0,0,420,560);
+  for(let r=0;r<m.H;r++)for(let q=0;q<m.W;q++){const ch=m.rows[r][q];let col=ch==='#'?'#262b44':'#11131f';if(ch==='V')col='#1d3a2a';if(ch>='a'&&ch<='c')col=g.open[ch.charCodeAt(0)-97]?'#5effc1':'#1f5a48';if(ch==='1'||ch==='2')col=g.laserOff[+ch-1]?'#5ec8ff':'#1e4a66';if(ch>='A'&&ch<='C')col=g.open[ch.charCodeAt(0)-65]?'#11131f':'#8a6b3a';c.fillStyle=col;c.fillRect(X(q)+.5,Y(r)+.5,S-1,S-1);
+   if((ch==='~'||ch==='=')&&!g.laserOff[ch==='~'?0:1]){c.fillStyle='#ff2d55';c.fillRect(X(q),Y(r)+S*.42,S,S*.16);}}
+  for(const L of m.loot)if(!g.taken.includes(L.id)){c.fillStyle='#ffd25e';c.beginPath();c.arc(X(L.c+.5),Y(L.r+.5),S*.22,0,7);c.fill();}
+  for(const gd of m.guards){const a=guardAt(gd,t);c.fillStyle='#ff3d6e33';c.beginPath();c.moveTo(X(a.x),Y(a.y));c.arc(X(a.x),Y(a.y),gd.range*S,a.a-gd.cone*Math.PI/360,a.a+gd.cone*Math.PI/360);c.fill();this.circle(X(a.x),Y(a.y),S*.3,'#ff3d6e');}
+  g.members.forEach((p,k)=>{const you=k===g.members.length-1;this.circle(X(p.x),Y(p.y),S*.27,you?'#ffd25e':'#5ee7ffaa');c.fillStyle='#07080f';c.font='800 '+Math.round(S*.3)+'px monospace';c.textAlign='center';c.fillText(String(k+1),X(p.x),Y(p.y)+S*.1);c.textAlign='left';});
+  c.fillStyle='#fff';c.font='900 22px sans-serif';c.fillText(m.name.toUpperCase(),16,40);c.font='800 13px monospace';c.fillStyle='#5ee7ff';c.fillText('CREW '+(g.recs.length+1)+' / '+m.crew+' · LIVES '+g.lives,16,62);
+  const left=Math.max(0,HEIST.loop-t);c.fillStyle=left<5?'#ff3d6e':'#ffd25e';c.font='900 34px sans-serif';c.textAlign='right';c.fillText(left.toFixed(1),404,46);c.textAlign='left';}
  // Don't Look Down, flat: the shaft side-on, 20 px a meter, following the DAWG.
  climb2D(g){const c=this.c,S=20,cy=g.y,X=x=>210+x*S,Y=y=>330-(y-cy)*S,t=tower(),hue=['#2a1640','#33194a','#3a1e52','#2a2f6a','#1f3a6e','#223a70','#2a3350','#262a44','#1c1d2c','#3a1a40'][floorOf(g.y)];
   const gr=c.createLinearGradient(0,0,0,560);gr.addColorStop(0,'#07060f');gr.addColorStop(1,hue);c.fillStyle=gr;c.fillRect(0,0,420,560);c.fillStyle='#ffffff08';for(let y=Math.floor((cy-20)/3)*3;y<cy+20;y+=3)c.fillRect(X(-CLIMB.half),Y(y),CLIMB.half*2*S,1);

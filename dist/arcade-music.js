@@ -20,6 +20,7 @@ export const TRACKS={
  rush:{title:'Rush Hour',bpm:136,root:49,prog:['i','VII','VI','v'],hook:[12,15,_,12,15,_,17,_,19,_,17,15,_,12,_,_],arp:[0,7,12,15]},
  daily:{title:'Daily Grind',bpm:128,root:51,prog:['i','VI','III','VII'],hook:[15,_,12,_,10,_,12,_,15,_,17,_,19,_,_,_],arp:[0,12,7,12]},
  story:{title:'After Hours Lounge',bpm:98,root:50,prog:['i7','iv7','VI7','v7'],lounge:true},
+ heist:{title:'Take Two',bpm:112,root:43,prog:['i','iv','VI','V'],hook:[0,_,3,_,7,_,10,_,8,_,7,_,3,_,2,_],arp:[0,3,7,12]},
  climb:{title:'Vertigo',bpm:134,root:46,prog:['i','VI','iv','V'],hook:[12,_,15,_,17,_,19,_,22,_,19,_,17,15,_,12],arp:[0,7,12,19]},
  chess:{title:'Grandmaster Groove',bpm:88,root:45,prog:['i7','VI7','iv7','v7'],lounge:true},
  // Street Hustle's car radio: a sunset-synth cruiser and a late-night house station.

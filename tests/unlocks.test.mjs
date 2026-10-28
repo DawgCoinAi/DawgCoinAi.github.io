@@ -8,7 +8,7 @@ import {parseBackup,SAVE_KEYS} from '../dist/progress-backup.js';
 
 test('Every game has a play-wall rule and six games (including Daily Run, chess and Don’t Look Down) are open from the start',()=>{
  assert.deepEqual(Object.keys(LADDER).sort(),[...GAME_IDS].sort());const a=freshArcade();
- assert.deepEqual(GAME_IDS.filter(id=>wallFor(id,a).open).sort(),['chess','classic','climb','daily','flappy','runner']);
+ assert.deepEqual(GAME_IDS.filter(id=>wallFor(id,a).open).sort(),['chess','classic','climb','daily','flappy','heist','runner']);
  assert.ok(validArcade(a));assert.ok(SAVE_KEYS.includes('arcade'));assert.ok(parseBackup(JSON.stringify({format:'dawg-arcade-backup',version:1,saves:{arcade:a}})));
 });
 test('Levels, XP and streaks follow the published curve',()=>{

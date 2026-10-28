@@ -29,7 +29,7 @@ test('Share pages forward into the app, keeping challenge and player codes',()=>
 });
 test('The home page carries current, matching preview tags',()=>{
  const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
- assert.match(html,/<title>DAWG Arcade — 14 free neon games<\/title>/);assert.doesNotMatch(html,/Nine ways|Pocket Arcade<\/title>/);
+ assert.match(html,/<title>DAWG Arcade — 15 free neon games<\/title>/);assert.doesNotMatch(html,/Nine ways|Pocket Arcade<\/title>/);
  assert.equal(meta(html,'property','og:title'),meta(html,'name','twitter:title'));assert.equal(meta(html,'property','og:image'),meta(html,'name','twitter:image'));
- assert.match(html,new RegExp(`Fourteen neon games`));assert.equal(GAME_IDS.length,14,'update the copy if the game count changes');
+ assert.match(html,new RegExp(`Fifteen neon games`));assert.equal(GAME_IDS.length,15,'update the copy if the game count changes');
 });

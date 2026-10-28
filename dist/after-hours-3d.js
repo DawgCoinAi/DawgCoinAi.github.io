@@ -2,7 +2,7 @@
 // market models, lit like a late-night set, with a neon sign, every character as a 3D DAWG and
 // your own DAWG in the foreground. Hotspot anchors are projected to screen so the play screen can
 // place its buttons over the right things. Sets only read the story; the engine owns the rules.
-import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,loadModel,cloneModel,fitModel} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,pbr,castShadows,lightShaft,Stage,Particles,loadModel,cloneModel,fitModel} from './three-kit.js';
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {loadBuildings,building} from './city-art.js';
 import {seededRandom} from './mobile-core.js';
@@ -24,7 +24,7 @@ export class ThreeAfterHours {
   this.stage=new Stage({quality:this.quality,className:'ah3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.host.prepend(this.view);
   const s=this.scene;this.stage.neonEnvironment(.55);this.stage.hdrEnvironment(undefined,.35);s.fog=new T.FogExp2(0x07060f,.022);
   this.sky=new T.Mesh(new T.SphereGeometry(200,24,12),skyMaterial());s.add(this.sky);
-  this.hemi=new T.HemisphereLight(0xb6b0ff,0x1a1020,.9);s.add(this.hemi);this.keyLight=new T.DirectionalLight(0xffffff,1.1);this.keyLight.position.set(-4,10,8);s.add(this.keyLight);
+  this.hemi=new T.HemisphereLight(0xb6b0ff,0x1a1020,.9);s.add(this.hemi);this.keyLight=new T.DirectionalLight(0xfff2e2,1.1);this.keyLight.position.set(-4,10,8);s.add(this.keyLight,this.keyLight.target);this.stage.sunShadow(this.keyLight,{size:11,far:40,map:2048,radius:4});
   this.neonLight=new T.PointLight(0xff5fc8,18,16,1.6);this.neonLight.position.set(0,4.2,-3);s.add(this.neonLight);this.fill=new T.PointLight(0xffd6a0,10,14,1.6);this.fill.position.set(3,3.2,3);s.add(this.fill);
   this.glowTex=radial(glowStops);this.particles=new Particles(s,this.quality==='high'?300:150,this.glowTex);
   this.player=new T.Group();this.player.position.set(-1.2,0,2.6);this.player.rotation.y=Math.PI*.82;s.add(this.player);
@@ -34,8 +34,8 @@ export class ThreeAfterHours {
  // Builds a location's set. Models stream in; the room is usable before they arrive.
  build(loc,l){this.clear();const set=l.set,rnd=seededRandom(loc.length*977+set.props.length),neon=new T.Color(set.neonColor||'#ff5fc8'),token=this.token={};
   this.neonLight.color.copy(neon);this.neonLight.intensity=set.bright?8:20;this.hemi.intensity=set.bright?1.6:.75;this.keyLight.intensity=set.bright?1.5:.8;this.fill.intensity=set.bright?6:10;this.scene.fog.density=set.outdoor?.018:.012;
-  const floorMat=new T.MeshStandardMaterial({color:new T.Color(set.floor||'#221a26'),roughness:set.bright?.6:.32,metalness:set.bright?.05:.35,envMapIntensity:1});
-  const floor=this.add(new T.Mesh(new T.PlaneGeometry(set.roof?40:SET.width+4,set.roof?18:SET.depth+2).rotateX(-Math.PI/2),floorMat));floor.position.z=set.roof?2:.4;
+  const floorMat=pbr({color:new T.Color(set.floor||'#221a26'),roughness:set.bright?.6:.3,metalness:set.bright?.05:.35,envMapIntensity:1.1,clearcoat:set.bright?.15:.7,clearcoatRoughness:set.bright?.4:.1},this.quality);
+  const floor=this.add(new T.Mesh(new T.PlaneGeometry(set.roof?40:SET.width+4,set.roof?18:SET.depth+2).rotateX(-Math.PI/2),floorMat));floor.position.z=set.roof?2:.4;floor.receiveShadow=true;
   if(!set.outdoor){const wallMat=new T.MeshStandardMaterial({color:new T.Color(set.wall||'#2a2030'),roughness:.85});
    const back=this.add(new T.Mesh(new T.PlaneGeometry(SET.width+4,7),wallMat));back.position.set(0,3.5,SET.back-.4);
    for(const side of [-1,1]){const w=this.add(new T.Mesh(new T.PlaneGeometry(SET.depth+2,7),wallMat));w.position.set(side*(SET.width/2+1.6),3.5,.2);w.rotation.y=-side*Math.PI/2*.82;}
@@ -54,7 +54,7 @@ export class ThreeAfterHours {
   // Furniture and the hotspots that are things.
   // Each set gets its own copies of the materials, dimmed for the dark interiors.
   const place=([path,[x,z],ry,size])=>loadModel(path).then(m=>{if(this.token!==token||this.dead)return;const o=fitModel(cloneModel(m,{ownMaterials:true}),size),h=new T.Group();h.add(o);h.position.set(x,0,z);h.rotation.y=ry||0;
-   if(!set.bright)o.traverse(n=>{if(n.isMesh)for(const mat of [].concat(n.material)){mat.color?.multiplyScalar(set.outdoor?.45:.62);if('roughness' in mat)mat.roughness=Math.min(1,mat.roughness*.8);}});this.add(h);}).catch(()=>{});
+   if(!set.bright)o.traverse(n=>{if(n.isMesh)for(const mat of [].concat(n.material)){mat.color?.multiplyScalar(set.outdoor?.45:.62);if('roughness' in mat)mat.roughness=Math.min(1,mat.roughness*.8);}});castShadows(h,this.quality);this.add(h);}).catch(()=>{});
   for(const p of set.props)place(p);for(const h of Object.values(l.hotspots))if(h.prop)place([h.prop,h.at,0,h.size||1.4]);
   this.decor(set,rnd,neon);this.rebuildCast=true;}
  // Procedural dressing that the furniture packs don't cover: bottles, slots, lamps, lasers, a crowd.
@@ -67,17 +67,17 @@ export class ThreeAfterHours {
     body.position.y=.95;screen.position.set(0,1.25,.36);top.position.y=2.02;g.add(body,screen,top);g.position.set(3.2+i*1.05,0,-3.4);g.rotation.y=-.12;this.add(g);}
    if(kind==='pendants'||kind==='chandelier'){const n=kind==='chandelier'?1:4;for(let i=0;i<n;i++){const x=n===1?0:[-5.4,-3.2,-1,5.8][i],cord=this.add(new T.Mesh(new T.CylinderGeometry(.015,.015,1.4,4),new T.MeshBasicMaterial({color:0x111111})));cord.position.set(x,5.3,-.6);
      const bulb=this.add(new T.Mesh(kind==='chandelier'?new T.TorusGeometry(.8,.08,8,24):new T.ConeGeometry(.35,.4,12,1,true),kind==='chandelier'?glow(0xffe2a0,1.6):new T.MeshStandardMaterial({color:0x22222a,side:T.DoubleSide,emissive:0xffc070,emissiveIntensity:.25})));bulb.position.set(x,4.55,-.6);if(kind==='chandelier')bulb.rotation.x=Math.PI/2;
-     const halo=this.add(new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:0xffc070,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,opacity:.7})));halo.position.set(x,4.35,-.6);halo.scale.set(kind==='chandelier'?3.2:1.6,kind==='chandelier'?2:1.6,1);}}
+     const halo=this.add(new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:0xffc070,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,opacity:.7})));halo.position.set(x,4.35,-.6);halo.scale.set(kind==='chandelier'?3.2:1.6,kind==='chandelier'?2:1.6,1);if(this.quality==='high'){const shaft=this.add(lightShaft(0xffd49a,{length:4.4,radius:kind==='chandelier'?2.6:1.5,top:kind==='chandelier'?.8:.3,opacity:.2}));shaft.position.set(x,4.5,-.6);}}}
    if(kind==='candles')for(let i=0;i<10;i++){const side=i<5?-1:1,x=side*(2.4+((i%5)*.35)),c=this.add(new T.Mesh(new T.CylinderGeometry(.06,.06,.4+rnd()*.3,8),new T.MeshStandardMaterial({color:0xfff4e0})));c.position.set(x,1.1,-3.5);const f=this.add(new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:0xffb35e,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false})));f.position.set(x,1.45,-3.5);f.scale.set(.35,.5,1);}
    if(kind==='lasers')for(let i=0;i<6;i++){const beam=this.add(new T.Mesh(new T.CylinderGeometry(.02,.02,14,4),glow([0xff5fc8,0x5ee7ff,0xb9ff5e][i%3],1.8)));beam.position.set(-3+i*1.2,4.5,-3.6);lasers.push({beam,phase:rnd()*6,speed:.6+rnd()*.8});}
    if(kind==='crowd'){const mat=new T.MeshStandardMaterial({color:0x0c0a14,roughness:.9}),geo=new T.CapsuleGeometry(.28,.7,4,8),head=new T.SphereGeometry(.24,10,8);this.crowd=[];for(let i=0;i<16;i++){const g=new T.Group(),b=new T.Mesh(geo,mat),h=new T.Mesh(head,mat);b.position.y=.65;h.position.y=1.35;g.add(b,h);
      if(i%3===0){const stick=new T.Mesh(new T.CylinderGeometry(.03,.03,.5,4),glow([0xb9ff5e,0xff5fc8,0x5ee7ff][i%3===0?(i/3)%3:0],2));stick.position.set(.3,1.5,0);stick.rotation.z=-.5;g.add(stick);}
      g.position.set(-5.5+(i%8)*1.5+rnd()*.4,0,(set.crowdZ??-1.6)-Math.floor(i/8)*1.1-rnd()*.3);g.rotation.y=Math.PI+(rnd()-.5)*.4;this.add(g);this.crowd.push({g,phase:rnd()*6});}}}}
- npc(seed){if(!this.npcs.has(seed)){try{const a=createDawgAsset(npcDawg(seed)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.6/h);const group=new T.Group();group.add(a.root);this.npcs.set(seed,{asset:a,group});}catch{this.npcs.set(seed,null);}}return this.npcs.get(seed);}
+ npc(seed){if(!this.npcs.has(seed)){try{const a=createDawgAsset(npcDawg(seed)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.6/h);castShadows(a.root,this.quality,false);const group=new T.Group();group.add(a.root);this.npcs.set(seed,{asset:a,group});}catch{this.npcs.set(seed,null);}}return this.npcs.get(seed);}
  // Characters present right now (some come and go with the story).
  castFor(hotspots){for(const n of this.cast)n.group.removeFromParent();this.cast=[];for(const h of hotspots)if(h.npc){const n=this.npc(h.npc.seed);if(!n)continue;const g=n.group,[x,z]=h.at;g.position.set(x,h.npc.pose==='sit'?.1:0,z);g.scale.setScalar(h.npc.scale||1);g.rotation.set(0,Math.atan2(-x*.25,4),0);
    if(h.npc.pose==='sleep'){g.rotation.set(0,0,Math.PI/2);g.position.y=.95;}this.scene.add(g);this.cast.push({id:h.id,name:h.name,group:g,asset:n.asset,pose:h.npc.pose});}}
- prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.75/h);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.player.add(next.root);}catch{}}
+ prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.75/h);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;castShadows(next.root,this.quality,false);this.player.add(next.root);}catch{}}
  // view: {loc, location, hotspots, speaker, dawg, reduced, mood ('death'|'ending'|null)}
  draw(v){if(!this.ready||this.dead)return false;if(v.loc!==this.key){this.key=v.loc;this.build(v.loc,v.location);}
   const castKey=v.hotspots.filter(h=>h.npc).map(h=>h.id).join(',');if(this.rebuildCast||castKey!==this.castKey){this.rebuildCast=false;this.castKey=castKey;this.castFor(v.hotspots);}

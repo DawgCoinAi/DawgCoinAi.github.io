@@ -4,7 +4,7 @@
 // staff, hammer, orbs or sword), fight it out in slow motion on the square, and the loser is
 // blasted off the board. Check, checkmate, promotion and castling get their own moments.
 // The board only shows the game; ChessPlay owns the rules and waits on these animations.
-import {T,quality,fitFov,texture,radial,glowStops,Stage,Particles,loadModel,cloneModel,fitModel} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,pbr,castShadows,lightShaft,Stage,Particles,loadModel,cloneModel,fitModel} from './three-kit.js';
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {npcDawg} from './npc-dawg.js';
 import {pieceModel} from './chess-pieces.js';
@@ -31,7 +31,9 @@ export class ThreeChess {
   const s=this.scene;this.stage.neonEnvironment(.45);this.stage.hdrEnvironment(undefined,.35);s.fog=new T.FogExp2(0x07060f,.03);s.background=new T.Color(0x06050c);
   this.hemi=new T.HemisphereLight(0xb6b0ff,0x140c22,.55);s.add(this.hemi);
   this.key=new T.SpotLight(0xfff2dc,26,30,.6,.55,1.4);this.key.position.set(0,12,4);this.key.target.position.set(0,0,0);s.add(this.key,this.key.target);
-  if(this.quality==='high'){this.key.castShadow=true;this.key.shadow.mapSize.set(1024,1024);this.key.shadow.bias=-.0005;}
+  if(this.quality==='high'){this.key.castShadow=true;this.key.shadow.mapSize.set(2048,2048);this.key.shadow.bias=-.0003;this.key.shadow.normalBias=.015;this.key.shadow.radius=5;this.key.shadow.camera.near=4;this.key.shadow.camera.far=24;
+   // The overhead lamp's beam, visible in the club's smoky air.
+   const beam=lightShaft(0xfff0d8,{length:13,radius:5.2,top:.35,opacity:.09});beam.position.copy(this.key.position);beam.lookAt(0,0,0);beam.rotateX(-Math.PI/2);s.add(beam);}
   this.rimA=new T.PointLight(WHITE,14,14,1.6);this.rimA.position.set(-6,3,5);this.rimB=new T.PointLight(BLACK,14,14,1.6);this.rimB.position.set(6,3,-5);s.add(this.rimA,this.rimB);
   this.arenaLight=new T.PointLight(0xfff0dd,0,6,1.8);s.add(this.arenaLight);this.checkLight=new T.PointLight(0xff2448,0,5,1.6);s.add(this.checkLight);
   this.glowTex=radial(glowStops);this.particles=new Particles(s,this.quality==='high'?900:450,this.glowTex);
@@ -44,20 +46,20 @@ export class ThreeChess {
   this.glowMats={w:new T.MeshBasicMaterial({color:new T.Color(WHITE).multiplyScalar(1.8),toneMapped:false}),b:new T.MeshBasicMaterial({color:new T.Color(BLACK).multiplyScalar(1.8),toneMapped:false})};this.darkMat=new T.MeshStandardMaterial({color:0x0a0810,roughness:.5,metalness:.2});
   this.ready=true;return this;}
  buildRoom(){const s=this.scene;
-  const floor=new T.Mesh(new T.CircleGeometry(40,48).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x120d1c,roughness:.35,metalness:.4}));floor.position.y=-1.6;floor.receiveShadow=true;s.add(floor);
-  const table=new T.Mesh(new T.CylinderGeometry(7.2,7.6,1.5,64),new T.MeshStandardMaterial({color:0x1d1426,roughness:.45,metalness:.3}));table.position.y=-.86;table.receiveShadow=true;s.add(table);
+  const floor=new T.Mesh(new T.CircleGeometry(40,48).rotateX(-Math.PI/2),pbr({color:0x120d1c,roughness:.32,metalness:.35,clearcoat:.8,clearcoatRoughness:.12},this.quality));floor.position.y=-1.6;floor.receiveShadow=true;s.add(floor);
+  const table=new T.Mesh(new T.CylinderGeometry(7.2,7.6,1.5,64),pbr({color:0x1d1426,roughness:.4,metalness:.25,clearcoat:1,clearcoatRoughness:.08,sheen:.3,sheenColor:new T.Color(0x6a4a9a)},this.quality));table.position.y=-.86;table.receiveShadow=true;s.add(table);
   const trim=new T.Mesh(new T.TorusGeometry(7.25,.05,8,96).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(GOLD).multiplyScalar(1.4),toneMapped:false}));trim.position.y=-.1;s.add(trim);
   // The club: a neon sign and hanging lamps far back in the dark.
   const sign=new T.Mesh(new T.PlaneGeometry(9,1.8),new T.MeshBasicMaterial({map:texture(1024,200,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 120px Impact, "Arial Narrow", sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#b9ff5e';c.shadowColor='#b9ff5e';c.shadowBlur=30;c.fillText('DAWG CHESS CLUB',w/2,h/2+6);}),transparent:true,toneMapped:false}));sign.position.set(0,7,-16);s.add(sign);
   for(let i=0;i<5;i++){const x=-12+i*6,b=new T.Mesh(new T.SphereGeometry(.25,16,10),new T.MeshBasicMaterial({color:new T.Color(2,1.6,1.1),toneMapped:false}));b.position.set(x,6,-10-(i%2)*3);s.add(b);const h=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:0xffc070,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,opacity:.6}));h.position.copy(b.position);h.scale.set(3,3,1);s.add(h);}
   // Kenney chairs and lamps, if they load.
   Promise.all(['furniture/loungeChair.glb','furniture/lampRoundFloor.glb'].map(p=>loadModel(p).catch(()=>null))).then(([chair,lamp])=>{if(this.dead)return;
-   if(lamp)for(const [x,z] of [[-9,-6],[9,-6],[-10,6],[10,6]]){const m=fitModel(cloneModel(lamp),3.2);m.position.set(x,-1.6,z);s.add(m);}
+   if(lamp)for(const [x,z] of [[-9,-6],[9,-6],[-10,6],[10,6]]){const m=fitModel(cloneModel(lamp),3.2);m.position.set(x,-1.6,z);s.add(m);if(this.quality==='high'){const cone=lightShaft(0xffd49a,{length:2.6,radius:1.3,top:.3,opacity:.14});cone.position.set(x,1.5,z);s.add(cone);}}
    if(chair){this.chair=fitModel(cloneModel(chair),2.6);this.chair.position.set(0,-1.6,-9.2);s.add(this.chair);}});}
  buildBoard(){const s=this.scene,tex=texture(1024,1024,(c,w)=>{const q=w/8;for(let r=0;r<8;r++)for(let f=0;f<8;f++){const light=(r+f)%2===0;const g=c.createLinearGradient(f*q,r*q,(f+1)*q,(r+1)*q);g.addColorStop(0,light?'#d9cfee':'#2b2145');g.addColorStop(1,light?'#b9acd6':'#1c1530');c.fillStyle=g;c.fillRect(f*q,r*q,q,q);
     c.globalAlpha=.08;for(let i=0;i<14;i++){c.strokeStyle=light?'#ffffff':'#8a6bd1';c.lineWidth=1+Math.random()*2;c.beginPath();c.moveTo(f*q+Math.random()*q,r*q);c.bezierCurveTo(f*q+Math.random()*q,r*q+q*.3,f*q+Math.random()*q,r*q+q*.7,f*q+Math.random()*q,r*q+q);c.stroke();}c.globalAlpha=1;}});
   this.board=new T.Mesh(new T.BoxGeometry(8,.22,8).translate(0,-.11,0),[...Array(6)].map((_,i)=>i===2?new T.MeshPhysicalMaterial({map:tex,roughness:.42,metalness:.02,clearcoat:.35,clearcoatRoughness:.35}):new T.MeshStandardMaterial({color:0x140f22,roughness:.4,metalness:.5})));this.board.receiveShadow=true;s.add(this.board);
-  const frame=new T.Mesh(new T.BoxGeometry(8.9,.3,8.9).translate(0,-.16,0),new T.MeshStandardMaterial({color:0x0c0914,roughness:.3,metalness:.7}));frame.receiveShadow=true;s.add(frame);
+  const frame=new T.Mesh(new T.BoxGeometry(8.9,.3,8.9).translate(0,-.16,0),pbr({color:0x0c0914,roughness:.25,metalness:.7,clearcoat:1,clearcoatRoughness:.06},this.quality));frame.receiveShadow=true;s.add(frame);
   for(const [w,d,x,z] of [[8.9,.04,0,4.45],[8.9,.04,0,-4.45],[.04,8.9,4.45,0],[.04,8.9,-4.45,0]]){const e=new T.Mesh(new T.BoxGeometry(w,.04,d),new T.MeshBasicMaterial({color:new T.Color(GOLD).multiplyScalar(1.5),toneMapped:false}));e.position.set(x,.0,z);s.add(e);}
   // File and rank letters on the frame.
   const glyph=t=>new T.MeshBasicMaterial({map:texture(64,64,(c,w)=>{c.clearRect(0,0,w,w);c.font='700 40px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#ffd36bcc';c.fillText(t,w/2,w/2+2);}),transparent:true,depthWrite:false});

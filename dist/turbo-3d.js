@@ -2,7 +2,7 @@
 // pup and the seeded course and draws a neon track floating over the city. Third person is
 // the classic side view; the "first" view is a behind-the-back chase camera.
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
-import {T,smooth,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,buildingShells,facadeMaterials,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,smooth,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,buildingShells,facadeMaterials,pbr,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {TURBO,turboChunk,chunkAt,groundIn} from './turbo-engine.js';
 import {worldLook,hash} from './world.js';
 import {loadBuildings,building} from './city-art.js';
@@ -36,21 +36,21 @@ export class ThreeTurbo {
   this.skyline=new T.Mesh(new T.CylinderGeometry(260,260,150,64,1,true),new T.MeshBasicMaterial({map:skylineTexture(),transparent:true,side:T.BackSide,fog:false,depthWrite:false}));this.skyline.material.map.repeat.set(5,1);s.add(this.skyline);
   this.moon=new T.Sprite(new T.SpriteMaterial({map:radial([[0,'#fffaf0'],[.32,'#fff2d6'],[.36,'#ffe3b366'],[1,'#ffd09000']]),fog:false,depthWrite:false,color:new T.Color(1.6,1.5,1.4)}));this.moon.scale.set(60,60,1);s.add(this.moon);
   this.hemi=new T.HemisphereLight(0x8fa6ff,0x2a1730,1.2);this.key=new T.DirectionalLight(0xdfe6ff,2.6);this.key.position.set(-8,16,12);s.add(this.hemi,this.key,this.key.target);
-  if(high){this.key.castShadow=true;this.key.shadow.mapSize.set(1024,1024);Object.assign(this.key.shadow.camera,{left:-14,right:14,top:12,bottom:-8,near:1,far:60});this.key.shadow.bias=-.0004;}
+  if(high){this.key.castShadow=true;this.key.shadow.mapSize.set(2048,2048);Object.assign(this.key.shadow.camera,{left:-14,right:14,top:12,bottom:-8,near:1,far:60});this.key.shadow.bias=-.0004;this.key.shadow.normalBias=.02;this.key.shadow.radius=4;}
   const rim=new T.DirectionalLight(0xff4fc0,2);rim.position.set(10,4,-8);const rim2=new T.DirectionalLight(0x48e6ff,1.6);rim2.position.set(-10,3,-6);s.add(rim,rim2);
-  const tex=panel();tex.repeat.set(1,1);this.trackMat=new T.MeshStandardMaterial({map:tex,metalness:.5,roughness:.4,envMapIntensity:.9,color:0xb4bcd8,side:T.DoubleSide});this.wallMat=new T.MeshStandardMaterial({map:tex,metalness:.4,roughness:.6,color:0x4a5272,side:T.DoubleSide});
+  const tex=panel();tex.repeat.set(1,1);this.trackMat=pbr({map:tex,metalness:.55,roughness:.36,envMapIntensity:1.1,color:0xb4bcd8,side:T.DoubleSide,clearcoat:.8,clearcoatRoughness:.12},this.quality);this.wallMat=new T.MeshStandardMaterial({map:tex,metalness:.4,roughness:.6,color:0x4a5272,side:T.DoubleSide});
   this.edgeA=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,side:T.DoubleSide});this.edgeB=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,side:T.DoubleSide});
   this.pillarMat=new T.MeshStandardMaterial({color:0x232840,metalness:.7,roughness:.4});this.pillarGeo=new T.BoxGeometry(.7,40,.7).translate(0,-20-DEPTH,0);
   this.spikeMat=new T.MeshStandardMaterial({color:0x3a0f18,emissive:0xff2448,emissiveIntensity:2.2,metalness:.5,roughness:.3});this.spikeGeo=new T.ConeGeometry(.22,.7,6).translate(0,.35,0);
   this.springMat=new T.MeshStandardMaterial({color:0xffd25e,emissive:0xffa000,emissiveIntensity:1.2,metalness:.8,roughness:.25});this.springPad=new T.MeshStandardMaterial({color:0xff3d6a,emissive:0xff2448,emissiveIntensity:1.6});
   this.boostMat=new T.MeshBasicMaterial({map:chevrons('#7ff3ff'),transparent:true,toneMapped:false,color:new T.Color(2.2,2.6,2.8),depthWrite:false});this.rampMat=new T.MeshBasicMaterial({map:chevrons('#ffd25e'),transparent:true,toneMapped:false,color:new T.Color(2.4,2,1),depthWrite:false});
-  this.loopMat=new T.MeshStandardMaterial({map:tex,metalness:.55,roughness:.38,envMapIntensity:.9,color:0x9aa3c2,side:T.DoubleSide});this.ringGeo=new T.TorusGeometry(TURBO.loopRadius,.07,8,96);this.ringOuter=new T.TorusGeometry(TURBO.loopRadius+.35,.05,8,96);
+  this.loopMat=pbr({map:tex,metalness:.6,roughness:.34,envMapIntensity:1.1,color:0x9aa3c2,side:T.DoubleSide,clearcoat:.8,clearcoatRoughness:.12},this.quality);this.ringGeo=new T.TorusGeometry(TURBO.loopRadius,.07,8,96);this.ringOuter=new T.TorusGeometry(TURBO.loopRadius+.35,.05,8,96);
   // Air rings: a neon hoop to fly through, with a soft glow behind it.
   this.hoopGeo=new T.TorusGeometry(1.1,.09,10,40);this.hoopMat=new T.MeshBasicMaterial({color:new T.Color(2.4,1.2,3),toneMapped:false});this.hoopInner=new T.MeshBasicMaterial({color:new T.Color(.8,.3,1),toneMapped:false,transparent:true,opacity:.15,side:T.DoubleSide,depthWrite:false});this.hoopDisc=new T.CircleGeometry(1.0,32);
   // Gold coins and the bots are pooled: coins as one instanced mesh, bots as small groups.
-  this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.22,emissive:0xff8a00,emissiveIntensity:.3,envMapIntensity:1.2});
+  this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.16,emissive:0xff8a00,emissiveIntensity:.3,envMapIntensity:1.8});
   this.coinCap=320;this.coins=new T.InstancedMesh(new T.CylinderGeometry(.42,.42,.1,28).rotateX(Math.PI/2),this.goldMat,this.coinCap);this.coins.frustumCulled=false;s.add(this.coins);
-  this.botBody=new T.MeshStandardMaterial({color:0x5b2a74,metalness:.6,roughness:.35,emissive:0x2a0838,emissiveIntensity:.8});this.botEye=new T.MeshBasicMaterial({color:new T.Color(3.6,.6,1.4),toneMapped:false});this.bots=[];
+  this.botBody=pbr({color:0x5b2a74,metalness:.6,roughness:.3,emissive:0x2a0838,emissiveIntensity:.8,clearcoat:1,clearcoatRoughness:.1},this.quality);this.botEye=new T.MeshBasicMaterial({color:new T.Color(3.6,.6,1.4),toneMapped:false});this.bots=[];
   this.glowTex=radial(glowStops);this.particles=new Particles(s,high?600:300,this.glowTex);
   this.holder=new T.Group();this.pivot=new T.Group();this.pivot.position.y=TURBO.body;this.holder.add(this.pivot);s.add(this.holder);
   this.ball=new T.Mesh(new T.SphereGeometry(.62,24,16),new T.MeshStandardMaterial({color:0xc58a4d,metalness:.3,roughness:.4,emissive:0x3a1a08}));const band=new T.Mesh(new T.TorusGeometry(.62,.08,8,32),new T.MeshBasicMaterial({color:new T.Color(1.6,2.6,1),toneMapped:false}));this.ball.add(band);this.ball.visible=false;this.pivot.add(this.ball);

@@ -1,5 +1,6 @@
 import {TradeGame,GOODS,DISTRICTS,validTradeState} from './engine.js';
 import {freshSeed,seededRandom,shuffle,pick,WEATHER} from './world.js';
+import {validDriveOutcome,RESULTS as DRIVE_RESULTS,DRIVE_CASH_CAP} from './hustle-drive.js';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const integer=(n,a,b)=>Number.isSafeInteger(n)&&n>=a&&n<=b;
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -14,8 +15,11 @@ export function validLivingTrade(s){
  if(!Array.isArray(w.rivals)||w.rivals.length!==3||!w.rivals.every(r=>r&&integer(r.name,0,names.length-1)&&integer(r.district,0,4)&&integer(r.good,0,5)&&['buyer','seller','collector'].includes(r.style)))return false;
  if(w.upgrades!==undefined&&(!Array.isArray(w.upgrades)||w.upgrades.length>3||new Set(w.upgrades).size!==w.upgrades.length||!w.upgrades.every(id=>TRADE_PERKS.some(p=>p.id===id))))return false;
  const e=w.event;if(!e||!integer(e.kind,0,4)||!integer(e.district,0,4)||!integer(e.good,0,5)||!integer(e.remaining,1,4))return false;
- const p=w.pending;if(p!==null&&(!p||!['toll','favor','flash'].includes(p.kind)||!integer(p.amount,0,Number.MAX_SAFE_INTEGER)||!integer(p.good,0,5)))return false;
+ const p=w.pending;if(p!==null&&(!p||!['toll','favor','flash','stop'].includes(p.kind)||!integer(p.amount,0,Number.MAX_SAFE_INTEGER)||!integer(p.good,0,5)))return false;
  const c=w.contract;if(!c||!integer(c.good,0,5)||!integer(c.quantity,3,8)||!integer(c.destination,0,4)||!integer(c.deadline,1,30)||!integer(c.reward,1,100000)||!['open','done','expired'].includes(c.status))return false;
+ // Optional drive records (added with the drive between districts; older saves have neither).
+ const d=w.lastDrive;if(d!==undefined&&(!d||!integer(d.day,1,30)||!DRIVE_RESULTS.includes(d.result)||!integer(d.cash,0,DRIVE_CASH_CAP)||!integer(d.nearMisses,0,999)||!integer(d.stars,0,5)))return false;
+ const road=w.road;if(road!==undefined&&(!road||!['trips','escapes','busts','cash','nearMisses'].every(k=>integer(road[k],0,1e7))))return false;
  return Array.isArray(w.history)&&w.history.length>=1&&w.history.length<=8&&w.history.every(h=>Array.isArray(h)&&h.length===6&&h.every(n=>integer(n,1,100000)))&&typeof w.news==='string'&&w.news.length<800;
 }
 export class LivingTradeGame extends TradeGame {
@@ -45,15 +49,25 @@ export class LivingTradeGame extends TradeGame {
   this.prices=w.markets[this.district].prices;w.history.push([...this.prices]);w.history=w.history.slice(-8);w.news=this.eventDescription();this.event=reports[Math.floor(r()*reports.length)]+'.';this.log(this.event);
   if(w.contract.status==='open'&&this.day>w.contract.deadline){w.contract.status='expired';this.log('The contact order expired. No penalty; a new lead will arrive next night.');}else if(w.contract.status!=='open'&&this.day<30)this.offerContract();
  }
- travel(destination){if(this.blocked||!Number.isInteger(destination)||!DISTRICTS[destination]||destination===this.district||this.day>=30)return false;const risk=this.travelRisk(destination);this.day++;this.district=destination;this.debt=Math.ceil(this.debt*1.03);this.bank=Math.floor(this.bank*1.005);this.heat=Math.max(0,this.heat-6);this.advanceEconomy();this.log(`Arrived at ${DISTRICTS[destination].name}. ${this.cityWeather}.`);
-  if(this.random()<risk)this.world.pending={kind:'toll',amount:Math.max(50,Math.floor(this.cash*.09)),good:Math.floor(this.random()*6)};
+ // drive: an optional outcome from the drive (hustle-drive.js). Without one (skipped, no 3D) the trip plays as before.
+ travel(destination,drive=null){if(this.blocked||!Number.isInteger(destination)||!DISTRICTS[destination]||destination===this.district||this.day>=30)return false;const run=validDriveOutcome(drive)?drive:null;let risk=this.travelRisk(destination);if(run?.result==='escaped')risk*=.5;else if(run?.result==='clean')risk*=.8;this.day++;this.district=destination;this.debt=Math.ceil(this.debt*1.03);this.bank=Math.floor(this.bank*1.005);this.heat=Math.max(0,this.heat-6);this.advanceEconomy();this.log(`Arrived at ${DISTRICTS[destination].name}. ${this.cityWeather}.`);if(run)this.applyDrive(run);
+  if(run?.result==='busted'){const good=this.bag.indexOf(Math.max(...this.bag));this.world.pending={kind:'stop',amount:Math.max(60,Math.round(this.cash*.06+this.heat*6)),good:Math.max(0,good)};}
+  else if(this.random()<risk)this.world.pending={kind:'toll',amount:Math.max(50,Math.floor(this.cash*.09)),good:Math.floor(this.random()*6)};
   else if(this.random()<.4)this.world.pending={kind:this.random()<.5?'favor':'flash',amount:60+Math.floor(this.random()*180),good:Math.floor(this.random()*6)};
   if(this.world.pending)this.event='A street encounter is waiting. Choose how your night unfolds.';if(this.day===30)this.log('Final night. Resolve any encounter, deliver an order, then cash out.');return true;
  }
+ // What the road did: cash grabbed, nerve shown, and how it left your heat.
+ applyDrive(run){const w=this.world,cash=Math.min(DRIVE_CASH_CAP,run.cash),rep=Math.min(5,Math.floor(run.nearMisses/4))+(run.result==='escaped'?3:0);this.cash+=cash;w.reputation=Math.min(999,w.reputation+rep);
+  if(run.result==='escaped')this.heat=Math.max(0,this.heat-8);if(run.result==='tailed')this.heat=Math.min(100,this.heat+6);
+  w.lastDrive={day:this.day,result:run.result,cash,nearMisses:run.nearMisses,stars:Number.isInteger(run.stars)?Math.min(5,Math.max(0,run.stars)):0};
+  const road=w.road||(w.road={trips:0,escapes:0,busts:0,cash:0,nearMisses:0}),cap=n=>Math.min(1e7,n);road.trips=cap(road.trips+1);road.escapes=cap(road.escapes+(run.result==='escaped'?1:0));road.busts=cap(road.busts+(run.result==='busted'?1:0));road.cash=cap(road.cash+cash);road.nearMisses=cap(road.nearMisses+run.nearMisses);
+  const what={clean:'Clean run across town.',escaped:'Shook the cruisers on the way in.',tailed:'A cruiser tailed you all the way here. Heat +6.',busted:'Pulled over by a patrol.'}[run.result];
+  this.log(what+(cash?` +$${cash} picked up on the road.`:'')+(rep?` +${rep} rep.`:''));}
  encounter(){const p=this.world.pending;if(!p)return null;const options=[];let title,text;
   if(p.kind==='toll'){title='The corner crew';text='A rival crew wants a cut. Your bank balance is protected.';options.push({id:'pay',label:`Pay $${p.amount}`,detail:'Keep your inventory. Lose 10 heat.',disabled:this.cash<p.amount},{id:'bluff',label:'Try your luck',detail:'50%: gain 5 reputation. Otherwise lose 18% of carried cash.'},{id:'yield',label:'Give up part of the bag',detail:'Lose 15% of inventory, rounded up. No cash lost.'});}
   if(p.kind==='favor'){title='A familiar face';text='A local promoter asks you to fund tonight’s pop-up. A small favor could build your name.';options.push({id:'help',label:`Chip in $${p.amount}`,detail:'Gain 8 reputation; reduce heat by 8.',disabled:this.cash<p.amount},{id:'leave',label:'Wish them luck',detail:'Keep your cash. No penalty.'});}
   if(p.kind==='flash'){title='The night-market tip';text=`A contact found a small cache of ${GOODS[p.good].name}. Take it or stay focused.`;options.push({id:'gift',label:'Accept 2 units',detail:'Uses 2 bag slots; adds 3 heat.',disabled:this.capacity-this.used<2},{id:'leave',label:'Pass on the offer',detail:'No cost. No penalty.'});}
+  if(p.kind==='stop'){title='Patrol stop';text='Lights in the mirror. A patrol DAWG walks up to your window and asks where you are headed tonight.';const n=this.bag[p.good];options.push({id:'fine',label:`Pay the $${p.amount} ticket`,detail:'Keep everything. Lose 15 heat.',disabled:this.cash<p.amount},{id:'search',label:'Let them search the trunk',detail:n?`They take 40% of your ${GOODS[p.good].name}. Lose 25 heat.`:'Nothing to find. Lose 20 heat.'},{id:'talk',label:'Talk your way out',detail:'Your reputation helps. Fail and the ticket doubles.'});}
   return {title,text,options};
  }
  resolve(id){const e=this.encounter(),p=this.world.pending;if(this.status!=='playing'||!e||!e.options.some(o=>o.id===id&&!o.disabled))return false;let message;
@@ -62,6 +76,9 @@ export class LivingTradeGame extends TradeGame {
   if(id==='yield'){let lost=0;this.bag=this.bag.map((n,i)=>{const take=Math.ceil(n*.15);if(n)this.cost[i]*=(n-take)/n;lost+=take;return n-take;});message=`Handed over ${lost} units. The rest of the night is yours.`;}
   if(id==='help'){this.cash-=p.amount;this.world.reputation=Math.min(999,this.world.reputation+8);this.heat=Math.max(0,this.heat-8);message='The promoter puts your name on the guest list. +8 local reputation.';}
   if(id==='gift'){this.bag[p.good]+=2;this.heat=Math.min(100,this.heat+3);message=`A favor repaid: 2 ${GOODS[p.good].name}.`;}
+  if(id==='fine'){this.cash-=p.amount;this.heat=Math.max(0,this.heat-15);message=`Paid the $${p.amount} ticket. The patrol waves you on.`;}
+  if(id==='search'){const n=this.bag[p.good],take=Math.ceil(n*.4);if(take){this.cost[p.good]*=(n-take)/n;this.bag[p.good]=n-take;this.heat=Math.max(0,this.heat-25);message=`The patrol confiscated ${take} ${GOODS[p.good].name}. They let you go.`;}else{this.heat=Math.max(0,this.heat-20);message='They searched the trunk and found nothing. Free to go.';}}
+  if(id==='talk'){if(this.random()<Math.min(.7,.45+this.world.reputation*.0005)){this.world.reputation=Math.min(999,this.world.reputation+3);this.heat=Math.max(0,this.heat-5);message='Smooth. The patrol laughs and lets you off with a warning. +3 rep.';}else{const loss=Math.min(this.cash,p.amount*2);this.cash-=loss;message=`They did not buy it. Double ticket: $${loss}.`;}}
   if(id==='leave')message='You move on. Sometimes a quiet night is the right call.';
   this.world.pending=null;this.event=message;this.log(message);return true;
  }

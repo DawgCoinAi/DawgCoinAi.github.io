@@ -1,0 +1,18 @@
+/* Don't Look Down HUD: height, a tower gauge with this run's peak, the live drop counter, grip. */
+.climb3d .cl-meter{position:absolute;left:16px;top:var(--d3-top,14px);display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 6px;max-width:60%;text-shadow:0 2px 10px #000d,0 3px 0 #000a}
+.climb3d .cl-meter b{font:900 clamp(32px,6vw,62px)/1 var(--display);color:#fff4e0;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.climb3d .cl-meter small{font:800 13px var(--mono);color:#ffd25e;letter-spacing:2px}
+.climb3d .cl-floor{flex-basis:100%;font:800 11px var(--mono);letter-spacing:2px;color:#ff9ad8}
+.climb3d .cl-gauge{position:absolute;right:12px;top:18%;bottom:18%;width:6px;border-radius:6px;background:linear-gradient(#ffd25e55,#ff4fd833 50%,#5ec8ff33);box-shadow:0 0 0 1px #ffffff22}
+.climb3d .cl-gauge i{position:absolute;left:50%;transform:translate(-50%,50%);border-radius:50%}
+.climb3d .cl-me{width:14px;height:14px;background:#fff4e0;box-shadow:0 0 12px #ffd25e}
+.climb3d .cl-peak{width:20px;height:3px;border-radius:2px!important;background:#ff5d8f;box-shadow:0 0 10px #ff5d8f}
+.climb3d .cl-fall{position:absolute;left:0;right:0;top:30%;text-align:center;pointer-events:none;animation:clFall .35s cubic-bezier(.2,.9,.3,1.4)}
+.climb3d .cl-fall b{display:block;font:900 clamp(54px,14vw,128px)/.9 var(--display);color:#ff3d6e;letter-spacing:-2px;text-shadow:0 0 30px #ff2255aa,0 6px 0 #000b}
+.climb3d .cl-fall small{display:block;margin:10px auto 0;max-width:22ch;font:800 clamp(14px,3.6vw,20px)/1.25 var(--display);color:#fff;text-shadow:0 2px 10px #000}
+.climb3d .cl-fall.cl-live b{animation:clShake .12s linear infinite}
+.climb3d .cl-grip{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);padding:6px 12px 8px;border-radius:10px;background:#0b0a16cc;font:800 11px var(--mono);letter-spacing:1.5px;color:#ffb37a;white-space:nowrap}
+.climb3d .cl-grip::after{content:"";display:block;height:4px;margin-top:6px;border-radius:4px;background:linear-gradient(90deg,#ff3d6e,#ffd25e);transform-origin:left;transform:scaleX(var(--grip,1))}
+@keyframes clFall{from{transform:scale(1.6);opacity:0}}
+@keyframes clShake{0%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}100%{transform:translate(-1px,2px)}}
+@media (prefers-reduced-motion:reduce){.climb3d .cl-fall,.climb3d .cl-fall.cl-live b{animation:none}}

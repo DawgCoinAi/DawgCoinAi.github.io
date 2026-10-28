@@ -2,7 +2,7 @@
 // garden as a neon arena. First person rides the head of the light-trail with a minimap;
 // third person shows the whole arena from a tilted, north-up angle.
 // World units: one grid cell is one meter; cell (x, y) sits at world (x, 0, y), north is -z.
-import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,pbr,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {SNAKE_COLS,SNAKE_ROWS} from './snake-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
@@ -32,25 +32,25 @@ export class ThreeSnake {
   Promise.all([loadBuildings(),loadSet({post:STREET.post})]).then(([buildings,set])=>{if(this.dead)return;const rnd=seededRandom(0x5a4e),cx=(W-1)/2,cz=(H-1)/2;
    // Outside the third-person camera, and never between it and the arena.
    this.scene.add(cityRing(buildings,rnd,{cx,cz,radius:Math.max(W,H)*2.3,spread:18,count:this.quality==='high'?34:20,minH:18,maxH:48,clear:(x,z)=>!(z>cz&&Math.abs(x-cx)<W)}));
-   if(set.post)for(const [x,z] of [[-1.6,-1.6],[W+.6,-1.6],[-1.6,H+.6],[W+.6,H+.6]]){this.scene.add(prop(set.post,{x,z,size:5,facing:Math.atan2(cx-x,cz-z)+Math.PI}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(x+(cx-x)*.06,4.6,z+(cz-z)*.06);glow.scale.set(2.4,2.4,1);this.scene.add(glow);}}).catch(()=>{});
+   if(set.post)for(const [x,z] of [[-1.6,-1.6],[W+.6,-1.6],[-1.6,H+.6],[W+.6,H+.6]]){this.scene.add(prop(set.post,{x,z,size:5,facing:Math.atan2(cx-x,cz-z)+Math.PI}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(x+(cx-x)*.06,4.6,z+(cz-z)*.06);glow.scale.set(2.4,2.4,1);this.scene.add(glow);if(this.quality==='high'){const shaft=lightShaft(0xffe2b8,{length:5,radius:3,top:.2,opacity:.16});shaft.position.copy(glow.position);shaft.rotation.set(-(cz-z)*.025,0,(cx-x)*.025);this.scene.add(shaft);}}}).catch(()=>{});
   this.sky=new T.Mesh(new T.SphereGeometry(120,24,12),skyMaterial());s.add(this.sky);
-  this.hemi=new T.HemisphereLight(0x9fb2ff,0x140c22,.8);s.add(this.hemi);this.headLight=new T.PointLight(0xb9ff5e,5,5,1.6);s.add(this.headLight);
-  const g=gridTexture(),gl=gridGlow();g.repeat.set(W,H);gl.repeat.set(W,H);this.gridMat=new T.MeshStandardMaterial({map:g,emissiveMap:gl,emissive:0xffffff,emissiveIntensity:.35,metalness:.6,roughness:.3,envMapIntensity:.7});
-  const floor=new T.Mesh(new T.PlaneGeometry(W,H).rotateX(-Math.PI/2),this.gridMat);floor.position.set((W-1)/2,0,(H-1)/2);s.add(floor);
+  this.hemi=new T.HemisphereLight(0x9fb2ff,0x140c22,.7);s.add(this.hemi);this.key=new T.DirectionalLight(0xc8d4ff,1.7);this.key.position.set((W-1)/2-8,22,(H-1)/2+12);this.key.target.position.set((W-1)/2,0,(H-1)/2);s.add(this.key,this.key.target);this.stage.sunShadow(this.key,{size:Math.max(W,H)*.75+2,far:60,map:2048,radius:3});this.headLight=new T.PointLight(0xb9ff5e,5,5,1.6);s.add(this.headLight);
+  const g=gridTexture(),gl=gridGlow();g.repeat.set(W,H);gl.repeat.set(W,H);this.gridMat=pbr({map:g,emissiveMap:gl,emissive:0xffffff,emissiveIntensity:.35,metalness:.55,roughness:.32,envMapIntensity:.9,clearcoat:.7,clearcoatRoughness:.15},this.quality);
+  const floor=new T.Mesh(new T.PlaneGeometry(W,H).rotateX(-Math.PI/2),this.gridMat);floor.position.set((W-1)/2,0,(H-1)/2);floor.receiveShadow=true;s.add(floor);
   const outer=new T.Mesh(new T.PlaneGeometry(W+80,H+80).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x05060c,metalness:.5,roughness:.6}));outer.position.set((W-1)/2,-.02,(H-1)/2);s.add(outer);
   // Low barrier walls around the arena with a glowing top rail.
   this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});const wallMat=new T.MeshStandardMaterial({color:0x1a2040,metalness:.6,roughness:.4});
-  for(const [x,z,w,d]of [[(W-1)/2,-.75,W+1,.5],[(W-1)/2,H-.25,W+1,.5],[-.75,(H-1)/2,.5,H+1],[W-.25,(H-1)/2,.5,H+1]]){const wall=new T.Mesh(new T.BoxGeometry(w,.8,d).translate(0,.4,0),wallMat);wall.position.set(x,0,z);const rail=new T.Mesh(new T.BoxGeometry(w,.06,d).translate(0,.83,0),this.railMat);rail.position.set(x,0,z);s.add(wall,rail);}
+  for(const [x,z,w,d]of [[(W-1)/2,-.75,W+1,.5],[(W-1)/2,H-.25,W+1,.5],[-.75,(H-1)/2,.5,H+1],[W-.25,(H-1)/2,.5,H+1]]){const wall=new T.Mesh(new T.BoxGeometry(w,.8,d).translate(0,.4,0),wallMat);wall.castShadow=wall.receiveShadow=true;wall.position.set(x,0,z);const rail=new T.Mesh(new T.BoxGeometry(w,.06,d).translate(0,.83,0),this.railMat);rail.position.set(x,0,z);s.add(wall,rail);}
   this.rockMat=new T.MeshStandardMaterial({color:0x2a2244,metalness:.3,roughness:.4,emissive:0x5b2a9a,emissiveIntensity:.5,flatShading:true});this.rockGeo=new T.IcosahedronGeometry(.46,0).translate(0,.4,0);this.rocks=null;this.rockSeed=null;
-  this.bodyMat=new T.MeshStandardMaterial({color:0x5cff9b,emissive:0x2bff7a,emissiveIntensity:.8,metalness:.3,roughness:.3,transparent:true,opacity:.95});
-  this.body=new T.InstancedMesh(new T.RoundedBoxGeometry(.8,.46,.8,3,.17).translate(0,.25,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;s.add(this.body);
-  this.headMat=new T.MeshStandardMaterial({color:0xd8ffe9,emissive:0x7dffb0,emissiveIntensity:.7,metalness:.4,roughness:.25});this.head=new T.Mesh(new T.RoundedBoxGeometry(.9,.52,.9,3,.2).translate(0,.28,0),this.headMat);s.add(this.head);
+  this.bodyMat=pbr({color:0x5cff9b,emissive:0x2bff7a,emissiveIntensity:.8,metalness:.25,roughness:.28,transparent:true,opacity:.95,clearcoat:1,clearcoatRoughness:.08},this.quality);
+  this.body=new T.InstancedMesh(new T.RoundedBoxGeometry(.8,.46,.8,3,.17).translate(0,.25,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;this.body.castShadow=true;s.add(this.body);
+  this.headMat=pbr({color:0xd8ffe9,emissive:0x7dffb0,emissiveIntensity:.7,metalness:.35,roughness:.22,clearcoat:1,clearcoatRoughness:.06},this.quality);this.head=new T.Mesh(new T.RoundedBoxGeometry(.9,.52,.9,3,.2).translate(0,.28,0),this.headMat);this.head.castShadow=true;s.add(this.head);
   const visor=new T.Mesh(new T.BoxGeometry(.6,.1,.05),new T.MeshBasicMaterial({color:new T.Color(3,.6,1.6),toneMapped:false}));visor.position.set(0,.38,.44);this.head.add(visor);
   this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.2,emissive:0xff8a00,emissiveIntensity:.45});this.food=new T.Mesh(new T.CylinderGeometry(.3,.3,.07,28).rotateX(Math.PI/2),this.goldMat);s.add(this.food);
   this.glowTex=radial(glowStops);this.foodGlow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.6,1.1,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.foodGlow.scale.set(1.6,1.6,1);s.add(this.foodGlow);
   this.particles=new Particles(s,this.quality==='high'?400:220,this.glowTex);this.dummy=new T.Object3D();
  }
- buildRocks(g){this.rocks?.removeFromParent();this.rocks=new T.InstancedMesh(this.rockGeo,this.rockMat,Math.max(1,g.rocks.length));g.rocks.forEach((r,i)=>{this.dummy.position.set(r.x,0,r.y);this.dummy.rotation.set(0,(r.x*7+r.y*3)%6,0);this.dummy.updateMatrix();this.rocks.setMatrixAt(i,this.dummy.matrix);});this.rocks.count=g.rocks.length;this.scene.add(this.rocks);this.rockSeed=g.worldSeed;this.dummy.rotation.set(0,0,0);
+ buildRocks(g){this.rocks?.removeFromParent();this.rocks=new T.InstancedMesh(this.rockGeo,this.rockMat,Math.max(1,g.rocks.length));g.rocks.forEach((r,i)=>{this.dummy.position.set(r.x,0,r.y);this.dummy.rotation.set(0,(r.x*7+r.y*3)%6,0);this.dummy.updateMatrix();this.rocks.setMatrixAt(i,this.dummy.matrix);});this.rocks.count=g.rocks.length;this.rocks.castShadow=this.rocks.receiveShadow=true;this.scene.add(this.rocks);this.rockSeed=g.worldSeed;this.dummy.rotation.set(0,0,0);
   // Minimap backdrop: arena and rocks.
   const mc=this.ui.map,cell=Math.floor(Math.min(mc.width/SNAKE_COLS,mc.height/SNAKE_ROWS)),bg=document.createElement('canvas');bg.width=mc.width;bg.height=mc.height;const b=bg.getContext('2d');b.fillStyle='#0a0c18e6';b.fillRect(0,0,bg.width,bg.height);this.cell=cell;this.off=[(mc.width-SNAKE_COLS*cell)/2,(mc.height-SNAKE_ROWS*cell)/2];b.strokeStyle='#b48cff66';b.strokeRect(this.off[0],this.off[1],SNAKE_COLS*cell,SNAKE_ROWS*cell);b.fillStyle='#6b4aa8';for(const r of g.rocks)b.fillRect(this.off[0]+r.x*cell,this.off[1]+r.y*cell,cell,cell);this.mapBg=bg;}
  // Smoothly interpolated cells: each segment glides toward the one ahead of it between steps.

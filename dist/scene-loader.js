@@ -4,5 +4,5 @@
 // models load only when a scene is first shown.
 export function sceneFor(canvas){let state='idle',scene=null;
  return place=>{if(state==='idle'){if(typeof WebGL2RenderingContext==='undefined'){state='failed';return false;}state='loading';
-   import('./scene-3d.js').then(({ThreeStreetScene})=>{const s=new ThreeStreetScene(canvas,{onFailure:()=>{state='failed';scene=null;}});return s.init().then(()=>{if(state==='loading'&&s.ready){scene=s;state='ready';}else if(state==='loading')state='failed';});}).catch(()=>{state='failed';});}
+   import('./scene-3d.js').then(({ThreeStreetScene})=>{const s=new ThreeStreetScene(canvas,{onFailure:()=>{state='failed';scene=null;}});return s.init().then(()=>{if(state==='loading'&&s.ready){scene=s;state='ready';if(/[?&]debug/.test(location.search))globalThis.hustleScene=s;}else if(state==='loading')state='failed';});}).catch(()=>{state='failed';});}
   if(state!=='ready'||!scene)return false;try{return scene.draw(place)?scene.anchors||{}:false;}catch{state='failed';scene.dispose();scene=null;return false;}};}

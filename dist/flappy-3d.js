@@ -3,7 +3,7 @@
 // First person is a cockpit view through the gaps; third person is a three-quarter chase.
 // Field pixels become meters at 30 px per meter: x → world x, (520 − y) → world y, depth is z.
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
-import {T,quality,fitFov,radial,glowStops,skylineTexture,skyMaterial,buildingShells,facadeMaterials,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,quality,fitFov,radial,glowStops,skylineTexture,wetGround,skyMaterial,buildingShells,facadeMaterials,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook,hash} from './world.js';
 import {loadModel} from './three-kit.js';
@@ -32,7 +32,7 @@ export class ThreeFlappy {
   this.facades=facadeMaterials();this.towerGeo=new T.BoxGeometry(1,1,1).translate(0,.5,0);
   this.frameMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});this.frameGeo=new T.BoxGeometry(1,.12,1);
   // Street far below, and a faint laser grid where the sky ends.
-  const street=new T.Mesh(new T.PlaneGeometry(400,60).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x0d1120,metalness:.6,roughness:.35,envMapIntensity:.8}));street.position.set(0,-.02,0);s.add(street);this.street=street;
+  const street=new T.Mesh(new T.PlaneGeometry(400,60).rotateX(-Math.PI/2),wetGround({color:0x0d1120,metalness:.5,roughness:.4,envMapIntensity:1,repeat:[40,6],q:this.quality}));street.position.set(0,-.02,0);s.add(street);this.street=street;
   this.laneMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,transparent:true,opacity:.7});this.lanes=new T.InstancedMesh(new T.PlaneGeometry(2,.12).rotateX(-Math.PI/2),this.laneMat,60);this.lanes.frustumCulled=false;s.add(this.lanes);
   this.limit=new T.Mesh(new T.PlaneGeometry(400,40).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(1,.3,.7),transparent:true,opacity:.12,depthWrite:false,side:T.DoubleSide,toneMapped:false}));this.limit.position.y=SKY_LIMIT;s.add(this.limit);
   // Background towers recycled along the route, either side of the flight path.

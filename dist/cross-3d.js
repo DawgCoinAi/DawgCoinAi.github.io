@@ -3,7 +3,7 @@
 // rafts, sidewalk blocks with gold, and a night city lining both sides.
 // World units: one lane cell is C metres. Cell (x, row) sits at world ((x - 4) * C, 0, -row * C),
 // so the player hops toward -z.
-import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop,loadModel,cloneModel,fitModel} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop,loadModel,cloneModel,fitModel,pbr,castShadows,lightShaft,contactShadow,contactShadowMaterial} from './three-kit.js';
 import {crossLane,laneObjects} from './pack-engine.js';
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {loadBuildings,loadSet,STREET,TRAFFIC,building,prop} from './city-art.js';
@@ -29,11 +29,11 @@ export class ThreeCross {
  setCamera(){this.rig?.setMode('third');}
  build(){const s=this.scene,high=this.quality==='high';this.stage.neonEnvironment(.6);this.stage.hdrEnvironment(undefined,.55);s.fog=new T.FogExp2(0x0a0b1c,.028);
   this.sky=new T.Mesh(new T.SphereGeometry(200,24,12),skyMaterial());s.add(this.sky);
-  s.add(new T.HemisphereLight(0xa9b4ff,0x1a1028,1.1));const key=new T.DirectionalLight(0xffffff,1.4);key.position.set(-8,20,10);s.add(key);
-  this.mats={road:new T.MeshStandardMaterial({map:asphalt(),roughness:.55,metalness:.2,envMapIntensity:.6}),walk:new T.MeshStandardMaterial({map:sidewalk(),roughness:.8,envMapIntensity:.4}),
-   water:new T.MeshStandardMaterial({map:water(),emissive:0x2fb8ff,emissiveMap:water(),emissiveIntensity:.45,roughness:.15,metalness:.4,envMapIntensity:1}),
+  s.add(new T.HemisphereLight(0xa9b4ff,0x1a1028,.95));this.blobMat=contactShadowMaterial(.7);const key=this.key=new T.DirectionalLight(0xfff1e0,2.2);key.position.set(-8,20,10);s.add(key,key.target);this.stage.sunShadow(key,{size:16,far:60});
+  const q=this.quality;this.mats={road:pbr({map:asphalt(),roughness:.5,metalness:.2,envMapIntensity:.8,clearcoat:.45,clearcoatRoughness:.3},q),walk:new T.MeshStandardMaterial({map:sidewalk(),roughness:.8,envMapIntensity:.4}),
+   water:pbr({map:water(),emissive:0x2fb8ff,emissiveMap:water(),emissiveIntensity:.45,roughness:.12,metalness:.3,envMapIntensity:1.3,clearcoat:1,clearcoatRoughness:.05},q),
    curb:new T.MeshStandardMaterial({color:0x3a3650,roughness:.6}),raft:new T.MeshStandardMaterial({color:0x2a1f3a,roughness:.4,metalness:.3,emissive:0xff5fc8,emissiveIntensity:.25}),raftRail:new T.MeshBasicMaterial({color:new T.Color(2.2,.8,2),toneMapped:false}),
-   carBody:[0xff5f6d,0xffb547,0x5ee7ff,0xc18cff].map(c=>new T.MeshStandardMaterial({color:c,metalness:.5,roughness:.3,emissive:c,emissiveIntensity:.15}))};
+   carBody:[0xff5f6d,0xffb547,0x5ee7ff,0xc18cff].map(c=>pbr({color:c,metalness:.6,roughness:.28,emissive:c,emissiveIntensity:.12,clearcoat:1,clearcoatRoughness:.08},q))};
   this.mats.water.map.repeat.set(4,1);this.mats.water.emissiveMap.repeat.set(4,1);
   this.geo={lane:new T.PlaneGeometry(COLS*C+HALF*2,C).rotateX(-Math.PI/2),raft:new T.BoxGeometry(1,.3,C*.78),car:new T.BoxGeometry(1,.9,C*.7).translate(0,.55,0)};
   this.glowTex=radial(glowStops);this.coinMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.2,emissive:0xff8a00,emissiveIntensity:.6});this.coinGeo=new T.CylinderGeometry(.42,.42,.1,24).rotateX(Math.PI/2);
@@ -49,17 +49,17 @@ export class ThreeCross {
   if(info.type!=='river')for(const side of [-1,1]){const curb=new T.Mesh(new T.BoxGeometry(.3,.18,C),this.mats.curb);curb.position.set(side*(COLS*C/2+.4),.09,z);grp.add(curb);}
   // The city: a building on each side of every other row, set back from the street.
   if(art?.buildings.length&&row%2===0)for(const side of [-1,1]){const lr=seededRandom(((g.worldSeed*31+row*977+(side>0?1:2))>>>0)||1);grp.add(building(art.buildings,lr,{x:side*(HALF+4+lr()*3),z,height:8+lr()*18,facing:side>0?-Math.PI/2:Math.PI/2}));}
-  if(art?.props.lamp&&info.type==='park'&&row%3===0)for(const side of [-1,1]){grp.add(prop(art.props.lamp,{x:side*(COLS*C/2+1.2),z,size:4,facing:side>0?-Math.PI/2:Math.PI/2}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(side*(COLS*C/2-.2),3.8,z);glow.scale.set(2.2,2.2,1);grp.add(glow);}
+  if(art?.props.lamp&&info.type==='park'&&row%3===0)for(const side of [-1,1]){grp.add(prop(art.props.lamp,{x:side*(COLS*C/2+1.2),z,size:4,facing:side>0?-Math.PI/2:Math.PI/2}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(side*(COLS*C/2-.2),3.8,z);glow.scale.set(2.2,2.2,1);grp.add(glow);if(this.quality==='high'){const shaft=lightShaft(0xffd9a8,{length:3.9,radius:1.5,top:.15,opacity:.22});shaft.position.set(side*(COLS*C/2-.2),3.85,z);grp.add(shaft);}}
   if(art?.props.signal&&info.type==='road'&&rnd(20)<.25){const side=rnd(21)<.5?-1:1;grp.add(prop(art.props.signal,{x:side*(COLS*C/2+1),z:z+C*.4,size:4,facing:side>0?-Math.PI/2:Math.PI/2}));}
   const coin=info.type==='park'&&info.coin!==null?new T.Mesh(this.coinGeo,this.coinMat):null;if(coin){coin.position.set(wx(info.coin),.7,z);grp.add(coin);}
-  l={info,group:grp,coin,movers:[]};this.scene.add(grp);this.lanes.set(row,l);return l;}
+  castShadows(grp,this.quality);l={info,group:grp,coin,movers:[]};this.scene.add(grp);this.lanes.set(row,l);return l;}
  // Vehicles or rafts for a lane, pooled: as many as the lane shows at once.
  mover(l,i){if(l.movers[i])return l.movers[i];const info=l.info,dir=info.direction;let m;
   if(info.type==='road'){const cars=this.art?.cars||[];if(cars.length){const car=fitModel(cloneModel(cars[(info.color+i)%cars.length]),Math.max(2.4,info.length*C*.92));m=new T.Group();m.add(car);m.rotation.y=dir>0?Math.PI/2:-Math.PI/2;}else{m=new T.Mesh(this.geo.car,this.mats.carBody[info.color%4]);m.scale.x=info.length*C*.92;}
    const lights=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.3,1.2,.9),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));lights.scale.set(1.1,.7,1);lights.position.set(0,.6,0);m.userData.lights=lights;this.scene.add(lights);}
   else{m=new T.Group();const deck=new T.Mesh(this.geo.raft,this.mats.raft);deck.scale.x=info.length*C;deck.position.y=.02;const rail=new T.Mesh(new T.BoxGeometry(1,.06,.08),this.mats.raftRail);rail.scale.x=info.length*C;rail.position.set(0,.2,C*.39);const rail2=rail.clone();rail2.position.z=-C*.39;m.add(deck,rail,rail2);}
-  l.group.add(m);l.movers[i]=m;return m;}
- prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.5/h);next.root.rotation.y=Math.PI;if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.player.add(next.root);}catch{}}
+  castShadows(m,this.quality,false);if(info.type==='road'&&this.quality==='high'){const len=info.length*C*.95,blob=contactShadow(1,1,this.blobMat);if(m.isMesh)blob.scale.set(1.08,1,C*.95);else blob.scale.set(C*.95,1,len*1.08);blob.position.y=.02;m.add(blob);}l.group.add(m);l.movers[i]=m;return m;}
+ prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.5/h);next.root.rotation.y=Math.PI;castShadows(next.root,this.quality,false);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.player.add(next.root);}catch{}}
  event(e,g){if(!this.ready)return;const p=this.player.position,st=this.stage,hud=this.hud;
   if(e.type==='step')this.particles.burst(p.x,.2,p.z,8,0xffffff,{speed:2,life:.3,up:1});
   else if(e.type==='coin'){this.particles.burst(p.x,.8,p.z,30,0xffc14d,{speed:4,life:.7});hud.pop('+25');st.shake(.1);}
@@ -73,7 +73,7 @@ export class ThreeCross {
   const look=worldLook(g.worldSeed),glow=new T.Color(look.glow),accent=new T.Color(look.accent),u=this.sky.material.uniforms;u.uTop.value.set(0x03040c);u.uHorizon.value.copy(glow).multiplyScalar(.12);u.uGlow.value.copy(accent).multiplyScalar(.15);this.scene.fog.color.copy(glow).multiplyScalar(.05);
   // Player: glide between cells during a hop, with a little arc.
   const f=g.hop>0?1-g.hop/.13:1,px=g.from.x+(g.x-g.from.x)*f,prow=g.from.row+(g.row-g.from.row)*f,arc=g.hop>0&&!reduced?Math.sin(f*Math.PI)*.8:0;
-  this.player.position.set(wx(px),arc,wz(prow));this.shadow.position.set(wx(px),.03,wz(prow));this.shadow.scale.setScalar(1-arc*.4);
+  this.player.position.set(wx(px),arc,wz(prow));this.stage.followSun(this.key,wx(px)*.5,0,wz(prow)-3);this.shadow.position.set(wx(px),.03,wz(prow));this.shadow.scale.setScalar(1-arc*.4);
   if(this.asset)setDawgPose(this.asset,real,g.hop>0?'run':'idle');
   // Lanes around the player; drop the ones far behind or ahead.
   const base=Math.max(0,Math.floor(prow));for(let r=base-BEHIND;r<=base+AHEAD;r++){if(r<-2)continue;const l=this.lane(g,r);

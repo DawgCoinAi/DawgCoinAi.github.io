@@ -3,7 +3,7 @@
 // first person sits in the driver's seat.
 // World units: one track meter is one meter. Track (x, y) sits at world (x, 0, -y), and a kart
 // with heading θ faces (cos θ, 0, -sin θ), so rotation.y = θ.
-import {T,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,skylineTexture,skyMaterial,pbr,castShadows,contactShadow,contactShadowMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {KART,trackAt,trackPoint,ordinal} from './kart-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
@@ -50,15 +50,15 @@ export class ThreeKart {
   this.art=null;loadKartArt().then(a=>{if(this.dead)return;a.glowTex=this.glowTex;this.art=a;this.dressed=false;this.modelKarts=false;}).catch(()=>{});
   this.sky=new T.Mesh(new T.SphereGeometry(600,24,12),skyMaterial());s.add(this.sky);
   this.skyline=new T.Mesh(new T.CylinderGeometry(420,420,170,64,1,true),new T.MeshBasicMaterial({map:skylineTexture(),transparent:true,side:T.BackSide,fog:false,depthWrite:false}));this.skyline.material.map.repeat.set(6,1);this.skyline.position.y=55;s.add(this.skyline);
-  s.add(new T.HemisphereLight(0xa9b4ff,0x150c22,1));const key=new T.DirectionalLight(0xffffff,1.2);key.position.set(60,120,40);s.add(key);
+  s.add(new T.HemisphereLight(0xa9b4ff,0x150c22,.9));const key=this.key=new T.DirectionalLight(0xfff0dc,1.3);key.position.set(14,28,9);s.add(key,key.target);this.stage.sunShadow(key,{size:18,far:80,map:2048,radius:3});this.blobMat=contactShadowMaterial(.7);
   this.groundMat=new T.MeshStandardMaterial({color:0x0a0c18,metalness:.3,roughness:.8,emissive:0xffffff,emissiveIntensity:.25});
   const grid=texture(128,128,(c,w,h)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.strokeStyle='#ffffff';c.globalAlpha=.25;c.lineWidth=2;c.strokeRect(1,1,w-2,h-2);},{repeat:true});grid.repeat.set(120,120);this.groundMat.emissiveMap=grid;
   const ground=new T.Mesh(new T.PlaneGeometry(1200,1200).rotateX(-Math.PI/2),this.groundMat);ground.position.y=-.03;s.add(ground);
-  this.roadMat=new T.MeshStandardMaterial({map:asphalt(),metalness:.25,roughness:.45,envMapIntensity:.6});this.kerbMat=new T.MeshStandardMaterial({map:kerb(),emissive:0xffffff,emissiveMap:kerb(),emissiveIntensity:.06,roughness:.7,envMapIntensity:.25,side:T.DoubleSide});
-  this.wallMat=new T.MeshStandardMaterial({color:0x22224a,metalness:.6,roughness:.35,side:T.DoubleSide});this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,side:T.DoubleSide});
+  this.roadMat=pbr({map:asphalt(),metalness:.2,roughness:.42,envMapIntensity:.85,clearcoat:.4,clearcoatRoughness:.28},this.quality);this.kerbMat=new T.MeshStandardMaterial({map:kerb(),emissive:0xffffff,emissiveMap:kerb(),emissiveIntensity:.06,roughness:.7,envMapIntensity:.25,side:T.DoubleSide});
+  this.wallMat=pbr({color:0x22224a,metalness:.6,roughness:.3,side:T.DoubleSide,clearcoat:.8,clearcoatRoughness:.12},this.quality);this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false,side:T.DoubleSide});
   this.boxTex=boxFace();this.glowTex=radial(glowStops);
   this.boxGeo=new T.BoxGeometry(1.1,1.1,1.1);this.boxMat=new T.MeshStandardMaterial({map:this.boxTex,emissive:0xffffff,emissiveMap:this.boxTex,emissiveIntensity:.9,transparent:true,opacity:.85,metalness:.2,roughness:.1});
-  this.coinMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.2,emissive:0xff8a00,emissiveIntensity:.5});
+  this.coinMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.15,emissive:0xff8a00,emissiveIntensity:.45,envMapIntensity:1.8});
   this.padMat=new T.MeshBasicMaterial({map:chevron(),color:new T.Color(.6,2.2,2.6),transparent:true,depthWrite:false,toneMapped:false});
   this.boneMat=new T.MeshStandardMaterial({color:0xf4efe6,roughness:.5,emissive:0x443322,emissiveIntensity:.3});
   this.bones=Array.from({length:24},()=>{const g=new T.Group();g.add(new T.Mesh(new T.CylinderGeometry(.09,.09,.8,8).rotateZ(Math.PI/2),this.boneMat));for(const x of [-.4,.4])for(const z of [-.1,.1]){const k=new T.Mesh(new T.SphereGeometry(.14,8,6),this.boneMat);k.position.set(x,0,z);g.add(k);}g.position.y=.2;g.visible=false;s.add(g);return g;});
@@ -68,7 +68,7 @@ export class ThreeKart {
  }
  buildTrack(g){
   const t=g.track,grp=this.trackGroup;for(const c of [...grp.children]){grp.remove(c);c.geometry?.dispose();}this.dressed=false;
-  const W=KART.width/2;grp.add(new T.Mesh(ribbon(t,-W,W,{vScale:24}),this.roadMat));
+  const W=KART.width/2;const road=new T.Mesh(ribbon(t,-W,W,{vScale:24}),this.roadMat);road.receiveShadow=true;grp.add(road);
   for(const side of [1,-1])grp.add(new T.Mesh(ribbon(t,side*W,side*(W+.9),{vScale:4}),this.kerbMat));
   // Run-off between the kerbs and the barriers.
   const runoff=new T.MeshStandardMaterial({color:0x1a1530,roughness:.9,side:T.DoubleSide});for(const side of [1,-1])grp.add(new T.Mesh(ribbon(t,side*(W+.9),side*KART.wall),runoff));
@@ -87,12 +87,12 @@ export class ThreeKart {
   this.mapAt=(x,y)=>[mc.width/2+(x-(minX+maxX)/2)*sc,mc.height/2-(y-(minY+maxY)/2)*sc];const bg=document.createElement('canvas');bg.width=mc.width;bg.height=mc.height;const b=bg.getContext('2d');b.fillStyle='#0a0c18d9';b.fillRect(0,0,bg.width,bg.height);
   b.strokeStyle='#ffffff55';b.lineWidth=5;b.lineJoin='round';b.beginPath();t.pts.forEach((p,i)=>{const [x,y]=this.mapAt(p[0],p[1]);i?b.lineTo(x,y):b.moveTo(x,y);});b.closePath();b.stroke();this.mapBg=bg;
   this.skyline.position.set((minX+maxX)/2,55,-(minY+maxY)/2);this.trackSeed=g.worldSeed;
-  if(!this.karts.length)this.karts=g.karts.map(k=>{const m=kartModel(k.color,this.glowTex);this.scene.add(m.g);return m;});
+  if(!this.karts.length)this.karts=g.karts.map(k=>{const m=kartModel(k.color,this.glowTex);castShadows(m.g,this.quality,false);const blob=contactShadow(3,2.2,this.blobMat);blob.position.y=.03;m.g.add(blob);this.scene.add(m.g);return m;});
  }
  // Replace the built-in karts with the model karts: the player's own DAWG drives kart one,
  // rivals get their own DAWGs (or the stock driver on low graphics settings).
  swapKarts(g){this.modelKarts=true;const rnd=i=>{try{return makeDawg();}catch{return null;}};
-  this.karts.forEach((m,i)=>{const rig=kartRig(this.art.karts[i%this.art.karts.length],{dawg:i===0?this.dawg:this.quality==='high'?rnd(i):null});for(const c of [...m.g.children])if(!c.isSprite)m.g.remove(c);m.g.add(rig.root);m.wheels=rig.wheels;m.driver=rig.driver;m.head=rig.driver?.root||rig.root;});}
+  this.karts.forEach((m,i)=>{const rig=kartRig(this.art.karts[i%this.art.karts.length],{dawg:i===0?this.dawg:this.quality==='high'?rnd(i):null});for(const c of [...m.g.children])if(!c.isSprite&&c.material!==this.blobMat)m.g.remove(c);castShadows(rig.root,this.quality,false);m.g.add(rig.root);m.wheels=rig.wheels;m.driver=rig.driver;m.head=rig.driver?.root||rig.root;});}
  pose(t,k){const p=trackPoint(t,k.p,k.d),q=trackAt(t,k.p);return {x:p.x,z:-p.y,yaw:q.ang+k.a};}
  event(e,g){if(!this.ready||!this.karts.length)return;const st=this.stage,hud=this.hud,me=this.pose(g.track,g.you),fx=Math.cos(me.yaw),fz=-Math.sin(me.yaw);
   if(e.type==='coin'){this.particles.burst(me.x+fx,1,me.z+fz,14,0xffc14d,{speed:3,life:.5});hud.pop('+50');}
@@ -120,7 +120,7 @@ export class ThreeKart {
   this.bones.forEach((m,i)=>{const b=g.bones[i];m.visible=!!b;if(!b)return;const p=trackPoint(t,b.p,b.d);m.position.set(p.x,.2,-p.y);m.rotation.y=i;});
   this.rockets.forEach((m,i)=>{const r=g.rockets[i];m.visible=!!r;if(!r)return;const p=trackPoint(t,r.p,r.d);m.position.set(p.x,.8,-p.y);m.rotation.y=p.ang;if(!reduced)this.particles.burst(p.x,.8,-p.y,1,0xff8a3d,{speed:1,life:.3});});
   // Karts: heading, drift yaw, spin-outs, boost flames and drift sparks.
-  if(this.art&&!this.dressed){this.trackGroup.add(dressTrack(t,this.art,{quality:this.quality}));this.dressed=true;}
+  if(this.art&&!this.dressed){this.trackGroup.add(castShadows(dressTrack(t,this.art,{quality:this.quality}),this.quality,false));this.dressed=true;}
   if(this.art&&!this.modelKarts)this.swapKarts(g);
   g.karts.forEach((k,i)=>{const m=this.karts[i],p=this.pose(t,k),drift=k.drift*.4,spin=k.spin>0?(1.1-k.spin)*Math.PI*4:0;m.g.position.set(p.x,0,p.z);m.g.rotation.set(0,p.yaw+drift+spin,(k.drift?-k.drift*.06:-k.steer*.04));
    // Wheels roll with distance and the front pair steers.
@@ -129,7 +129,7 @@ export class ThreeKart {
    if(k.boost>0)this.particles.burst(p.x-fx*1.3,.45,p.z-fz*1.3,2,i?0xff8a3d:0x5ee7ff,{speed:2,life:.25,up:.5});
    if(k.drift&&!i&&k.charge>.3){const c=k.charge>=1.8?0xff8a3d:k.charge>=.9?0x5ec8ff:0xffffff,sx=Math.sin(p.yaw)*.65,sz=Math.cos(p.yaw)*.65;for(const s of [-1,1])this.particles.burst(p.x-fx*.8+sx*s,.2,p.z-fz*.8+sz*s,1,c,{speed:2.5,life:.25,up:1});}});
   // Cameras: a chase cam that lags the kart's heading, or the driver's seat.
-  const me=this.pose(t,g.you);if(this.camYaw===null)this.camYaw=me.yaw;this.camYaw+=Math.atan2(Math.sin(me.yaw-this.camYaw),Math.cos(me.yaw-this.camYaw))*Math.min(1,dt*(reduced?20:5));
+  const me=this.pose(t,g.you);this.stage.followSun(this.key,me.x,0,me.z);if(this.camYaw===null)this.camYaw=me.yaw;this.camYaw+=Math.atan2(Math.sin(me.yaw-this.camYaw),Math.cos(me.yaw-this.camYaw))*Math.min(1,dt*(reduced?20:5));
   const cx=Math.cos(this.camYaw),cz=-Math.sin(this.camYaw),fast=Math.min(1,g.you.v/KART.top);
   const third={pos:new T.Vector3(me.x-cx*(6.2+fast*1.2),2.7+fast*.3,me.z-cz*(6.2+fast*1.2)),at:new T.Vector3(me.x+cx*6,.9,me.z+cz*6)};
   const fwd=this.modelKarts?.45:.05,first={pos:new T.Vector3(me.x+Math.cos(me.yaw)*fwd,this.modelKarts?1.5:1.2,me.z-Math.sin(me.yaw)*fwd),at:new T.Vector3(me.x+Math.cos(me.yaw)*12,.8,me.z-Math.sin(me.yaw)*12)};

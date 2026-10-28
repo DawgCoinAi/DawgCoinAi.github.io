@@ -20,7 +20,11 @@ export const TRACKS={
  rush:{title:'Rush Hour',bpm:136,root:49,prog:['i','VII','VI','v'],hook:[12,15,_,12,15,_,17,_,19,_,17,15,_,12,_,_],arp:[0,7,12,15]},
  daily:{title:'Daily Grind',bpm:128,root:51,prog:['i','VI','III','VII'],hook:[15,_,12,_,10,_,12,_,15,_,17,_,19,_,_,_],arp:[0,12,7,12]},
  story:{title:'After Hours Lounge',bpm:98,root:50,prog:['i7','iv7','VI7','v7'],lounge:true},
- chess:{title:'Grandmaster Groove',bpm:88,root:45,prog:['i7','VI7','iv7','v7'],lounge:true}
+ climb:{title:'Vertigo',bpm:134,root:46,prog:['i','VI','iv','V'],hook:[12,_,15,_,17,_,19,_,22,_,19,_,17,15,_,12],arp:[0,7,12,19]},
+ chess:{title:'Grandmaster Groove',bpm:88,root:45,prog:['i7','VI7','iv7','v7'],lounge:true},
+ // Street Hustle's car radio: a sunset-synth cruiser and a late-night house station.
+ hustle:{title:'Palm Static',bpm:112,root:48,prog:['i','VI','III','VII'],hook:[12,_,_,15,_,_,17,_,15,_,12,_,10,_,12,_],arp:[0,12,7,15]},
+ cruise:{title:'Kennel Club',bpm:118,root:46,prog:['i7','VI7','III','v7'],lounge:true}
 };
 const FORM=[['intro',8],['build',8],['drop',16],['break',8],['build',8],['drop',16]];
 const FORM_LOOP=3; // after the first pass, the form loops from the breakdown

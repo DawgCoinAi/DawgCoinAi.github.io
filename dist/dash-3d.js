@@ -2,7 +2,7 @@
 // time, collisions, scoring and checkpoints: this module reads the game and draws it.
 // Its own animation frames only run while no run is ticking (idle orbit, crash camera).
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
-import {T,smooth,quality,fitFov,merge,texture,radial,glowStops,skylineTexture,buildingShells,facadeMaterials,signMaterials,skyMaterial,auraMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,smooth,quality,fitFov,merge,texture,radial,glowStops,skylineTexture,buildingShells,facadeMaterials,signMaterials,skyMaterial,auraMaterial,pbr,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {worldLook,hash} from './world.js';
 import {heatLabel} from './difficulty.js';
 
@@ -51,11 +51,11 @@ export class ThreeDash {
   this.skyline=new T.Mesh(new T.CylinderGeometry(300,300,150,64,1,true),new T.MeshBasicMaterial({map:skylineTexture(),transparent:true,side:T.BackSide,fog:false,depthWrite:false}));this.skyline.material.map.repeat.set(4,1);s.add(this.skyline);
   this.hemi=new T.HemisphereLight(0x8fa6ff,0x2a1730,1.1);s.add(this.hemi);
   this.key=new T.DirectionalLight(0xdfe6ff,2.4);this.key.position.set(-6,14,-10);s.add(this.key,this.key.target);
-  if(high){this.key.castShadow=true;this.key.shadow.mapSize.set(1024,1024);Object.assign(this.key.shadow.camera,{left:-7,right:7,top:9,bottom:-9,near:1,far:40});this.key.shadow.bias=-.0004;this.key.shadow.normalBias=.03;}
+  if(high){this.key.castShadow=true;this.key.shadow.mapSize.set(2048,2048);this.key.shadow.radius=4;Object.assign(this.key.shadow.camera,{left:-7,right:7,top:9,bottom:-9,near:1,far:40});this.key.shadow.bias=-.0004;this.key.shadow.normalBias=.03;}
   const rimA=new T.DirectionalLight(0xff4fc0,2.2);rimA.position.set(6,3,-6);const rimB=new T.DirectionalLight(0x48e6ff,2.2);rimB.position.set(-6,3,-6);const back=new T.DirectionalLight(0xffd6b0,.55);back.position.set(0,4,8);s.add(rimA,rimB,back);
   // Street: one long wet strip whose textures scroll; curbs, lane paint and props are recycled.
   const {map,rough}=roadTextures();map.repeat.set(1,460/32);rough.repeat.set(1,460/32);this.roadTex=[map,rough];
-  this.road=new T.Mesh(new T.PlaneGeometry(ROAD_HALF*2,460),new T.MeshStandardMaterial({map,roughnessMap:rough,roughness:1,metalness:.35,envMapIntensity:.55,color:0x8c94ad}));this.road.rotation.x=-Math.PI/2;this.road.position.z=-170;this.road.receiveShadow=high;s.add(this.road);
+  this.road=new T.Mesh(new T.PlaneGeometry(ROAD_HALF*2,460),pbr({map,roughnessMap:rough,roughness:1,metalness:.35,envMapIntensity:.7,color:0x8c94ad,clearcoat:.55,clearcoatRoughness:.18},this.quality));this.road.rotation.x=-Math.PI/2;this.road.position.z=-170;this.road.receiveShadow=high;s.add(this.road);
   const pave=pavement();pave.repeat.set(WALK/4,460/4);this.paveTex=pave;
   for(const side of [-1,1]){const m=new T.Mesh(new T.BoxGeometry(WALK,.22,460),new T.MeshStandardMaterial({map:pave,roughness:.85,metalness:.1,envMapIntensity:.15,color:0x50566a}));m.position.set(side*(ROAD_HALF+WALK/2),.11,-170);s.add(m);}
   this.curbMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});for(const side of [-1,1]){const m=new T.Mesh(new T.BoxGeometry(.09,.09,460),this.curbMat);m.position.set(side*ROAD_HALF,.2,-170);s.add(m);}
@@ -76,7 +76,9 @@ export class ThreeDash {
   // Every lamp on both sides is one instance of three batched meshes; arms reach over the road.
   this.lampMat=new T.MeshStandardMaterial({color:0x2a2f40,metalness:.8,roughness:.35});const lampHead=new T.MeshBasicMaterial({color:new T.Color(3,2.4,1.7),toneMapped:false}),streakMat=new T.MeshBasicMaterial({map:this.streak,transparent:true,depthWrite:false,blending:T.AdditiveBlending,color:new T.Color(1,.75,.45),opacity:.55});
   const pole=new T.CylinderGeometry(.07,.09,6.4,8).translate(0,3.2,0),arm=new T.BoxGeometry(1.6,.08,.08).translate(-.8,6.3,0),head=new T.BoxGeometry(.7,.12,.3).translate(-1.5,6.22,0),streakGeo=new T.PlaneGeometry(1.6,9).rotateX(-Math.PI/2).translate(-1.6,.02,1.4);
-  this.LAMP_SPACING=16;this.LAMP_COUNT=high?15:11;const n=this.LAMP_COUNT*2;this.lampParts=[new T.InstancedMesh(merge([pole,arm]),this.lampMat,n),new T.InstancedMesh(head,lampHead,n),new T.InstancedMesh(streakGeo,streakMat,n)];for(const m of this.lampParts){m.frustumCulled=false;s.add(m);}
+  this.LAMP_SPACING=16;this.LAMP_COUNT=high?15:11;const n=this.LAMP_COUNT*2;this.lampParts=[new T.InstancedMesh(merge([pole,arm]),this.lampMat,n),new T.InstancedMesh(head,lampHead,n),new T.InstancedMesh(streakGeo,streakMat,n)];
+  // Each lamp's beam through the rain: one instanced draw for the whole street (high only).
+  if(high){const beam=lightShaft(0xffc890,{length:6.1,radius:1.9,top:.3,opacity:.16,apex:[-1.5,6.16,0],fade:[30,95]});this.lampParts.push(new T.InstancedMesh(beam.geometry,beam.material,n));}for(const m of this.lampParts){m.frustumCulled=false;s.add(m);}
   // Neon gates arch over the road every 64 m and alternate district colors.
   this.gateA=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});this.gateB=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});this.gateStreakA=new T.MeshBasicMaterial({map:this.streak,transparent:true,depthWrite:false,blending:T.AdditiveBlending,opacity:.5});this.gateStreakB=this.gateStreakA.clone();
   const pillar=new T.BoxGeometry(.35,7.2,.35).translate(0,3.6,0),beam=new T.BoxGeometry(ROAD_HALF*2+1.8,.32,.32),tube=new T.CylinderGeometry(.07,.07,ROAD_HALF*2+1.4,8).rotateZ(Math.PI/2),post=new T.CylinderGeometry(.06,.06,7,8),gStreak=new T.PlaneGeometry(ROAD_HALF*2,7).rotateX(-Math.PI/2);

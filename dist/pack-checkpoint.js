@@ -5,9 +5,10 @@ import {SnakeGame,SNAKE_COLS,SNAKE_ROWS} from './snake-engine.js';
 import {TurboGame,validTurboSnapshot,TURBO_FIELDS} from './turbo-engine.js';
 import {PinballGame,validPinballSnapshot,PINBALL_FIELDS} from './pinball-engine.js';
 import {KartGame,validKartSnapshot,KART_FIELDS} from './kart-engine.js';
+import {ClimbGame,validClimbSnapshot,CLIMB_FIELDS} from './climb-engine.js';
 import {seededRandom} from './mobile-core.js';
-export const QUICK_MODES=['flappy','cross','snake','runner','turbo','pinball','kart'];
-export function createQuickGame(kind,seed=freshSeed()){return kind==='kart'?new KartGame(seededRandom(seed),seed):kind==='pinball'?new PinballGame(seededRandom(seed),seed):kind==='turbo'?new TurboGame(seededRandom(seed),seed):kind==='runner'?new RunnerGame(seededRandom(seed),seed):kind==='flappy'?new FlappyGame(seededRandom(seed),seed):kind==='snake'?new SnakeGame(seededRandom(seed),seed):new CrossGame(seed);}
+export const QUICK_MODES=['flappy','cross','snake','runner','turbo','pinball','kart','climb'];
+export function createQuickGame(kind,seed=freshSeed()){return kind==='climb'?new ClimbGame(seededRandom(seed),seed):kind==='kart'?new KartGame(seededRandom(seed),seed):kind==='pinball'?new PinballGame(seededRandom(seed),seed):kind==='turbo'?new TurboGame(seededRandom(seed),seed):kind==='runner'?new RunnerGame(seededRandom(seed),seed):kind==='flappy'?new FlappyGame(seededRandom(seed),seed):kind==='snake'?new SnakeGame(seededRandom(seed),seed):new CrossGame(seed);}
 const finite=(n,a,b)=>Number.isFinite(n)&&n>=a&&n<=b;
 const int=(n,a,b)=>Number.isInteger(n)&&n>=a&&n<=b;
 const point=p=>p&&int(p.x,0,SNAKE_COLS-1)&&int(p.y,0,SNAKE_ROWS-1);
@@ -16,6 +17,7 @@ export function snapshotQuick(game,kind){if(!QUICK_MODES.includes(kind)||!['play
  if(kind==='runner')return {...base,...Object.fromEntries(RUNNER_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='kart')return {...base,...Object.fromEntries(KART_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='pinball')return {...base,...Object.fromEntries(PINBALL_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
+ if(kind==='climb')return {...base,...Object.fromEntries(CLIMB_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='turbo')return {...base,...Object.fromEntries(TURBO_FIELDS.map(k=>[k,JSON.parse(JSON.stringify(game[k]))]))};
  if(kind==='flappy')return {...base,y:game.y,vy:game.vy,gates:game.gates,perfect:game.perfect,obstacles:game.obstacles.map(o=>({...o}))};
  if(kind==='cross')return {...base,x:game.x,row:game.row,furthest:game.furthest,coins:game.coins,idle:game.idle,hop:game.hop,from:{...game.from},collected:[...game.collected]};
@@ -27,6 +29,7 @@ export function restoreQuick(s){
  let valid=false;
  if(s.kind==='runner')valid=validRunnerSnapshot(s);
  if(s.kind==='turbo')valid=validTurboSnapshot(s);
+ if(s.kind==='climb')valid=validClimbSnapshot(s);
  if(s.kind==='pinball')valid=validPinballSnapshot(s);
  if(s.kind==='kart')valid=validKartSnapshot(s);
  if(s.kind==='flappy')valid=finite(s.y,14,506)&&finite(s.vy,-1000,3000)&&int(s.gates,0,1e7)&&int(s.perfect,0,s.gates)&&Array.isArray(s.obstacles)&&s.obstacles.length>=1&&s.obstacles.length<=5&&s.obstacles.every(o=>o&&finite(o.x,-100,1000)&&finite(o.center,150,395)&&finite(o.gap,154,202)&&o.width===66&&typeof o.passed==='boolean'&&(o.baseCenter===undefined||finite(o.baseCenter,150,395)&&finite(o.amplitude,0,32)&&finite(o.phase,0,6.29)));
@@ -36,6 +39,7 @@ export function restoreQuick(s){
  if(s.kind==='runner')for(const k of RUNNER_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='kart')for(const k of KART_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='pinball')for(const k of PINBALL_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
+ if(s.kind==='climb')for(const k of CLIMB_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='turbo')for(const k of TURBO_FIELDS)g[k]=JSON.parse(JSON.stringify(s[k]));
  if(s.kind==='flappy'){for(const k of ['y','vy','gates','perfect'])g[k]=s[k];g.obstacles=s.obstacles.map(o=>({...o}));}
  if(s.kind==='cross'){for(const k of ['x','row','furthest','coins','idle','hop'])g[k]=s[k];g.from={...s.from};g.collected=new Set(s.collected);}

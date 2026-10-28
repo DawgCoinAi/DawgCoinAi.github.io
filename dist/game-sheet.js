@@ -16,6 +16,7 @@ export const HOW={
  turbo:['Tap or ↑ to jump; hold for height','↓ rolls, or stomps in the air; → spends turbo, which gold and tricks refill','Fly through rings and chain tricks for combos up to ×5'],
  pinball:['Hold ← → (or each side of the screen) to flip','Shoot the lit arrows: ramps and wireforms carry the ball over the table','Finish the mission (bumpers, ramps, targets, D-A-W-G) to level up'],
  kart:['Hold ← → to steer, ↓ to drift','Drift through corners to charge a mini-turbo','↑ fires your item'],
+ climb:['Hold the middle of the screen (or ↑ / Space) to grab the nearest hook and reel in','Let go to fly; hold ← / → or the screen edges to pump the swing','Rusty hooks snap, slick ones slide, green springs launch you. Don’t look down'],
  chess:['Tap a piece, then tap where it goes','Every capture plays out as a battle; tap to skip, or switch battles off','Beat a rival to unlock the next one up the ladder'],
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']
 };

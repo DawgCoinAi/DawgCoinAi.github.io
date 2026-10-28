@@ -4,7 +4,7 @@
 // person is Ball Cam, chasing the lead ball around the playfield.
 // World units: one table unit is one meter. Table (x, y) sits at world (x - 5, 0, 10 - y), so
 // the flippers are nearest the player and the backglass is far away at -z.
-import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
+import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,pbr,castShadows,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {TABLE,FLIPPERS,LANES,LANE_Y,HOLE,WALLS,flipperAngle,rampPoint} from './pinball-engine.js';
 import {heatLabel} from './difficulty.js';
 import {worldLook} from './world.js';
@@ -47,13 +47,13 @@ export class ThreePinball {
  }
  setCamera(mode){this.cameraMode=mode==='first'?'first':'third';this.rig?.setMode(this.cameraMode);}
  build(){
-  const s=this.scene;this.stage.neonEnvironment(.8);s.fog=new T.FogExp2(0x070914,.012);
+  const s=this.scene,q=this.quality;this.stage.neonEnvironment(.8);this.stage.hdrEnvironment(undefined,.7);s.fog=new T.FogExp2(0x070914,.012);
   this.sky=new T.Mesh(new T.SphereGeometry(120,24,12),skyMaterial());s.add(this.sky);
-  s.add(new T.HemisphereLight(0xb6a8ff,0x120a22,.9));const key=new T.DirectionalLight(0xffffff,1.3);key.position.set(-4,12,8);s.add(key);
+  s.add(new T.HemisphereLight(0xb6a8ff,0x120a22,.9));const key=new T.DirectionalLight(0xfff4e6,1.6);key.position.set(-4,12,8);s.add(key,key.target);this.stage.sunShadow(key,{size:11.5,far:40,map:2048,radius:3,bias:-.0002,normalBias:.015});
   this.ballLight=new T.PointLight(0xffffff,6,4,1.8);s.add(this.ballLight);
   // Playfield and cabinet.
-  const art=texture(PF[0],PF[1],playfieldArt);this.field=new T.Mesh(new T.PlaneGeometry(10,20).rotateX(-Math.PI/2),new T.MeshStandardMaterial({map:art,emissiveMap:art,emissive:0xffffff,emissiveIntensity:.8,metalness:.35,roughness:.35,envMapIntensity:.6}));s.add(this.field);
-  const cabinet=new T.MeshStandardMaterial({color:0x140f2a,metalness:.7,roughness:.35});
+  const art=texture(PF[0],PF[1],playfieldArt);this.field=new T.Mesh(new T.PlaneGeometry(10,20).rotateX(-Math.PI/2),pbr({map:art,emissiveMap:art,emissive:0xffffff,emissiveIntensity:.8,metalness:.3,roughness:.38,envMapIntensity:.7,clearcoat:1,clearcoatRoughness:.06},q));this.field.receiveShadow=true;s.add(this.field);
+  const cabinet=pbr({color:0x140f2a,metalness:.6,roughness:.3,clearcoat:.8,clearcoatRoughness:.15},q);
   for(const [x,z,w,d]of [[-5.35,0,.7,21.4],[5.35,0,.7,21.4],[0,-10.35,11.4,.7],[0,10.5,11.4,1]]){const m=new T.Mesh(new T.BoxGeometry(w,.9,d).translate(0,.2,0),cabinet);m.position.set(x,0,z);s.add(m);}
   const under=new T.Mesh(new T.BoxGeometry(11.4,6,21.4).translate(0,-3.25,0),cabinet);s.add(under);
   const floor=new T.Mesh(new T.PlaneGeometry(200,200).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x05060c,metalness:.4,roughness:.7}));floor.position.y=-6.25;s.add(floor);
@@ -67,11 +67,13 @@ export class ThreePinball {
    const tall=kind==='gate'?.2:.5,thick=kind==='gate'?.05:.12;const body=new T.Mesh(new T.BoxGeometry(len+thick,tall,thick).translate(0,tall/2,0),kind==='sling'?new T.MeshStandardMaterial({color:0xff5fc8,emissive:0xff2fae,emissiveIntensity:.8,metalness:.2,roughness:.3}):wallMat);
    body.position.set(mid[0],0,mid[1]);body.rotation.y=yaw;s.add(body);if(kind==='sling')this.slings.push(body);
    const rail=new T.Mesh(new T.BoxGeometry(len+thick,.04,thick+.02),this.railMat);rail.position.set(mid[0],tall+.02,mid[1]);rail.rotation.y=yaw;s.add(rail);}
-  this.glowTex=radial(glowStops);this.chromeMat=new T.MeshStandardMaterial({color:0xdde4ff,metalness:1,roughness:.15});this.chromeMat.userData.shared=true;this.table=new T.Group();s.add(this.table);
+  this.glowTex=radial(glowStops);this.chromeMat=new T.MeshStandardMaterial({color:0xe8ecff,metalness:1,roughness:.08,envMapIntensity:1.6});this.chromeMat.userData.shared=true;this.table=new T.Group();s.add(this.table);
   // Inserts: D-A-W-G lane letters and multiplier lamps.
   this.lanes=LANES.map(l=>{const m=new T.Mesh(new T.PlaneGeometry(.75,.75).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph(l.label,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(l.x),.02,wz(LANE_Y-1.1));s.add(m);return m;});
   this.mults=[2,3,4,5].map((n,i)=>{const m=new T.Mesh(new T.PlaneGeometry(.62,.62).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph('×'+n,'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:new T.Color(.4,.4,.5)}));m.position.set(wx(3+i),.02,wz(8.6));s.add(m);return m;});
-  this.buildHole(s);this.buildFlippers(s);this.buildBalls(s);
+  this.buildHole(s);this.buildFlippers(s);this.buildBalls(s);castShadows(s,q,false);this.field.castShadow=false;floor.castShadow=under.castShadow=false;
+  // Two warm cabinet lamps haze down over the playfield from the backbox.
+  if(q==='high')for(const x of [-3.2,3.2]){const shaft=lightShaft(0xffe8c8,{length:9,radius:3.2,top:.25,opacity:.12});shaft.position.set(x,7.4,-10.2);shaft.rotation.x=-.75;s.add(shaft);}
  }
  // The level's own pieces: bumpers, drop targets, ramps and wireforms, and its name on the apron.
  buildTable(t){const s=this.table;for(const o of [...s.children]){o.removeFromParent();o.traverse?.(m=>{m.geometry?.dispose?.();if(m.material&&!m.material.userData.shared)[].concat(m.material).forEach(x=>x.dispose?.());});}
@@ -96,7 +98,7 @@ export class ThreePinball {
    const e=r.entry,lamp=new T.Mesh(new T.PlaneGeometry(.7,.5).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glyph('▲',r.kind==='ramp'?'#ffffff':'#ffffff'),transparent:true,depthWrite:false,toneMapped:false,color:tint.clone().multiplyScalar(1.6)}));lamp.position.set(wx((e[0]+e[2])/2),.02,wz(e[1]-.6));g.add(lamp);
    g.userData.curve=curve;s.add(g);return {g,curve,r,lamp};});
   // The level's name on the apron.
-  const name=new T.Mesh(new T.PlaneGeometry(4.2,.7),new T.MeshBasicMaterial({map:texture(512,96,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 44px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle=t.color;c.shadowColor=t.color;c.shadowBlur=14;c.fillText('LEVEL '+t.level+' · '+t.name,w/2,h/2+2,w-20);}),transparent:true,toneMapped:false}));name.rotation.x=-Math.PI/2;name.position.set(0,.03,wz(.55));s.add(name);
+  const name=new T.Mesh(new T.PlaneGeometry(4.2,.7),new T.MeshBasicMaterial({map:texture(512,96,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 44px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle=t.color;c.shadowColor=t.color;c.shadowBlur=14;c.fillText('LEVEL '+t.level+' · '+t.name,w/2,h/2+2,w-20);}),transparent:true,toneMapped:false}));name.rotation.x=-Math.PI/2;name.position.set(0,.03,wz(.55));s.add(name);castShadows(s,this.quality,false);
  }
  buildHole(s){
   this.hole=new T.Mesh(new T.RingGeometry(HOLE.r*.7,HOLE.r*1.25,32).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(1.5,.4,1.2),toneMapped:false,transparent:true}));this.hole.position.set(wx(HOLE.x),.02,wz(HOLE.y));s.add(this.hole);

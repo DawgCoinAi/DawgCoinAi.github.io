@@ -50,17 +50,57 @@ export function skylineTexture(){
 export function buildingShells(count=12){return Array.from({length:count},(_,i)=>{const w=5+hash(301,i)*3.4,h=11+Math.pow(hash(302,i),1.6)*44,d=7+hash(303,i)*4,g=new T.BoxGeometry(w,h,d),uv=g.attributes.uv,n=g.attributes.normal;for(let k=0;k<uv.count;k++){const sideFace=Math.abs(n.getX(k))>.5,top=Math.abs(n.getY(k))>.5;uv.setXY(k,uv.getX(k)*(sideFace?d:w)/16,uv.getY(k)*(top?d:h)/16);}g.translate(0,h/2,0);return {g,w,h,d};});}
 export function facadeMaterials(){return [0,1,2,3].map(v=>new T.MeshStandardMaterial({map:facade(v,false),emissiveMap:facade(v,true),emissive:0xffffff,emissiveIntensity:.62,roughness:.7,metalness:.25,envMapIntensity:.25,color:0x8a8fa6}));}
 
-export const GRADE={uniforms:{tDiffuse:{value:null},uTime:{value:0},uAberration:{value:.002},uVignette:{value:.85},uFlash:{value:0},uFlashColor:{value:new T.Color(1,1,1)}},
+// Cinematic grade, applied after tone mapping in display space: lens fringing that grows toward the
+// edges, a filmic S-curve, a touch of saturation, split toning (cool shadows, warm highlights),
+// an oval vignette and luminance-weighted film grain that also dithers away gradient banding.
+export const GRADE={uniforms:{tDiffuse:{value:null},uTime:{value:0},uAberration:{value:.002},uVignette:{value:.85},uFlash:{value:0},uFlashColor:{value:new T.Color(1,1,1)},
+  uRes:{value:new T.Vector2(1280,800)},uContrast:{value:.22},uSaturation:{value:1.08},uGrain:{value:.035},uShadowTint:{value:new T.Vector3(-.006,.002,.018)},uHighTint:{value:new T.Vector3(.016,.006,-.012)}},
  vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
- fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uAberration,uVignette,uFlash;uniform vec3 uFlashColor;varying vec2 vUv;
+ fragmentShader:`uniform sampler2D tDiffuse;uniform float uTime,uAberration,uVignette,uFlash,uContrast,uSaturation,uGrain;uniform vec3 uFlashColor,uShadowTint,uHighTint;uniform vec2 uRes;varying vec2 vUv;
+ float h12(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
  void main(){vec2 c=vUv-.5;float d=dot(c,c);vec2 off=c*uAberration*(.4+d*5.);vec3 col=vec3(texture2D(tDiffuse,vUv+off).r,texture2D(tDiffuse,vUv).g,texture2D(tDiffuse,vUv-off).b);
- col*=mix(1.,smoothstep(.75,.12,d),uVignette*.55);float n=fract(sin(dot(vUv*vec2(12.9898,78.233)+fract(uTime),vec2(1.)))*43758.5453);col+=(n-.5)*.03;gl_FragColor=vec4(mix(col,uFlashColor,uFlash),1.);}`};
+ col=clamp(col,0.,1.);float l=dot(col,vec3(.2126,.7152,.0722));col=max(mix(vec3(l),col,uSaturation),0.);
+ vec3 s=col*col*(3.-2.*col);col=mix(col,s,uContrast);
+ col+=uShadowTint*(1.-smoothstep(0.,.42,l))+uHighTint*smoothstep(.5,1.,l);
+ vec2 vc=c*vec2(uRes.x/max(1.,uRes.y)*.82,1.);float vd=dot(vc,vc);col*=mix(1.,smoothstep(.62,.08,vd),uVignette*.5);
+ vec2 px=floor(vUv*uRes);float t=floor(fract(uTime*.37)*97.);float n=h12(px+t*17.31)+h12(px*1.37+t*3.7)-1.;col+=n*uGrain*(.35+.65*(1.-l));
+ gl_FragColor=vec4(mix(col,uFlashColor,uFlash),1.);}`};
 export const SKY={uniforms:{uTop:{value:new T.Color()},uHorizon:{value:new T.Color()},uGlow:{value:new T.Color()}},
  vertexShader:'varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
  fragmentShader:'uniform vec3 uTop,uHorizon,uGlow;varying vec3 vDir;void main(){float h=clamp(vDir.y,-.2,1.);vec3 col=mix(uHorizon,uTop,smoothstep(0.,.55,h));col+=uGlow*pow(1.-abs(h),7.)*.9;gl_FragColor=vec4(col,1.);}'};
 export const AURA={uniforms:{uColor:{value:new T.Color()},uTime:{value:0},uAlpha:{value:0}},
  vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
  fragmentShader:'uniform vec3 uColor;uniform float uTime,uAlpha;varying vec3 vN;varying vec3 vV;void main(){float f=pow(1.-abs(dot(vN,vV)),2.4);float bands=.75+.25*sin(vN.y*18.+uTime*6.);gl_FragColor=vec4(uColor*2.2,f*bands*uAlpha);}'};
+// ── Material and atmosphere helpers renderers can opt into.
+// PBR material: MeshPhysical (clearcoat, sheen) on high, MeshStandard on the light profile, which
+// drops the physical-only options so phones keep the cheaper shader.
+const PHYSICAL_ONLY=['clearcoat','clearcoatRoughness','sheen','sheenColor','sheenRoughness','iridescence','transmission','thickness','ior','specularIntensity','specularColor','anisotropy'];
+export function pbr(opts={},q='high'){if(q==='high')return new T.MeshPhysicalMaterial(opts);const o={...opts};for(const k of PHYSICAL_ONLY)delete o[k];return new T.MeshStandardMaterial(o);}
+// Soft contact shadow: a dark radial blob on a ground-aligned plane, scaled per object. Grounds
+// things on every profile, including where real shadow maps are off.
+let blobTex=null;
+// Marks every mesh under obj as a shadow caster (and receiver) on the high profile only.
+export function castShadows(obj,q='high',receive=true){if(q!=='high'||!obj)return obj;obj.traverse(o=>{if(o.isMesh&&!o.material?.transparent){o.castShadow=true;if(receive)o.receiveShadow=true;}});return obj;}
+export function contactShadowMaterial(strength=.75){blobTex??=radial([[0,'#000000ff'],[.35,'#000000b8'],[.7,'#00000040'],[1,'#00000000']]);return new T.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false,opacity:strength,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2});}
+export function contactShadow(w=1,d=w,mat=contactShadowMaterial()){const m=new T.Mesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),mat);m.scale.set(w,1,d);m.position.y=.015;m.renderOrder=-1;return m;}
+// A cheap volumetric-looking light shaft: an open additive cone that fades along its length and
+// toward its silhouette, so it reads as lit haze without any raymarching. Apex at the origin,
+// pointing down -y; place and rotate it like a spotlight.
+// Works on a plain mesh or an InstancedMesh (one draw for a whole row of lamps), and fades out
+// with view distance (uFade: start, end) since it ignores scene fog.
+const SHAFT={uniforms:{uColor:{value:new T.Color()},uOpacity:{value:.35},uTime:{value:0},uApexY:{value:0},uFade:{value:new T.Vector2(40,110)}},
+ vertexShader:'uniform float uApexY;varying float vAlong;varying float vDist;varying vec3 vN;varying vec3 vV;varying vec3 vP;void main(){vAlong=clamp((uApexY-position.y)/HEIGHT,0.,1.);vP=position;vec4 p=vec4(position,1.);vec3 n=normal;\n#ifdef USE_INSTANCING\np=instanceMatrix*p;n=mat3(instanceMatrix)*n;\n#endif\nvec4 mv=modelViewMatrix*p;vN=normalize(normalMatrix*n);vV=normalize(-mv.xyz);vDist=length(mv.xyz);gl_Position=projectionMatrix*mv;}',
+ fragmentShader:'uniform vec3 uColor;uniform float uOpacity,uTime;uniform vec2 uFade;varying float vAlong;varying float vDist;varying vec3 vN;varying vec3 vV;varying vec3 vP;void main(){float edge=pow(abs(dot(normalize(vN),normalize(vV))),1.6);float fall=(1.-vAlong)*(1.-vAlong)*smoothstep(0.,.08,vAlong);float dust=.85+.15*sin(vP.y*3.1+uTime*.7+vP.x*2.);float far=1.-smoothstep(uFade.x,uFade.y,vDist);gl_FragColor=vec4(uColor*edge*fall*dust*far*uOpacity,1.);}'};
+// `apex` moves the cone's tip off the origin (for baking into lamp geometry); `fade` is [start, end].
+export function lightShaft(color=0xffffff,{length=8,radius=2.4,top=.12,opacity=.35,segments=24,apex=[0,0,0],fade=[40,110]}={}){
+ const g=new T.CylinderGeometry(top,radius,length,segments,1,true).translate(apex[0],apex[1]-length/2,apex[2]);
+ const mat=new T.ShaderMaterial({uniforms:T.UniformsUtils.clone(SHAFT.uniforms),vertexShader:SHAFT.vertexShader.replace('HEIGHT',length.toFixed(3)),fragmentShader:SHAFT.fragmentShader,transparent:true,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,fog:false,toneMapped:false});
+ mat.uniforms.uColor.value.set(color);mat.uniforms.uOpacity.value=opacity;mat.uniforms.uApexY.value=apex[1];mat.uniforms.uFade.value.set(...fade);const m=new T.Mesh(g,mat);m.renderOrder=2;return m;}
+// Wet asphalt / polished floor: low roughness with a noisy roughness map so reflections of the
+// environment break up into puddles. Pass a base map to keep the game's own texture.
+export function wetGround({color=0x2a2f40,map=null,roughness=.55,metalness=.2,envMapIntensity=.9,repeat=[1,1],q='high'}={}){
+ const rough=texture(256,256,(c,w,h)=>{c.fillStyle='#b4b4b4';c.fillRect(0,0,w,h);for(let i=0;i<36;i++){const x=hash(811,i)*w,y=hash(812,i)*h,r=10+hash(813,i)*38;const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'#141414');g.addColorStop(1,'#14141400');c.fillStyle=g;c.beginPath();c.ellipse(x,y,r,r*(.5+hash(814,i)*.6),hash(815,i)*3,0,7);c.fill();}for(let i=0;i<4000;i++){c.fillStyle=hash(816,i)>.5?'#ffffff14':'#00000014';c.fillRect(hash(817,i)*w,hash(818,i)*h,2,2);}},{repeat:true,color:false});
+ rough.repeat.set(...repeat);return pbr({color,map,roughnessMap:rough,roughness,metalness,envMapIntensity,clearcoat:.35,clearcoatRoughness:.25},q);}
 export const skyMaterial=()=>new T.ShaderMaterial({...SKY,uniforms:T.UniformsUtils.clone(SKY.uniforms),side:T.BackSide,depthWrite:false,fog:false});
 export const auraMaterial=()=>new T.ShaderMaterial({...AURA,uniforms:T.UniformsUtils.clone(AURA.uniforms),transparent:true,depthWrite:false,blending:T.AdditiveBlending});
 
@@ -78,17 +118,24 @@ export function cloneModel(scene,{ownMaterials=false}={}){const c=scene.clone(tr
 export function loadHdr(url,renderer){const key=url;if(!hdrCache.has(key))hdrCache.set(key,new T.HDRLoader().loadAsync(url).then(tex=>{const pm=new T.PMREMGenerator(renderer);const env=pm.fromEquirectangular(tex).texture;pm.dispose();tex.dispose();return env;}).catch(e=>{hdrCache.delete(key);throw e;}));return hdrCache.get(key);}
 // Fit a model into a box of the given size (largest side), resting on y = 0 and centred on x/z.
 export function fitModel(obj,size){const box=new T.Box3().setFromObject(obj),dim=box.getSize(new T.Vector3()),s=size/Math.max(dim.x,dim.y,dim.z);obj.scale.multiplyScalar(s);box.setFromObject(obj);const c=box.getCenter(new T.Vector3());obj.position.x-=c.x;obj.position.z-=c.z;obj.position.y-=box.min.y;return obj;}
+const TONE={neutral:T.NeutralToneMapping,aces:T.ACESFilmicToneMapping,agx:T.AgXToneMapping};
 export class Stage {
- constructor({quality:q=quality(),className='',onFailure}={}){this.quality=q;this.className=className;this.onFailure=onFailure;this.trauma=0;this.flash=0;this.flashColor=new T.Color(1,1,1);this.slowFrames=0;this.dead=false;this.failed=false;this.extraGeometries=[];}
+ constructor({quality:q=quality(),className='',onFailure,tone='neutral',exposure=1}={}){this.quality=q;this.tone=tone;this.exposure=exposure;this.className=className;this.onFailure=onFailure;this.trauma=0;this.flash=0;this.flashColor=new T.Color(1,1,1);this.slowFrames=0;this.dead=false;this.failed=false;this.extraGeometries=[];}
  init(){
   const high=this.quality==='high',view=this.view=document.createElement('div');view.className=('dash-gpu '+this.className).trim();view.setAttribute('aria-hidden','true');
   const el=this.canvas=canvas(420,560);el.className='d3-canvas';view.append(el);
   const r=this.r=new T.WebGLRenderer({canvas:el,antialias:false,powerPreference:'high-performance',stencil:false});
-  r.outputColorSpace=T.SRGBColorSpace;r.toneMapping=T.ACESFilmicToneMapping;r.toneMappingExposure=.92;r.setPixelRatio(Math.min(globalThis.devicePixelRatio||1,high?1.75:1));r.shadowMap.enabled=high;r.shadowMap.type=T.PCFShadowMap;
+  // Khronos PBR Neutral keeps neon hues saturated (ACES skews magentas and cyans and AgX greys them)
+  // while still rolling highlights off softly; the grade pass adds the filmic contrast back.
+  r.outputColorSpace=T.SRGBColorSpace;r.toneMapping=TONE[this.tone]??T.NeutralToneMapping;r.toneMappingExposure=this.exposure;r.setPixelRatio(Math.min(globalThis.devicePixelRatio||1,high?1.75:1));r.shadowMap.enabled=high;r.shadowMap.type=T.PCFShadowMap;
   this.loss=e=>{e.preventDefault();this.fail();};el.addEventListener('webglcontextlost',this.loss);
   this.scene=new T.Scene();this.camera=new T.PerspectiveCamera(60,.75,.1,520);this.camera.position.set(0,3,7);
-  this.composer=new EffectComposer(r);this.composer.addPass(new RenderPass(this.scene,this.camera));
-  this.bloomBase=high?.85:.75;this.bloom=new UnrealBloomPass(new T.Vector2(256,256),this.bloomBase,.55,.92);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
+  // The composer bypasses the canvas' own antialiasing, so on high the scene renders into a
+  // 4x multisampled half-float target instead (WebGL2); phones keep the plain target.
+  const msaa=high&&r.capabilities?.isWebGL2!==false?new T.WebGLRenderTarget(420,560,{type:T.HalfFloatType,samples:4}):undefined;if(msaa)msaa.texture.name='Stage.msaa';
+  this.composer=new EffectComposer(r,msaa);this.composer.addPass(new RenderPass(this.scene,this.camera));
+  // Only real emissives (HDR values above ~1) cross the bloom threshold, so lit walls stay crisp.
+  this.bloomBase=high?.8:.7;this.bloom=new UnrealBloomPass(new T.Vector2(256,256),this.bloomBase,.6,1);this.composer.addPass(this.bloom);this.composer.addPass(new OutputPass());
   this.grade=new ShaderPass(GRADE);this.composer.addPass(this.grade);
   return this;
  }
@@ -100,7 +147,16 @@ export class Stage {
   const env=new T.Scene();env.background=new T.Color(0x05060c);for(const [x,y,z,w,h,col]of [[-6,3,-8,10,2,0xff4fc0],[6,4,-8,10,2,0x48e6ff],[0,7,6,14,1.5,0xb9ff5e],[-8,1,4,4,6,0x9f6bff],[8,2,4,4,6,0xff8a3d],[0,-3,0,30,.5,0x101828]]){const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(col).multiplyScalar(3),side:T.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);env.add(m);}
   const pm=new T.PMREMGenerator(this.r);this.envMap=pm.fromScene(env,.03);pm.dispose();env.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});this.scene.environment=this.envMap.texture;this.scene.environmentIntensity=intensity;
  }
- resize(){const w=Math.max(1,this.view.clientWidth||420),h=Math.max(1,this.view.clientHeight||560);if(w===this.w&&h===this.h)return false;this.w=w;this.h=h;const ratio=Math.max(.6,Math.min(globalThis.devicePixelRatio||1,this.quality==='high'?1.75:1,Math.sqrt(2.4e6/(w*h))));this.r.setPixelRatio(ratio);this.r.setSize(w,h,false);this.composer.setPixelRatio(ratio);this.composer.setSize(w,h);this.camera.aspect=w/h;return true;}
+ resize(){const w=Math.max(1,this.view.clientWidth||420),h=Math.max(1,this.view.clientHeight||560);if(w===this.w&&h===this.h)return false;this.w=w;this.h=h;const ratio=Math.max(.6,Math.min(globalThis.devicePixelRatio||1,this.quality==='high'?1.75:1,Math.sqrt(2.4e6/(w*h))));this.r.setPixelRatio(ratio);this.r.setSize(w,h,false);this.composer.setPixelRatio(ratio);this.composer.setSize(w,h);this.grade.uniforms.uRes.value.set(w*ratio,h*ratio);this.camera.aspect=w/h;return true;}
+ // Soft PCF shadows from a directional light on high, with tight bounds around the play area
+ // (half-size `size`, depth `far`) so texels stay small. A no-op on the light profile.
+ sunShadow(light,{size=12,far=60,map=2048,radius=4,bias=-.0003,normalBias=.025}={}){if(this.quality!=='high'||!light)return light;light.castShadow=true;light.shadow.mapSize.set(map,map);Object.assign(light.shadow.camera,{left:-size,right:size,top:size,bottom:-size,near:.5,far});light.shadow.camera.updateProjectionMatrix();light.shadow.radius=radius;light.shadow.bias=bias;light.shadow.normalBias=normalBias;return light;}
+ // A soft studio light box (three's RoomEnvironment) for scenes that want neutral, daylight-like
+ // reflections rather than the neon box.
+ studioEnvironment(intensity=.6){const pm=new T.PMREMGenerator(this.r),room=new T.RoomEnvironment();this.envMap?.dispose?.();this.envMap=pm.fromScene(room,.04);pm.dispose();room.traverse?.(o=>{o.geometry?.dispose?.();o.material?.dispose?.();});this.scene.environment=this.envMap.texture;this.scene.environmentIntensity=intensity;}
+ // Keeps a shadow-casting sun centred on the action: the light keeps its direction (offset from
+ // its target) while both move to (x, y, z). Snaps to whole shadow texels so edges don't shimmer.
+ followSun(light,x,y,z){if(!light?.castShadow)return;const cam=light.shadow.camera,step=(cam.right-cam.left)/light.shadow.mapSize.x||0,q=v=>step?Math.round(v/step)*step:v,t=light.target.position,dx=light.position.x-t.x,dy=light.position.y-t.y,dz=light.position.z-t.z;t.set(q(x),y,q(z));light.position.set(t.x+dx,t.y+dy,t.z+dz);light.target.updateMatrixWorld();}
  shake(amount){this.trauma=Math.max(this.trauma,amount);}
  flashOnce(color,amount,reduced=false){if(reduced)amount*=.4;this.flashColor.set(color);this.flash=Math.max(this.flash,amount);}
  // Applies trauma shake to the camera position; call after the camera is placed, before lookAt.

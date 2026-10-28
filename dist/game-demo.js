@@ -8,6 +8,7 @@ import {ArcadeRenderer} from './renderer.js';
 import {MazeGame} from './engine.js';
 import {seededRandom,advanceGame} from './mobile-core.js';
 import {trackAt} from './kart-engine.js';
+import {CLIMB,tower,hookPos} from './climb-engine.js';
 
 const LOOKAHEAD={runner:[null,'left','right','up','down'],turbo:[null,'up','right','down'],snake:[null,'up','down','left','right'],cross:[null,'up','left','right']};
 // How a move plays out if nothing else is pressed: seconds survived, plus points, plus progress.
@@ -22,6 +23,9 @@ function pinball(g,mem,dt){mem.hold=Math.max(0,(mem.hold||0)-dt);for(const side 
  if(g.balls?.some(b=>b.state==='lane'))g.move('down');}
 // Drift Dawgs: the inside line through corners, items as soon as they land.
 function kart(g){const t=g.track,k=g.you;if(!t||!k)return;const look=trackAt(t,k.p+14+k.v*.4),line=Math.max(-3.5,Math.min(3.5,look.curve*260)),err=Math.max(-.45,Math.min(.45,(line-k.d)*.35)),st=(err-k.a)*3.2;g.press('left',st>.25);g.press('right',st<-.25);if(k.item)g.move('up');}
+// Don't Look Down: reel in and pump the swing, let go once the next hook is in reach (or on a good upswing), then grab.
+function climb(g,mem,dt){if(g.hook>=0){mem.t=(mem.t||0)+dt;g.input.up=true;const lr=g.vx>=0?1:-1;g.input.left=lr<0;g.input.right=lr>0;const next=tower().hooks[g.hook+1];if(next){const p=hookPos(next,g.time);if(Math.hypot(p.x-g.x,p.y-g.y)<CLIMB.reach-.6||mem.t>1.4&&g.vy>5){mem.from=g.hook;mem.t=0;g.press('up',false);}}return;}
+ g.input.left=g.input.right=false;const {hook}=g.target();if(g.grounded||hook&&hook.id>(mem.from??-1)&&g.vy<6)g.press('up',true);}
 // The maze: head for the nearest pellet, steering clear of rivals unless powered up.
 function maze(g,mem){const p=g.player;if(p.moving&&p.progress<.85)return;const sx=p.moving?p.tx:p.x,sy=p.moving?p.ty:p.y,danger=new Set();
  if(!(g.power>0))for(const gh of g.ghosts){const q=g.position(gh);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)danger.add(Math.round(q.x)+dx+','+(Math.round(q.y)+dy));}
@@ -42,7 +46,7 @@ export class GameDemo {
   if(QUICK_MODES.includes(this.kind)){this.game=createQuickGame(this.kind,seed);}else{this.game=new MazeGame(this.kind==='rush'?'rush':'classic',seededRandom(seed),{worldSeed:seed});}
   this.game.start?.();}
  frame(now){if(this.dead)return;const dt=this.last?Math.min(.05,(now-this.last)/1000):0;this.last=now;const g=this.game,k=this.kind;
-  if(g.status==='playing'){try{if(LOOKAHEAD[k])lookahead(k,g,this.mem,dt);else if(k==='flappy')flappy(g);else if(k==='pinball')pinball(g,this.mem,dt);else if(k==='kart')kart(g);else maze(g,this.mem);}catch{}
+  if(g.status==='playing'){try{if(LOOKAHEAD[k])lookahead(k,g,this.mem,dt);else if(k==='flappy')flappy(g);else if(k==='pinball')pinball(g,this.mem,dt);else if(k==='kart')kart(g);else if(k==='climb')climb(g,this.mem,dt);else maze(g,this.mem);}catch{}
    if(QUICK_MODES.includes(k))stepPack(g,dt);else advanceGame(g,dt);}
   else if(g.status==='over'||g.status==='won'){this.overAt||=now;if(now-this.overAt>1600)this.fresh();}
   else g.start?.();

@@ -29,6 +29,13 @@ import {ShareSheet,drawScoreCard,shareBase,playLink,gamePage,readPlayLink,fmt} f
 import {GAME_IDS,VIEWS,VIEW_LABEL,canSwitchView,gameById,viewFor,nextView,viewAria,relativeTurn} from './games.js';
 import {heatLabel} from './difficulty.js';
 import {Curveballs} from './curveballs.js';
+import {TWIST_INFO,stageFor} from './engine.js';
+// The maze's own briefing: what this stage, sprint or daily is about, shown before the run starts.
+function mazeBrief(){const st=stageFor(game.level),tw=(game.twists||[]).map(t=>TWIST_INFO[t]).filter(Boolean),hint=mobile.coarse()?'JOYSTICK / SWIPE / TAP TO DASH':'ARROW KEYS / WASD / SHIFT TO DASH · V CHANGES VIEW';
+ if(mode==='daily'){const played=(dailyRecords[challenge.day]?.runs||0)>0;return{badge:"TODAY'S TWIST · "+challenge.name.toUpperCase(),title:'ONE MAZE.<br>ONE SHOT.',text:challenge.description+' Clear it inside 90 seconds for a time bonus. '+(played?'Your scored run is in: this one is practice.':'This run is the one that counts.'),hint};}
+ if(mode==='rush')return{badge:'60 SECONDS · NEVER STOP MOVING',title:'FULL SEND.<br>NO BRAKES.',text:'Moving builds a multiplier up to ×5. Chains and catches buy time. The last ten seconds pay double.',hint};
+ return{badge:`STAGE ${st.level} · ${st.district.toUpperCase()}`,title:st.name.toUpperCase().replace(' ','<br>'),text:tw.length?tw.map(t=>t.name+': '+t.text).join(' '):'Eat every treat. Power treats turn the rivals blue. Dash straight through a rival to tackle it.',hint};}
+function furthestStage(){return Math.max(1,Number(read('mazeStage',1))||1);}
 function freshMaze(mode='classic',daily=null){const seed=mode==='daily'?daily.seed:freshSeed();return new MazeGame(mode,seededRandom(seed),{...(daily||{}),worldSeed:seed});}
 function isMaze(value=mode){return ['classic','rush','daily'].includes(value);}
 const $=id=>document.getElementById(id);
@@ -72,19 +79,19 @@ function sound(freq=440,length=.08,type='sine',gain=.035){if(!soundEnabled)retur
 function updateSound(){$('settingsSound').textContent=soundEnabled?'ON':'OFF';$('settingsSound').setAttribute('aria-pressed',String(soundEnabled));$('soundButton').innerHTML=`♫ <span>${soundEnabled?'ON':'OFF'}</span>`;$('soundButton').setAttribute('aria-label',`Turn sound ${soundEnabled?'off':'on'}`);$('soundButton').title=`Turn sound ${soundEnabled?'off':'on'}`;}
 $('soundButton').onclick=()=>{soundEnabled=!soundEnabled;write('sound',soundEnabled);updateSound();sound(660,.15);};updateSound();
 function drawMaze(){renderer.draw(game,performance.now());}
-function updateHud(){mobile.sync(game,mode,!!countdownUntil);$('quickPlayButton').innerHTML=(game.status==='ready'?'PLAY NOW':game.status==='over'?'RUN IT BACK':'RESUME RUN')+' <span>↗</span>'; const palette=renderer.palette(game);document.documentElement.style.setProperty('--world',palette.color);document.documentElement.style.setProperty('--world-secondary',palette.secondary);$('districtName').textContent=game.district.name.toUpperCase();$('districtSector').textContent='SECTOR '+String(game.level).padStart(2,'0');const ready=game.dashCooldown<=0;$('dashLabel').textContent=ready?'DASH READY':`RECHARGING ${game.dashCooldown.toFixed(1)}s`;$('dashCharge').style.width=(1-game.dashCooldown/game.dashRecharge)*100+'%';$('dashButton').classList.toggle('ready',ready);$('dashButton').disabled=!ready||!['playing','ready'].includes(game.status);$('liveIntel').textContent=game.loot?`GOLD BAG LIVE · ${Math.ceil(game.loot.time)}s left. Get it for +${game.loot.value} points.`:game.power>0?`BEAST MODE · ${game.power.toFixed(1)}s. Stack rival catches for bigger bonuses.`:'Gold bags appear after 80 and 160 pickups. Grab each one before its 12-second timer runs out.';$('score').textContent=padded(game.score);$('levelLabel').textContent=isTimed(mode)?'TIME LEFT':'LEVEL';$('level').textContent=isTimed(mode)?`${Math.ceil(game.time)}s`:String(game.level).padStart(2,'0');$('livesLabel').textContent=isTimed(mode)?'HIT PENALTY':'LIVES';$('lives').textContent=isTimed(mode)?'−150':Array(game.lives).fill('♥').join(' ');const progress=Math.round((1-game.pellets.size/game.total)*100);$('progressPercent').textContent=progress+'%';$('progressFill').style.width=progress+'%';$('powerFlash').hidden=game.power<=0||game.status!=='playing';$('powerFlash').querySelector('span').textContent=game.power.toFixed(1)+'s';$('pauseButton').disabled=!['playing','paused'].includes(game.status);$('pauseButton').textContent=game.status==='paused'?'▷':'Ⅱ';$('pauseButton').setAttribute('aria-label',game.status==='paused'?'Resume game':'Pause game');$('gameStatus').textContent=({ready:'READY WHEN YOU ARE',playing:game.power>0?'BEAST MODE · GO GET THEM':'DAWG IS ON THE MOVE',paused:'TAKE A BREATHER',over:'ANOTHER NIGHT. ANOTHER RUN.',level:'BLOCK CLEARED. KEEP IT MOVING.'})[game.status];}
+function updateHud(){mobile.sync(game,mode,!!countdownUntil);$('quickPlayButton').innerHTML=(game.status==='ready'?'PLAY NOW':game.status==='over'?'RUN IT BACK':'RESUME RUN')+' <span>↗</span>'; const palette=renderer.palette(game);document.documentElement.style.setProperty('--world',palette.color);document.documentElement.style.setProperty('--world-secondary',palette.secondary);$('districtName').textContent=game.district.name.toUpperCase();$('districtSector').textContent='SECTOR '+String(game.level).padStart(2,'0');const ready=game.dashCooldown<=0;$('dashLabel').textContent=ready?'DASH READY':`RECHARGING ${game.dashCooldown.toFixed(1)}s`;$('dashCharge').style.width=(1-game.dashCooldown/game.dashRecharge)*100+'%';$('dashButton').classList.toggle('ready',ready);$('dashButton').disabled=!ready||!['playing','ready'].includes(game.status);$('liveIntel').textContent=game.loot?`GOLD BAG LIVE · ${Math.ceil(game.loot.time)}s left. Get it for +${game.loot.value} points.`:game.power>0?`BEAST MODE · ${game.power.toFixed(1)}s. Stack rival catches for bigger bonuses.`:game.chain>=5?`CHAIN ×${game.chain}. Keep eating: every tenth treat pays a bonus${mode==='rush'?' and every twentieth buys 2 seconds':''}.`:(game.twists||[]).length?TWIST_INFO[game.twists[0]].name+': '+TWIST_INFO[game.twists[0]].text:'Gold bags appear after 80 and 160 treats. Take corners early: a clean buffered turn gives a burst of speed.';$('score').textContent=padded(game.score);$('levelLabel').textContent=isTimed(mode)?'TIME LEFT':'STAGE';$('level').textContent=isTimed(mode)?`${Math.ceil(game.time)}s`:String(game.level).padStart(2,'0');$('livesLabel').textContent=mode==='rush'?'MULTIPLIER':isTimed(mode)?'HIT PENALTY':'LIVES';$('lives').textContent=mode==='rush'?'×'+game.mult*(game.frenzy?2:1):isTimed(mode)?'−150':Array(game.lives).fill('♥').join(' ');const progress=Math.round((1-game.pellets.size/game.total)*100);$('progressPercent').textContent=progress+'%';$('progressFill').style.width=progress+'%';$('powerFlash').hidden=game.power<=0||game.status!=='playing';$('powerFlash').querySelector('span').textContent=game.power.toFixed(1)+'s';$('pauseButton').disabled=!['playing','paused'].includes(game.status);$('pauseButton').textContent=game.status==='paused'?'▷':'Ⅱ';$('pauseButton').setAttribute('aria-label',game.status==='paused'?'Resume game':'Pause game');$('gameStatus').textContent=({ready:'READY WHEN YOU ARE',playing:game.power>0?'BEAST MODE · GO GET THEM':'DAWG IS ON THE MOVE',paused:'TAKE A BREATHER',over:'ANOTHER NIGHT. ANOTHER RUN.',level:'BLOCK CLEARED. KEEP IT MOVING.'})[game.status];}
 function overlay(badge,title,text,button,hint='ARROW KEYS / WASD / SWIPE'){$('overlay').hidden=false;$('overlayBadge').textContent=badge;$('overlayTitle').innerHTML=title;$('overlayText').textContent=text;$('playButton').innerHTML=button+' <span>↗</span>';$('overlayHint').textContent=hint;}
 function showState(){
  updateHud();$('overlay').classList.remove('results');$('runRecap').hidden=true;$('mazeShare').hidden=true;$('overlayHome').hidden=true;
  if(countdownUntil){$('overlay').hidden=true;$('countdownLayer').hidden=false;return;}
  $('countdownLayer').hidden=true;
  if(game.status==='playing'){$('overlay').hidden=true;return;}
- if(game.status==='ready')overlay(mode==='daily'?challenge.name.toUpperCase():isTimed(mode)?'60 SECONDS. MAKE THEM COUNT.':"PLAYER ONE, YOU'RE UP",isTimed(mode)?'FULL SEND.<br>NO LIMITS.':'LET THE<br>DAWG OUT.',mode==='daily'?challenge.description:isTimed(mode)?'One minute. Infinite attitude.':'Big eyes. Bigger appetite.',"LET'S PLAY",mobile.coarse()?'JOYSTICK / SWIPE / TAP TO DASH':'ARROW KEYS / WASD / SHIFT TO DASH');
- if(game.status==='paused'){overlay('YOUR RUN IS SAFE','PAWS<br>FOR A SEC.','Ready when you are.','KEEP GOING',mobile.coarse()?'YOUR RUN SAVES ON THIS DEVICE':'SPACE / P TO RESUME');$('overlayHome').hidden=!mobile.active;}
- if(game.status==='level')overlay('CLEAN SWEEP · +500 POINTS','BLOCK<br>CONQUERED.',`${game.district.name} cleared. New streets. Bigger challenges.`,'NEXT DISTRICT',isTimed(mode)?`${Math.ceil(game.time)} SECONDS REMAINING`:'KEEP THE STREAK ALIVE');
+ if(game.status==='ready'){const b=mazeBrief();overlay(b.badge,b.title,b.text,"LET'S PLAY",b.hint);}
+  if(game.status==='paused'){overlay('YOUR RUN IS SAFE','PAWS<br>FOR A SEC.','Ready when you are.','KEEP GOING',mobile.coarse()?'YOUR RUN SAVES ON THIS DEVICE':'SPACE / P TO RESUME');$('overlayHome').hidden=!mobile.active;}
+ if(game.status==='level'){const nx=stageFor(game.level+1),tw=nx.twists.map(t=>TWIST_INFO[t]?.name).filter(Boolean);overlay(`STAGE ${game.level} CLEARED · +500`,'DISTRICT<br>CLEARED.',`Next up: stage ${nx.level}, ${nx.name}, in the ${nx.district}${tw.length?' · new twist: '+tw.join(' + '):''}.`,'NEXT STAGE',game.feats?.length?game.feats.length+' FEAT'+(game.feats.length>1?'S':'')+' THIS RUN':'KEEP THE STREAK ALIVE');}
  if(game.status==='over'){
   recordArcade();$('overlay').classList.add('results');
-  overlay(runOutcome?.newBest?'NEW PERSONAL BEST':isTimed(mode)?"TIME'S UP, DAWG.":'THE PACK CAUGHT UP.',`${game.score.toLocaleString()}<span class="score-unit"> POINTS</span>`,mode==='daily'?challenge.name+' · '+challenge.day:'Another night. Another story.','PLAY AGAIN','ONE MORE SHOT AT YOUR BEST');
+  overlay(runOutcome?.newBest?'NEW PERSONAL BEST':isTimed(mode)?"TIME'S UP, DAWG.":'THE PACK CAUGHT UP.',`${game.score.toLocaleString()}<span class="score-unit"> POINTS</span>`,mode==='daily'?challenge.name+' · '+challenge.day+(runOutcome?.practice?' · practice run, your scored run stands':game.run?.dailyClear?' · maze cleared':''):mode==='classic'?`Reached stage ${game.level}, ${stageFor(game.level).name}. Furthest: stage ${furthestStage()}. Next: ${stageFor(furthestStage()+1).name}.`:`Top multiplier chain ×${game.bestChain||0} · ${game.stats.clears} block${game.stats.clears===1?'':'s'} cleared.`,'PLAY AGAIN',game.feats?.length?game.feats.length+' FEAT'+(game.feats.length>1?'S':'')+' EARNED THIS RUN':'ONE MORE SHOT AT YOUR BEST');
   const medals=['NO MEDAL YET','BRONZE MEDAL','SILVER MEDAL','GOLD MEDAL'];
   const next=challenge.targets.find(n=>n>game.score);
   const note=mode==='daily'?`${medals[medalFor(game.score,challenge.targets)]}${runOutcome?.reward?' · +'+runOutcome.reward+' REP':next?' · '+(next-game.score)+' TO NEXT MEDAL':' · CITY CONQUERED'}`:runOutcome?.newBest?'✦ YOU SET THE SCORE TO BEAT':`${Math.max(0,(records[mode]||0)-game.score)} POINTS FROM YOUR PERSONAL BEST`;
@@ -95,13 +102,15 @@ function showState(){
 function recordArcade(){
  if(scoreRecorded)return;scoreRecorded=true;
  const best=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);
- runOutcome={newBest:game.score>best,reward:0};
- if(mode==='daily'){
+ runOutcome={newBest:game.score>best,reward:0,practice:mode==='daily'&&(dailyRecords[challenge.day]?.runs||0)>0&&!activeMatch};
+ if(mode==='classic'&&game.level>furthestStage())write('mazeStage',game.level);
+ if(runOutcome.practice){runOutcome.newBest=false;dailyRecords[challenge.day].runs++;write('daily',dailyRecords);renderDaily();}
+ else if(mode==='daily'){
   const result=dailyResult(dailyRecords[challenge.day],game.score,challenge.targets);dailyRecords[challenge.day]=result.record;runOutcome.reward=result.reward;
   for(const key of Object.keys(dailyRecords).sort().slice(0,-14))delete dailyRecords[key];
   write('daily',dailyRecords);if(result.reward){earnRep(result.reward);profileDirty=true;renderProgress();saveProfile();}renderDaily();
  }
- {const prevBest=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);finishRun(mode,game.score);queueResults(mode,game.score,{prevBest,detail:`${game.stats.dots} coins · ${game.stats.caught} rivals · ${game.stats.loot} gold bags`});}kennel.record(mode,game.score);records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
+ {const prevBest=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0),counted=runOutcome.practice?0:game.score,brag=mode==='classic'?`stage ${game.level} · ${stageFor(game.level).name}`:mode==='rush'?`best chain ×${game.bestChain||0}`:runOutcome.practice?'practice run':game.run?.dailyClear?`cleared with ${Math.round(game.time)}s left`:challenge.name.toLowerCase();finishRun(mode,counted);queueResults(mode,game.score,{prevBest,detail:`${brag} · ${game.stats.dots} treats · ${game.stats.caught} rivals caught`});}kennel.record(mode,runOutcome.practice?0:game.score);if(!runOutcome.practice)records[mode]=Math.max(records[mode]||0,game.score);records.runs=(records.runs||0)+1;write('records',records);awardPassport();write('mazeRun',null);updateBest();releaseWakeLock();
 }
 function updateBest(){const best=mode==='daily'?(dailyRecords[challenge.day]?.best||0):(records[mode]||0);$('bestScore').textContent=padded(best);$('recordSubtitle').textContent=mode==='daily'?"TODAY'S PERSONAL BEST":best>0?'THE SCORE TO SETTLE TONIGHT.':'EVERY LEGEND STARTS AT ZERO.';}
 function newArcade(){
@@ -181,7 +190,7 @@ function drawMaze3D(){mazeViewLabel();const flat=viewFor(mode,prefs.cameras)==='
  const view=viewFor(mode,prefs.cameras);gpu.setCamera(view);
  try{return gpu.draw(game,renderer.character,renderer.reduced);}catch{gpu.fail();return false;}}
 // Corridors feel far faster from the inside, so first person moves everyone at 75% speed.
-const FIRST_PERSON_PACE=.62;
+const FIRST_PERSON_PACE=.62;let slowUntil=0,hitStopUntil=0,tackleTip=false;
 function mazeFirstPerson(){return mobile.active&&isMaze()&&maze3d.gpu?.ready&&viewFor(mode,prefs.cameras)==='first';}
 function toggleMazeView(){if(!isMaze())return;prefs.cameras={...prefs.cameras,[mode]:nextView(mode,prefs.cameras)};saveSettings();}
 $('mazeView').onclick=toggleMazeView;
@@ -259,7 +268,7 @@ $('newTradeButton').onclick=restartTrade;$('againTradeButton').onclick=freshTrad
 function processEvents(){
  for(const event of game.events){
   renderer.event(event,game);maze3d.gpu?.event(event,game);if(event.type==='dash')mobile.haptic(12);if(event.type==='power')mobile.haptic(18);if(event.type==='eat'||event.type==='loot')mobile.haptic([12,20,12]);if(event.type==='hit')mobile.haptic([30,25,20]);if(event.type==='heat'){toast(heatLabel(event.tier));sound(560+event.tier*110,.2,'square',.028);mobile.haptic([10,30,10]);}if(event.type==='interrupted'){releaseWakeLock();saveCheckpoint();toast('PAUSED · READY WHEN YOUR DEVICE IS');}
-  if(event.type==='pellet'){profile.dots++;earnRep(1);if(game.pellets.size%2===0)sound(240+game.pellets.size%3*80,.035,'sine',.018);}
+  if(event.type==='pellet'){profile.dots++;earnRep(1);sound(262*2**(Math.min(event.chain||1,24)/12),.05,'sine',.02);}
   if(event.type==='power'){profile.dots++;earnRep(5);sound(880,.22,'triangle');toast('BEAST MODE · THE HUNTER IS YOU');}
   if(event.type==='eat'){profile.caught++;earnRep(25);sound(600,.15,'square',.018);toast(`${event.combo>1?event.combo+'× COMBO · ':''}RIVAL CAUGHT · +${event.bonus}`);}
   if(event.type==='dash'){profile.dashes++;sound(190,.18,'sawtooth',.018);}
@@ -268,6 +277,27 @@ function processEvents(){
   if(event.type==='hit'){sound(130,.28,'sawtooth',.025);toast(isTimed(mode)?'CAUGHT · −150 POINTS':'CAUGHT · KEEP YOUR HEAD UP');}
   if(event.type==='level'){profile.clears++;earnRep(100);sound(1000,.3,'triangle');}
   if(event.type==='over')sound(180,.4,'triangle');
+   if(event.type==='chain'){sound(1320,.12,'triangle',.022);sound(1760,.16,'sine',.016);mobile.haptic(8);}
+   if(event.type==='escape'){slowUntil=performance.now()+450;sound(1400,.25,'sine',.02);toast(tackleTip?'CLOSE CALL · +'+event.bonus:'CLOSE CALL · +'+event.bonus+' · TIP: DASH THROUGH A RIVAL TO TACKLE IT');tackleTip=true;}
+   if(event.type==='tackle'){earnRep(15);sound(520,.12,'square',.02);sound(900,.16,'triangle',.02);mobile.haptic([10,15,25]);toast(`DASH TACKLE · +${event.bonus} · DASH HALF REFUNDED`);tackleTip=true;}
+   if((event.type==='hit'||event.type==='eat'||event.type==='tackle')&&!renderer.reduced)hitStopUntil=performance.now()+(event.type==='hit'?170:85);
+   if(event.type==='teleport'){sound(300,.25,'sine',.03);sound(1200,.2,'triangle',.02);mobile.haptic(15);}
+   if(event.type==='shutter'&&!event.open)sound(110,.08,'square',.012);
+   if(event.type==='chest'){profile.loot++;earnRep(20);sound(1050,.2,'triangle');toast(event.left?`CHEST · +${event.bonus} · ${event.left} TO FIND`:'LAST CHEST FOUND');mobile.haptic([12,20,12]);}
+   if(event.type==='jackpot'){earnRep(100);sound(1320,.4,'triangle');toast('JACKPOT · ALL FIVE CHESTS · +'+event.bonus);mobile.haptic([20,30,20,30,40]);}
+   if(event.type==='clang'){sound(240,.12,'square',.02);toast('THE WARDEN SHRUGS OFF TACKLES · GRAB A POWER TREAT');}
+   if(event.type==='bossHit'&&event.hp>0)toast(`WARDEN HIT · ${event.hp} MORE`);
+   if(event.type==='bossDown'){earnRep(150);sound(1200,.5,'triangle');toast('THE WARDEN IS DOWN · +'+event.bonus);mobile.haptic([30,30,60]);}
+   if(event.type==='mult')sound(500+event.mult*120,.14,'square',.018);
+   if(event.type==='multLost'){sound(200,.2,'sawtooth',.015);toast('MULTIPLIER LOST · KEEP MOVING');}
+   if(event.type==='extend'){sound(990,.12,'triangle',.02);toast('+'+event.seconds+' SECONDS');}
+   if(event.type==='frenzy'){sound(880,.5,'sawtooth',.03);toast('FINAL 10 · EVERYTHING PAYS DOUBLE');mobile.haptic([20,20,20,20,40]);}
+   if(event.type==='mirrorSoon'){sound(660,.2,'square',.02);toast('MIRROR MILE IN 3 SECONDS');}
+   if(event.type==='mirrorOn'){sound(440,.4,'sawtooth',.025);toast('⇄ LEFT AND RIGHT ARE SWAPPED');mobile.haptic([30,20,30]);}
+   if(event.type==='mirrorOff'){sound(880,.3,'triangle',.02);toast('CONTROLS BACK TO NORMAL');}
+   if(event.type==='dailyClear'){earnRep(150);toast(`MAZE CLEARED · ${event.seconds}s LEFT · +${event.bonus}`);}
+   if(event.type==='level'&&event.auto)toast('BLOCK CLEARED · +500 · +8 SECONDS');
+   if(event.type==='feat'){try{quests().feat(event.id,event.name);}catch{}sound(1568,.18,'triangle',.02);sound(2093,.26,'sine',.016);toast('★ FEAT · '+String(event.name).toUpperCase());}
  }
  if(game.events.length){profileDirty=true;checkBadges();renderProgress();}
  game.events=[];
@@ -277,13 +307,14 @@ function frame(now){
  const dt=lastTime?(now-lastTime)/1000:0;lastTime=now;blinkTime=now/1000;
  if(countdownUntil){const remaining=countdownUntil-now;if(remaining<=0){countdownUntil=0;game.start();sound(880,.13);showState();requestWakeLock();}else $('countdownNumber').textContent=String(Math.ceil(remaining/600));}
  if(isMaze()){
-  const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);game.pace=mazeFirstPerson()?FIRST_PERSON_PACE:1;if(!countdownUntil)advanceGame(game,dt*curve.timeScale);if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
+  const prior=game.status;if(game!==curveGame){curveGame=game;curve.reset();}curve.tick(dt,game.status==='playing'&&!countdownUntil);game.pace=mazeFirstPerson()?FIRST_PERSON_PACE:1;game.viewBonus=mazeFirstPerson()?(isTimed(mode)?1.6:1.25):1;// A beat of hit-stop on a catch or tackle, and slow motion on a close call, so the moment lands.
+   if(!countdownUntil&&now>=hitStopUntil)advanceGame(game,dt*curve.timeScale*(now<slowUntil&&!renderer.reduced?.35:1));if(game.status==='over')curve.clear();processEvents();if(prior!==game.status)showState();
   if(now-lastHud>80){updateHud();lastHud=now;}if(drawMaze3D())canvas.style.opacity='0';else{canvas.style.opacity='';renderer.draw(game,now);}if(now>toastUntil)$('gameToast').classList.remove('visible');
  }
  if(PACK_MODES.includes(mode))pack.frame(now);
  if(mode==='trade'&&trade&&!document.hidden&&!hustleDriving&&now-lastCityFrame>83){cityRenderer.reduced=renderer.reduced;drawCity(now);lastCityFrame=now;}
  trackPlay(now,dt);
- if(isMaze()){const on=game.status==='playing'&&soundEnabled&&!document.hidden;if(on){music.setTrack(mode);music.setVolume(prefs.volume??.8);}music.setPlaying(on);}else if(mode==='trade'&&!hustleDriving)music.setPlaying(false);
+ if(isMaze()){const on=game.status==='playing'&&soundEnabled&&!document.hidden;if(on){music.setTrack(mode);music.setVolume(prefs.volume??.8);}music.setPlaying(on,on?(game.power>0||game.frenzy?1:game.heat):0);}else if(mode==='trade'&&!hustleDriving)music.setPlaying(false);
  if(now-lastProfileSave>2000){saveProfile();saveCheckpoint();lastProfileSave=now;}
  requestAnimationFrame(frame);
 }
@@ -306,7 +337,7 @@ function finishRun(kind,score,gold=0){
  const run={game:kind,score:Math.max(0,Math.floor(score)||0),target:DISCIPLINES.find(d=>d.id===kind)?.target||1000,seconds,gold},xp=addRun(arcade,run),opened=settleUnlocks(arcade,records);write('arcade',arcade);
  cloud.recordRun({game:kind,day:localDay(),startedAt:new Date(startedAt).toISOString(),endedAt:new Date(Math.max(Date.now(),startedAt)).toISOString(),seconds,score:run.score,xp,gold});
  renderLocks();for(const id of opened)announce('UNLOCKED · '+(gameById(id)?.title||id).toUpperCase()+' ↗');
- lastRun={kind,xp};try{const g=pack.kind===kind?pack.game:null;quests().run({game:kind,score:run.score,best:run.score>0&&run.score>=(records[kind]||0),feats:Array.isArray(g?.feats)?g.feats:[]});}catch{}if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);renderToday();
+ lastRun={kind,xp};try{const g=pack.kind===kind?pack.game:isMaze(kind)&&game.mode===kind?game:null;quests().run({game:kind,score:run.score,best:run.score>0&&run.score>=(records[kind]||0),feats:Array.isArray(g?.feats)?g.feats:[]});}catch{}if(run.score>0&&kind!=='story'&&kind!=='trade')showInsight(kind,run.score);renderToday();
 }
 function renderLocks(){shell.cards(id=>wallOf(id));const lv=$('accountLevel');if(lv)lv.textContent='LV '+levelOf(arcade.xp);if(shell.preview&&wallOf(shell.preview).open){shell.preview=null;}}
 // Bring the hero into view after picking a game further down the page.
@@ -362,7 +393,7 @@ function requestWakeLock(){if(!mobile.active||!navigator.wakeLock)return;navigat
 function releaseWakeLock(){if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}}
 function setLaunchText(){
  const titles={classic:'Maze Munch',rush:'60-Second Rush',daily:'Daily Run',trade:'Street Hustle'};
- $('launchTitle').textContent=titles[mode];$('modeTitle').innerHTML=mode==='daily'?'A new day.<br>A new dare.':mode==='rush'?'One minute.<br>All mayhem.':'Own the<br>after hours.';$('modeDescription').textContent=mode==='daily'?challenge.description:isTimed(mode)?'The clock is ticking. Stack points, chase combos, and leave your best score in the dust.':"A hungry DAWG. A maze full of loot. Four rivals who really don't want you to win.";$('riskRule').textContent=isTimed(mode)?'Hits cost 150 points. Keep going until the clock hits zero.':'Three lives. Fresh districts. An endless night.';$('launchDescription').textContent=mode==='daily'?challenge.description:mode==='rush'?'60 seconds. Chase your next personal best.':'Clear the block. Outrun the pack.';
+ $('launchTitle').textContent=titles[mode];$('modeTitle').innerHTML=mode==='daily'?'A new day.<br>A new dare.':mode==='rush'?'One minute.<br>All mayhem.':'Own the<br>after hours.';$('modeDescription').textContent=mode==='daily'?challenge.description:mode==='rush'?'A sprint built around the clock. Keep moving to build a ×5 multiplier, chain treats to buy time, and cash in when the last ten seconds pay double.':"A campaign through four neon districts. Every stage adds a twist: teleport tunnels, one-way gates, blackouts, shutter doors, and a Warden every fifth stage.";$('riskRule').textContent=mode==='daily'?'One scored run a day. 90 seconds. Clear the maze early for a time bonus.':mode==='rush'?'Hits cost 150 points and your multiplier. Standing still drops it too.':`Three lives. Furthest stage: ${furthestStage()}. Next to beat: ${stageFor(furthestStage()+1).name}.`;$('launchDescription').textContent=mode==='daily'?challenge.description:mode==='rush'?'60 seconds. Keep moving, build the multiplier.':`Stage by stage through four districts. Furthest: ${furthestStage()}.`;
 }
 function renderDaily(){
  const d=dailyRecords[challenge.day],best=d?.best||0;

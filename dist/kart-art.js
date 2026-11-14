@@ -259,3 +259,7 @@ function dressSkyway({t,g,look,rnd,high,anim,bag,add,put,std,glowTex,nearJump,G0
 }
 // A ring of far silhouettes so the horizon is never empty.
 function backdrop(g,tint,opacity,y,skip){if(skip||!opacity)return;const tex=skylineTexture();tex.repeat.set(6,1);const m=new T.Mesh(new T.CylinderGeometry(640,640,150,48,1,true),new T.MeshBasicMaterial({map:tex,transparent:true,side:T.BackSide,fog:false,depthWrite:false,color:tint,opacity}));m.position.y=y+60;m.renderOrder=-2;g.add(m);}
+
+export {BUILDINGS} from './city-art.js';
+// The circuits are built in code now; no racing-kit props are loaded.
+export const PROPS={};

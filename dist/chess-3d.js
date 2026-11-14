@@ -31,7 +31,7 @@ export class ThreeChess {
  get lite(){return this.quality!=='high';}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'chess3d',onFailure:()=>this.fail()}).init();this.view3d=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.host.prepend(this.view3d);this.stage.onDowngrade=()=>{this.quality='low';};
-  const s=this.scene;this.stage.neonEnvironment(.4);this.stage.hdrEnvironment(undefined,.4);s.fog=new T.FogExp2(0x0a0716,.021);s.background=new T.Color(0x07050e);
+  const s=this.scene;this.stage.neonEnvironment(.4);this.stage.hdrEnvironment(undefined,.4);s.fog=new T.FogExp2(0x0a0716,.016);s.background=new T.Color(0x07050e);
   this.hemi=new T.HemisphereLight(0xd8d0ff,0x2a1840,.95);s.add(this.hemi);
   this.key=new T.SpotLight(0xfff2dc,40,34,.62,.55,1.25);this.key.position.set(0,13,3);this.key.target.position.set(0,0,0);s.add(this.key,this.key.target);
   if(this.quality==='high'){this.key.castShadow=true;this.key.shadow.mapSize.set(2048,2048);this.key.shadow.bias=-.0003;this.key.shadow.normalBias=.015;this.key.shadow.radius=5;this.key.shadow.camera.near=4;this.key.shadow.camera.far=26;}
@@ -49,8 +49,8 @@ export class ThreeChess {
    for(let i=0;i<6;i++){const a=i*Math.PI/3;c.beginPath();c.arc(Math.cos(a)*120,Math.sin(a)*120,14,0,Math.PI*2);c.fill();}},{color:false});
   this.buildRoom();this.buildBoard();
   // Two team finishes: warm pearl with gold trim and ice-blue lights; black chrome with rose trim and hot pink lights.
-  this.mats={w:pbr({color:0xfbf4e6,roughness:.3,metalness:.04,clearcoat:.8,clearcoatRoughness:.18,emissive:0xfff0d0,emissiveIntensity:.16},this.quality),
-   b:pbr({color:0x15131f,roughness:.2,metalness:.82,clearcoat:1,clearcoatRoughness:.06,emissive:0x3a0f5a,emissiveIntensity:.22},this.quality)};
+  this.mats={w:pbr({color:0xd9d0c0,roughness:.34,metalness:.04,clearcoat:.7,clearcoatRoughness:.2,emissive:0xfff0d0,emissiveIntensity:.02},this.quality),
+   b:pbr({color:0x1b1a2b,roughness:.3,metalness:.45,clearcoat:1,clearcoatRoughness:.1,emissive:0x2a1050,emissiveIntensity:.3},this.quality)};
   this.models={};for(const t of 'prbqkn')this.models[t]=pieceModel(t);
   this.trimMats={w:new T.MeshStandardMaterial({color:GOLD,metalness:1,roughness:.2,emissive:GOLD,emissiveIntensity:.14}),b:new T.MeshStandardMaterial({color:0xff7fdc,metalness:1,roughness:.16,emissive:BLACK,emissiveIntensity:.5})};
   this.glowMats={w:new T.MeshBasicMaterial({color:hdr(WHITE,1.9),toneMapped:false}),b:new T.MeshBasicMaterial({color:hdr(BLACK,2.1),toneMapped:false})};this.darkMat=new T.MeshStandardMaterial({color:0x0a0810,roughness:.5,metalness:.2});
@@ -87,7 +87,7 @@ export class ThreeChess {
   // Candles on every column and along the gallery rail, as one cloud of flickering points.
   const flames=[];for(let i=0;i<N;i++){const a=(i+.5)/N*Math.PI*2;flames.push(Math.sin(a)*14.4,3.5,Math.cos(a)*14.4);for(let j=0;j<3;j++){const b=a+(j-1)*.14;flames.push(Math.sin(b)*16.4,3.6,Math.cos(b)*16.4);}}
   const fg=new T.BufferGeometry();fg.setAttribute('position',new T.Float32BufferAttribute(flames,3));this.candles=new T.Points(fg,new T.PointsMaterial({size:1.5,map:this.glowTex,color:hdr(0xffb060,1.6),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));s.add(this.candles);
-  this.hallA=new T.PointLight(0xffb878,60,34,1.4);this.hallA.position.set(-12,5,0);this.hallB=new T.PointLight(0xffb878,60,34,1.4);this.hallB.position.set(12,5,0);s.add(this.hallA,this.hallB);
+  this.hallA=new T.PointLight(0xffb878,34,34,1.4);this.hallA.position.set(-12,5,0);this.hallB=new T.PointLight(0xffb878,34,34,1.4);this.hallB.position.set(12,5,0);s.add(this.hallA,this.hallB);
   // The club's sign hangs over the far gallery.
   const sign=()=>new T.Mesh(new T.PlaneGeometry(9,1.8),new T.MeshBasicMaterial({map:texture(1024,200,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 120px Impact, "Arial Narrow", sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#b9ff5e';c.shadowColor='#b9ff5e';c.shadowBlur=30;c.fillText('DAWG CHESS CLUB',w/2,h/2+6);}),transparent:true,toneMapped:false}));
   const a=sign();a.position.set(0,7.6,-16.2);const b=sign();b.position.set(0,7.6,16.2);b.rotation.y=Math.PI;s.add(a,b);}
@@ -148,7 +148,7 @@ export class ThreeChess {
  dust(p,n=14){this.puff(new T.Vector3(p.x,.06,p.z),n,0x9a8fb0,{speed:1.6,life:.8,gravity:.4,up:.25,spread:1.4});}
  motes(p,n,color){this.puff(p,n,color,{speed:.9,life:1,gravity:1.4,up:.6,spread:1.2});}
  // A shockwave ring spreading across the squares.
- ring(p,color,{r0=.25,r1=2.6,dur=.5,y=.03,width=.16,k=2.2}={}){if(this.skipping)return;const m=this.add(new T.Mesh(this.own(new T.RingGeometry(1-width,1,48).rotateX(-Math.PI/2)),this.glowMat(color,k)));m.position.set(p.x,y,p.z);m.scale.setScalar(r0);this.tween(dur,q=>{const e=easeOut(q);m.scale.setScalar(r0+(r1-r0)*e);m.material.opacity=1-q;}).then(()=>this.drop(m));}
+ ring(p,color,{r0=.25,r1=2.6,dur=.5,y=.03,width=.16,k=1.3}={}){if(this.skipping)return;const m=this.add(new T.Mesh(this.own(new T.RingGeometry(1-width,1,48).rotateX(-Math.PI/2)),this.glowMat(color,k)));m.position.set(p.x,y,p.z);m.scale.setScalar(r0);this.tween(dur,q=>{const e=easeOut(q);m.scale.setScalar(r0+(r1-r0)*e);m.material.opacity=1-q;}).then(()=>this.drop(m));}
  // A blade's trail: an arc of light swept around a point.
  slashArc(p,{yaw=0,tilt=0,roll=0,r=.9,arc=2.4,color=0xffffff,dur=.22,width=.22}={}){if(this.skipping)return;const m=this.add(new T.Mesh(this.own(new T.RingGeometry(r*(1-width),r,28,1,-arc/2,arc)),this.glowMat(color,2.6)));m.position.copy(p);m.rotation.order='YXZ';m.rotation.set(-Math.PI/2+tilt,yaw,roll);
   this.tween(dur,q=>{m.rotation.z=roll+(q-.5)*1.2;m.material.opacity=1-q*q;m.scale.setScalar(1+q*.25);}).then(()=>this.drop(m));}
@@ -169,8 +169,8 @@ export class ThreeChess {
    const a=Math.random()*Math.PI*2,v=new T.Vector3(Math.cos(a),0,Math.sin(a)).multiplyScalar(speed*(.3+Math.random()*.7));v.y=up*(.5+Math.random()*.8);if(dir)v.addScaledVector(dir,speed);
    const c={m,v,w:new T.Vector3((Math.random()-.5)*14,(Math.random()-.5)*14,(Math.random()-.5)*14),life,max:life,gravity,bounce,delay:typeof delay==='function'?delay(i):delay,s:m.scale.x,floor:size*.4};this.add(m);this.chunks.push(c);out.push(c);}return out;}
  // An impact: hit-stop, shake, a flash of light, sparks, and everyone watching flinches.
- hit(p,power=1,color=0xffffff,{sparks=true}={}){if(this.skipping)return;this.hitstop=Math.max(this.hitstop,.03+.07*power);this.stage.shake(Math.min(1,.2+.42*power));this.stage.flashOnce(0xffffff,Math.min(.6,.08+.22*power),false);
-  this.flashLight.position.set(p.x,p.y+.3,p.z);this.flashLight.color.set(color);this.flashLight.intensity=30*power;if(sparks)this.sparks(p,Math.round(18+26*power),GOLD);this.puff(p,Math.round(20*power),color,{speed:5,life:.5,up:1.5,spread:.4});
+ hit(p,power=1,color=0xffffff,{sparks=true}={}){if(this.skipping)return;this.hitstop=Math.max(this.hitstop,.03+.07*power);this.stage.shake(Math.min(1,.2+.42*power));this.stage.flashOnce(0xffffff,Math.min(.4,.04+.14*power),false);
+  this.flashLight.position.set(p.x,p.y+.3,p.z);this.flashLight.color.set(color);this.flashLight.intensity=12*power;if(sparks)this.sparks(p,Math.round(18+26*power),GOLD);this.puff(p,Math.round(20*power),color,{speed:5,life:.5,up:1.5,spread:.4});
   this.flinchT=0;this.flinchAmp=.1+.12*power;this.flinchAt=p.clone();if(power>=.9)this.crowdHop=1;}
  title(text,red=false,sub=''){if(this.skipping)return;for(const old of this.host.querySelectorAll('.chess-title'))old.remove();const el=document.createElement('div');el.className='chess-title'+(red?' is-red':'');el.textContent=text;if(sub){const s=document.createElement('small');s.textContent=sub;s.style.cssText='display:block;margin-top:6px;font:700 clamp(9px,1.5vw,13px)/1 var(--ui-mono,monospace);letter-spacing:3px;opacity:.85;text-transform:uppercase';el.append(s);}this.host.append(el);setTimeout(()=>el.remove(),1900);}
  // ── Camera shots ───────────────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export class ThreeChess {
  shatter(g,big=false){const p=g.position;this.particles.burst(p.x,.5,p.z,big?90:40,this.teamColor(g.userData.c),{speed:big?8:5,life:.9,gravity:-6,up:3,spread:.5});this.cast.add(g);this.tween(.35,k=>{g.scale.setScalar(Math.max(.001,1-k));g.position.y=k*.6;}).then(()=>g.removeFromParent());}
  // Ends any scene: props away, lights and time back to normal.
  cleanup(){for(const o of this.attached)o.removeFromParent();this.attached=[];for(const o of [...this.fx.children])o.removeFromParent();this.chunks=[];for(const x of this.trash)x.dispose?.();this.trash=[];
-  this.endCinema();this.arena(false);this.hitstop=0;this.slowT=0;this.timeScale=1;this.fighting=false;this.cast.clear();this.checkLight.intensity=0;this.flashLight.intensity=0;this.skipping=false;
+  this.endCinema();this.arena(false);this.shotScale=1;this.hitstop=0;this.slowT=0;this.timeScale=1;this.fighting=false;this.cast.clear();this.checkLight.intensity=0;this.flashLight.intensity=0;this.skipping=false;
   for(const [s,g] of this.pieces){g.visible=true;if(!g.parent)this.scene.add(g);}}
  // ── The duel ───────────────────────────────────────────────────────────────────────────────
  fighter(g){g.rotation.order='YXZ';return {g,t:g.userData.t,c:g.userData.c,col:this.teamColor(g.userData.c),h:g.userData.h,gear:{},guard:[]};}
@@ -223,7 +223,7 @@ export class ThreeChess {
   let side=new T.Vector3(-dir.z,0,dir.x);if(Math.abs(side.z)>.05?side.z*flip<0:side.x*P.x>0)side.negate();
   const gap=Math.min(dist,1.7),start=P.clone().addScaledVector(dir,-gap),mid=P.clone().addScaledVector(dir,-gap/2),A=this.fighter(att),D=this.fighter(vic);
   const X={S:this,A,D,P,start,dir,side,mid,M,quick,ep,to:sqPos(m.to),ac:A.col,dc:D.col,hitDir:dir.clone(),stop:P.clone().addScaledVector(dir,-.84)};this.X=X;
-  this.begin(quick?2:1);this.axis(dir.clone().negate(),side);this.arena(true,{at:mid,color:A.col,line:[start.clone().addScaledVector(dir,-.6),P.clone().addScaledVector(dir,1.1)]});
+  this.begin(quick?2:1);this.shotScale=Math.max(.7,Math.min(1,Math.max(A.h,D.h)/1.25));this.axis(dir.clone().negate(),side);this.arena(true,{at:mid,color:A.col,line:[start.clone().addScaledVector(dir,-.6),P.clone().addScaledVector(dir,1.1)]});
   // The arena opens: a title card, the attacker crosses the board to the duel, both pieces wake up.
   if(!quick){this.title(ep?'EN PASSANT':M.card,false,ep?'Caught in passing':M.title);this.sfx('doom');}
   this.cam({at:mid.clone().setY(.6),yaw:1.15,pitch:.42,w:4.6,h:3.2,dur:quick?.25:.5,drift:.12});
@@ -256,7 +256,7 @@ export class ThreeChess {
    if(c.m.position.y<c.floor&&c.v.y<0){c.m.position.y=c.floor;c.v.y*=-c.bounce;c.v.x*=.6;c.v.z*=.6;c.w.multiplyScalar(.5);c.onLand?.(c);c.onLand=null;}if(c.life<.3)c.m.scale.setScalar(Math.max(.001,c.s*c.life/.3));if(c.life<=0){c.m.removeFromParent();this.chunks.splice(i,1);}}
   this.stage.resize();const real=now/1000,cam=this.camera,aspect=cam.aspect||1,flip=this.flipped?-1:1;
   // Lights ease between the resting hall and the arena.
-  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.72);this.key.intensity=L.key*(1-d*.8);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*90;this.duelRim.intensity=d*14;
+  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.72);this.key.intensity=L.key*(1-d*.8);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*16;this.duelRim.intensity=d*10;
   if(this.duelAt&&d>.01){const c=this.cine?cam.position:this.duelAt;this.duelRim.position.set(this.duelAt.x+(this.duelAt.x-c.x)*.4,1.5,this.duelAt.z+(this.duelAt.z-c.z)*.4);}
   this.flashLight.intensity*=Math.max(0,1-dt*9);this.edgeColor.lerp(this.edgeTarget,Math.min(1,dt*5));this.edgeMat.color.copy(this.edgeColor).multiplyScalar(d>.05?1+Math.sin(real*9)*.18:1);
   if(this.candles)this.candles.material.size=1.5+Math.sin(real*11)*.06+Math.sin(real*23)*.04;
@@ -264,9 +264,9 @@ export class ThreeChess {
   this.frameRival(real,dt,reduced,flip);
   // The resting camera is fitted to the view: far enough back that all eight ranks and both
   // sides of the board show at any shape of screen, from a folded phone to a wide monitor.
-  const top=this.view==='top',vfov=top?36:40,tanV=Math.tan(vfov*Math.PI/360),tanH=tanV*aspect,el=top?Math.PI/2-.001:.86,dist=Math.max(4.95/tanH,(top?4.95:4.5)/tanV)*(top?1:1.02);
-  let pos=new T.Vector3(0,Math.sin(el)*dist,Math.cos(el)*dist*flip),at=new T.Vector3(0,top?0:.3,top?0:-.5*flip),fov=vfov;
-  if(this.cine){const c=this.cine;c.t+=cdt;const f=typeof c.at==='function'?c.at():c.at,cf=c.fov,tv=Math.tan(cf*Math.PI/360),th=tv*aspect,yaw=c.yaw+c.drift*c.t,D=Math.max(c.w/2/th,c.h/2/tv)*Math.max(.45,1+c.dolly*c.t),ch=Math.cos(c.pitch);
+  const top=this.view==='top',vfov=top?36:40,tanV=Math.tan(vfov*Math.PI/360),tanH=tanV*aspect,el=top?Math.PI/2-.001:.74,dist=Math.max(4.95/tanH,(top?4.95:4.3)/tanV)*(top?1:1.0);
+  let pos=new T.Vector3(0,Math.sin(el)*dist,Math.cos(el)*dist*flip),at=new T.Vector3(0,top?0:.3,top?0:-.9*flip),fov=vfov;
+  if(this.cine){const c=this.cine;c.t+=cdt;const f=typeof c.at==='function'?c.at():c.at,cf=c.fov,tv=Math.tan(cf*Math.PI/360),th=tv*aspect,yaw=c.yaw+c.drift*c.t,D=(this.shotScale||1)*Math.max(c.w/2/th,c.h/2/tv)*Math.max(.45,1+c.dolly*c.t),ch=Math.cos(c.pitch);
    const to=f.clone().addScaledVector(this.shotBack,Math.cos(yaw)*ch*D).addScaledVector(this.shotSide,Math.sin(yaw)*ch*D);to.y=Math.max(.22,f.y+Math.sin(c.pitch)*D);
    const k=c.dur>0?ease(Math.min(1,c.t/c.dur)):1;pos=c.fromPos.clone().lerp(to,k);at=c.fromAim.clone().lerp(f,k);fov=c.fromFov+(cf-c.fromFov)*k;cam.position.copy(pos);this.aim.copy(at);}
   else{if(!reduced&&!top)pos.x+=Math.sin(real*.15)*.25;cam.position.lerp(pos,Math.min(1,dt*4));this.aim.lerp(at,Math.min(1,dt*4));fov=cam.fov+(vfov-cam.fov)*Math.min(1,dt*5);}

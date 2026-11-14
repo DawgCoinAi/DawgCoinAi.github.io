@@ -394,7 +394,7 @@ export class DominoGame {
   if(!this.fastest||s.t<this.fastest)this.fastest=Math.round(s.t*100)/100;
   // What stood between this clear and three stars, and how far the next shop is.
   const left=LEVELS.findIndex((l,i)=>i>this.level&&l.world!==lv.world),more=left-this.level-1,tease=this._daily?'':!par?`Three stars needs ${lv.par} piece${lv.par===1?'':'s'} or fewer`:!first?'Three stars needs it first try':left>=0&&more>0?`${more} more room${more===1?'':'s'} to ${WORLDS[LEVELS[left].world].name}`:left>=0?`Next: ${WORLDS[LEVELS[left].world].name}`:'';
-  const e={type:'win',points:gain,stars,par,first,pieces:this.placed.length,parPieces:lv.par,attempts:this.attempts,code,time:s.t,name:lv.name,level:this.level,tease};this.phase='won';this.phaseT=0;this.events.push(e);
+  const e={type:'win',points:gain,stars,par,first,pieces:this.placed.length,parPieces:lv.par,attempts:this.attempts,code,time:s.t,name:lv.name,level:this.level,tease};this.phase='won';this.phaseT=0;this.lastWin=e;this.events.push(e);
   for(const f of FEATS)if(!this.feats.includes(f.id)&&f.test(this,e)){this.feats.push(f.id);this.events.push({type:'feat',id:f.id,name:f.name,text:f.text});}}
  fail(why,bone){const d=this.missDist(bone),near=!!this.sim.moved&&d<1.6;this.sim.slow=0;this.marker={x:Math.round(bone.x*100)/100,y:Math.round(bone.y*100)/100,near:near?1:0};this.phase='failed';this.phaseT=0;this.events.push({type:'fail',why,near,x:bone.x,y:bone.y,attempts:this.attempts});}
  lastCode(){return this.codes[this.codes.length-1]||'';}

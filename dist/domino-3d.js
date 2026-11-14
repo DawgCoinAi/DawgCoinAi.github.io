@@ -87,7 +87,7 @@ export class ThreeDomino {
     else{const c=new T.Mesh(this.geo.disc,this.mats.brass);c.scale.set(.7,.2,.7);c.rotation.x=Math.PI/2;c.position.set(x0+side*.3,4.4,BACK+1.3);c.castShadow=true;shop.add(c);const f=new T.Mesh(this.geo.disc,this.mats.white);f.scale.set(.58,.22,.58);f.rotation.x=Math.PI/2;f.position.set(x0+side*.3,4.4,BACK+1.32);shop.add(f);}}}}
  disposeGroup(gp,textures=false){gp.traverse(o=>{if(o.geometry&&!o.geometry.userData.shared)o.geometry.dispose?.();if(textures&&o.material?.map&&!Object.values(this.mats).includes(o.material)){o.material.map.dispose();o.material.dispose();}});gp.removeFromParent();}
  // The room: its fixed furniture (shelves, crates, belts, trapdoors, buttons, see-saws) and the bin.
- build(g){const lv=g.lv,high=this.quality==='high';if(lv.world!==this.world)this.buildWorld(lv.world);if(this.set)this.disposeGroup(this.set);const set=this.set=new T.Group();this.scene.add(set);this.level=g.level;this.worldKey='';this.dyn=null;this.belts=[];this.doors=[];this.buttons=[];this.sawMeshes=[];this.ghost=null;this.ghostKey='';this.flag=null;this.flagKey='';
+ build(g){const lv=g.lv,high=this.quality==='high';if(lv.world!==this.world)this.buildWorld(lv.world);if(this.set)this.disposeGroup(this.set);const set=this.set=new T.Group();this.scene.add(set);this.level=g.level;this.lvRef=lv;this.worldKey='';this.dyn=null;this.belts=[];this.doors=[];this.buttons=[];this.sawMeshes=[];this.ghost=null;this.ghostKey='';this.flag=null;this.flagKey='';
   for(const b of lv.boxes){if(b.kind==='floor')continue;
    if(b.kind==='belt'){const gp=new T.Group();gp.position.set(b.x+b.w/2,b.y+b.h/2,0);const mat=this.mats.belt.clone();mat.map=this.mats.belt.map.clone();mat.map.needsUpdate=true;mat.map.repeat.set(b.w/1.2,1);const top=this.box(gp,b.w-.2,b.h,DEPTH,mat,0,0);for(const sx of [-1,1]){const r=new T.Mesh(this.geo.disc,this.mats.steel);r.scale.set(b.h/2,DEPTH+.1,b.h/2);r.rotation.x=Math.PI/2;r.position.set(sx*(b.w/2-.15),0,0);gp.add(r);}castShadows(gp,this.quality);set.add(gp);this.belts.push({b,mat,rollers:gp.children.slice(1)});this.brackets(set,b,this.mats.dark);continue;}
    const m=this.box(set,b.w,b.h,b.kind==='crate'?DEPTH+.1:DEPTH+.25,b.kind==='crate'?this.mats.crate:this.mats.wood,b.x+b.w/2,b.y+b.h/2);castShadows(m,this.quality);if(b.kind==='shelf'){this.box(set,b.w,.06,.05,this.mats.trim,b.x+b.w/2,b.y+b.h-.03,(DEPTH+.25)/2+.02);this.brackets(set,b,this.mats.steel);}}
@@ -155,7 +155,8 @@ export class ThreeDomino {
  puff(x,y,size=.5,n=1,col=0xe9d9bd){for(let i=0;i<n;i++){const sp=this.puffs[this.puffNext=(this.puffNext+1)%this.puffs.length];sp.visible=true;sp.material.color.set(col);sp.position.set(x+(Math.random()-.5)*size*.6,y+Math.random()*size*.3,DEPTH/2+.05);sp.userData={life:.55+Math.random()*.25,max:.8,size:size*(.7+Math.random()*.6),vx:(Math.random()-.5)*1.2,vy:.5+Math.random()*.7};}}
  throwConfetti(x,y){const n=this.confetti.count=this.confetti.instanceMatrix.count,c=new T.Color();this.confettiBits=Array.from({length:n},(_,i)=>{this.confetti.setColorAt(i,c.set(CONFETTI[i%CONFETTI.length]));const a=Math.random()*Math.PI,v=5+Math.random()*8;return {x,y:y+.4,z:0,vx:Math.cos(a)*v*.7,vy:Math.sin(a)*v+3,vz:(Math.random()-.5)*3,r:Math.random()*6,rs:(Math.random()-.5)*14,life:2.6+Math.random()};});if(this.confetti.instanceColor)this.confetti.instanceColor.needsUpdate=true;this.confetti.visible=true;}
  event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced,spot=()=>{if(e.x!==undefined)this.action={x:e.x,y:e.y,t:performance.now()};};
-  if(e.type==='level'){if(this.level!==e.level)this.build(g);}
+  if(e.type==='level'){if(g.lv!==this.lvRef)this.build(g);}
+  else if(e.type==='feat'){hud.pop('FEAT: '+e.name.toUpperCase(),'gold');}
   else if(e.type==='go'){hud.pop('GO!','big');this.tipUntil=0;this.ui.tip.hidden=true;this.kick=.6;const d=g.world().doms.find(x=>x.start);this.action=d?{x:d.x,y:d.y+.6,t:performance.now()}:null;}
   else if(e.type==='place'){P.burst(e.x,e.y+.2,DEPTH/2,14,0x5effc1,{speed:2,life:.45,gravity:-3});this.puff(e.x,e.y,.5,2);}
   else if(e.type==='pickup'){P.burst(e.x,e.y+.2,DEPTH/2,8,0x5ee7ff,{speed:2,life:.35});}
@@ -188,7 +189,7 @@ export class ThreeDomino {
  render(g,d,now){
   this.stage.resize();const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced,lv=g.lv,high=this.quality==='high';this.particles.reduced=this.hud.reduced=reduced;
   if(g.status!==this.status){this.status=g.status;this.statusSince=now;}
-  if(g.level!==this.level)this.build(g);this.syncWorld(g);this.syncGhost(g);this.syncFlag(g);this.syncDawg(g,d||this.dawg0);
+  if(g.lv!==this.lvRef)this.build(g);this.syncWorld(g);this.syncGhost(g);this.syncFlag(g);this.syncDawg(g,d||this.dawg0);
   const sim=g.sim,w=g.world(),running=!!sim&&g.phase!=='place';
   // Dominoes pivot at their base; balls roll; the capsule tumbles; springs squash; fans turn.
   this.doms.forEach((x,k)=>{const st=sim?sim.doms[k]:null,a=st?st.a:0;x.pivot.rotation.z=-a;x.pop=Math.max(0,x.pop-dt*5);x.m.scale.setScalar(1+x.pop*.12);if(!sim&&!reduced&&x.d.start)x.pivot.rotation.z=-x.d.start*(.05+Math.sin(real*5)*.05);});

@@ -115,6 +115,7 @@ export class ThreeMaze {
   this.shadowMat=contactShadowMaterial(.7);this.holder=new T.Group();s.add(this.holder);
   this.marker=new T.Mesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:this.ringTex,color:new T.Color(.8,1.5,.35),transparent:true,opacity:.9,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.marker.position.y=.03;s.add(this.marker);
   this.playerShadow=contactShadow(.9,.9,this.shadowMat);s.add(this.playerShadow);
+  this.aura=new T.Sprite(spriteMat(this.glowTex,new T.Color(.9,1.2,.5),.5));this.aura.scale.set(2.6,2.6,1);s.add(this.aura);
   this.shock=new T.Mesh(new T.RingGeometry(.82,1,48).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(.8,1.6,.5),transparent:true,opacity:0,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,side:T.DoubleSide}));this.shock.position.y=.06;s.add(this.shock);
   this.rivals=RIVAL_COLORS.map((color,i)=>this.makeRival(color,i));
   this.crown=new T.Mesh(merge([new T.CylinderGeometry(.2,.17,.1,8,1,true),...[0,1,2,3,4].map(i=>new T.ConeGeometry(.05,.14,5).translate(Math.cos(i*1.257)*.18,.11,Math.sin(i*1.257)*.18))]),this.goldMat);this.crown.visible=false;s.add(this.crown);
@@ -280,6 +281,7 @@ export class ThreeMaze {
   else if(e.type==='level'){hud.banner(e.auto?'BLOCK CLEARED · NEXT BLOCK':'DISTRICT CLEARED');st.flashOnce(new T.Color(L.accent).getHex(),.35,this.reduced);this.flourish=e.auto?1.2:3.2;}
   else if(e.type==='dailyClear'){hud.banner('MAZE CLEARED · '+e.seconds+'s LEFT · +'+e.bonus);}
   else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);}
+  else if(e.type==='feat'){hud.pop('★ '+e.name,'gold');}
   else if(e.type==='over'){st.shake(1);st.flashOnce(0xff3355,.4,this.reduced);}
  }
  draw(g,d,reduced=false){
@@ -305,7 +307,7 @@ export class ThreeMaze {
   // Treats.
   let n=0,pw=0;const d3=this.dummy,spots=this.dark.material.uniforms.uSpots.value;for(const h of this.halos)h.visible=false;
   for(const [k,c]of g.pellets){const i=k.indexOf(','),x=+k.slice(0,i),y=+k.slice(i+1);if(c==='o'){if(pw<8){const s=reduced?1:1+Math.sin(real*5+x)*.16;d3.position.set(x,.34,y);d3.rotation.set(0,real*1.5,.35);d3.scale.setScalar(s);d3.updateMatrix();this.powers.setMatrixAt(pw,d3.matrix);const h=this.halos[pw];h.visible=true;h.position.set(x,.36,y);h.scale.setScalar(1.5*s);if(pw<4)spots[pw].set(x,y,1);pw++;}}
-   else if(n<420){d3.position.set(x,.2+(reduced?0:Math.sin(real*3+x*1.3+y*.7)*.03),y);d3.rotation.set(0,(x*7+y*3)%3+real*.6,0);d3.scale.setScalar(1.25+pm*.2);d3.updateMatrix();this.pellets.setMatrixAt(n++,d3.matrix);}}
+   else if(n<420){d3.position.set(x,.2+(reduced?0:Math.sin(real*3+x*1.3+y*.7)*.03),y);d3.rotation.set(0,(x*7+y*3)%3+real*.6,0);d3.scale.setScalar(1.02+pm*.2+this.firstMix*.5);d3.updateMatrix();this.pellets.setMatrixAt(n++,d3.matrix);}}
   for(let i=pw;i<4;i++)spots[i].z=0;this.pellets.count=n;this.powers.count=pw;this.pellets.instanceMatrix.needsUpdate=true;this.powers.instanceMatrix.needsUpdate=true;
   this.loot.visible=!!g.loot;if(g.loot){this.loot.position.set(g.loot.x,.12+Math.sin(real*3)*.06,g.loot.y);this.loot.rotation.y=real*2;this.loot.scale.setScalar(g.loot.time<3&&Math.floor(real*8)%2?.8:1.15);}
   this.chests.count=g.chests?.length||0;this.chestGlow.forEach((h,i)=>{const c=g.chests?.[i];h.visible=!!c;if(!c)return;d3.position.set(c.x,.05+Math.abs(Math.sin(real*2+i))*.05,c.y);d3.rotation.set(0,i,0);d3.scale.setScalar(1);d3.updateMatrix();this.chests.setMatrixAt(i,d3.matrix);h.position.set(c.x,.4,c.y);});this.chests.instanceMatrix.needsUpdate=true;
@@ -348,7 +350,7 @@ export class ThreeMaze {
   this.holder.visible=!this.first&&!(g.invincible>0&&g.status==='playing'&&!this.reduced&&Math.floor(real*10)%2===0);this.playerShadow.visible=!this.first;
   this.lamp.position.set(p.x+Math.sin(this.yaw)*.5,1.5,p.y+Math.cos(this.yaw)*.5+.6);this.lamp.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xfff0c8);this.lamp.intensity=(this.quality==='high'?9:7)*(1+this.darkMix*.8+(beast?.5:0));
   this.marker.position.set(p.x,.03,p.y);this.marker.rotation.y=real*1.2;this.marker.scale.setScalar((beast?2.6:2)+(this.reduced?0:Math.sin(real*5)*.08));this.marker.material.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xc8ff5a).multiplyScalar(1.5);this.marker.visible=this.holder.visible;this.placeBody(g,real,dt,moving);
-  this.playerShadow.position.set(p.x,.02,p.y);
+  this.playerShadow.position.set(p.x,.02,p.y);this.aura.position.set(p.x,.7,p.y);this.aura.visible=!this.first;this.aura.material.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xfff0b0).multiplyScalar(beast?1.3:.9);this.aura.scale.setScalar(beast?3.4:2.6);
   if(moving&&!this.reduced&&(dash||beast||g.corner>0))this.particles.burst(p.x,.3,p.y,dash?3:1,dash?0x63f6ff:beast?0x9cff6a:0xfff2a0,{speed:.8,life:.4,gravity:0,up:.2});
   this.px=p.x;this.py=p.y;
  }

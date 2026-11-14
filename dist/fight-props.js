@@ -108,7 +108,7 @@ export class Director {
  rnd(){let a=this.rs=(this.rs+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}
  /** Begin a finisher. w/l are the scene's rigs; ox is where the midpoint sits; dir is +1 if the winner is on the left. */
  start(id,{w,l,ox=0,dir=1,seed=1,loop=false}){
-  this.stop();const cine=CINES[id];if(!cine)return false;this.id=id;this.dur=cine.dur;this.t=0;this.holdT=0;this.rs=seed>>>0||1;this.ox=ox;this.dir=dir;this.loop=loop;this.active=true;this.lc=l.color;
+  this.stop();const cine=CINES[id];if(!cine)return false;this.id=id;this.dur=cine.dur;this.t=0;this.holdT=0;this.rs=seed>>>0||1;this.seed0=this.rs;this.done=false;this.ox=ox;this.dir=dir;this.loop=loop;this.active=true;this.lc=l.color;
   this.A={w:{rig:w,pos:[-1.1,0,0],rot:[0,0,0],scale:[1,1,1],vis:true,pose:'stand',base:Math.PI/2,pt:0},l:{rig:l,pos:[1.1,0,0],rot:[0,0,0],scale:[1,1,1],vis:true,pose:'dizzy',base:-Math.PI/2,pt:0}};
   this.cp=[0,1.5,5.6];this.ca=[0,1.15,0];this.fov=40;this.followT=null;this.tracks=[];cine.run(this);this.tracks.sort((a,b)=>a.t0-b.t0);
   this.s.cineBegin();return true;}

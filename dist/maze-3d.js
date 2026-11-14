@@ -20,7 +20,7 @@ const PITCH=58*Math.PI/180,VFOV=36;
 // How each district looks. `wall` tints instances; `win` are the lit-window colours.
 const LOOKS={
  market:{ground:'#17100f',pave:'#5a4046',pave2:'#4e363e',line:'#ffcf8a',wall:[0xb86a4a,0xa8523e,0xc98a52,0x8f4a48],roof:[0xd8523a,0xe6b04a,0x2f9c92,0xe8e0d0],win:['#ffe2a8','#ffb45e','#ff8f5a'],glow:0xff7a59,accent:0xffd166,sky:0x180a14,horizon:0x4a1c18,fog:0x1c0d10,heights:[.5,.74,1.05],awning:.62,strings:.3,signs:6},
- arcade:{ground:'#0c0a18',pave:'#3a2f66',pave2:'#322858',line:'#7ef0ff',wall:[0x5a48a8,0x4a3a98,0x6a4ab8,0x3f3a90],roof:[0x2a2250,0x332a66,0x241d48,0x3a2a70],win:['#7ef0ff','#ff7ae0','#fff07a'],glow:0xb06bff,accent:0x3ee8f0,sky:0x08061a,horizon:0x2a1456,fog:0x120a26,heights:[.5,.8,1.15],awning:.25,strings:0,signs:8},
+ arcade:{ground:'#0c0a18',pave:'#3a2f66',pave2:'#322858',line:'#7ef0ff',wall:[0x5a48a8,0x4a3a98,0x6a4ab8,0x3f3a90],roof:[0x6a58c8,0x8a4ad0,0x4a6ad8,0xb04ac0],win:['#7ef0ff','#ff7ae0','#fff07a'],glow:0xb06bff,accent:0x3ee8f0,sky:0x08061a,horizon:0x2a1456,fog:0x120a26,heights:[.5,.8,1.15],awning:.25,strings:0,signs:8},
  docks:{ground:'#070d14',pave:'#3c5266',pave2:'#34485a',line:'#ffc94a',wall:[0xc8553a,0x2f7fc0,0x2fa58c,0xd8b23a,0xd0d6dc,0x8a5ac0],roof:[0xb04a34,0x2a6fa8,0x2a917a,0xc09c34,0xb8bec4,0x7a50aa],win:['#ffe9b0','#ff5a4a','#7ef0ff'],glow:0x3fb8ff,accent:0xffb347,sky:0x050b16,horizon:0x12324a,fog:0x0a1620,heights:[.56,.56,1.12],awning:0,strings:0,signs:0},
  garden:{ground:'#0a120c',pave:'#6a5c44',pave2:'#5e523c',line:'#d8ffb0',wall:[0x3f9a48,0x4aa850,0x358a44,0x58b058],roof:[0x56b85a,0x62c462,0x4aa850,0x70cc68],win:['#ffd0f0','#fff2a0','#ff9ad8'],glow:0x7be36a,accent:0xff8ad8,sky:0x06101a,horizon:0x14383a,fog:0x0a1a16,heights:[.42,.56,.72],awning:0,strings:.18,signs:0}
 };

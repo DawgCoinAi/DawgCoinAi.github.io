@@ -157,3 +157,138 @@ test('Chat is a destination in the shell, wired to games and the results card',(
  assert.doesNotMatch(js+read('../dist/chat-debug.js'),/sb_secret|service_role/);
  assert.match(read('../SUPABASE_SETUP.md'),/20261114000000_chat\.sql/);
 });
+
+// ── DAWG Chat v2: rooms, roles, moderation, replies, mentions, edits ──────────────────────────
+import * as core from '../dist/chat-core.js';
+const sql2=read('../supabase/migrations/20261115000000_chat_v2.sql');
+const fn2=name=>{const at=sql2.indexOf('function public.'+name+'(');assert.ok(at>=0,name+' is defined');const end=sql2.indexOf('\nend $$;',at),end2=sql2.indexOf('\n$$;',at);return sql2.slice(at,Math.min(...[end,end2].filter(n=>n>0))+8);};
+
+test('Roles: nobody moderates the owner, only the owner moderates mods, nobody escalates',()=>{
+ const {can,canModerate,normRole,isStaff,badgeOf}=core;
+ assert.equal(normRole('admin'),'member');assert.equal(normRole(undefined),'member');assert.ok(isStaff('mod')&&isStaff('owner')&&!isStaff('member'));
+ assert.deepEqual(['owner','mod','member','x'].map(badgeOf),['OWNER','MOD','','']);
+ assert.ok(canModerate('mod','member'));assert.ok(!canModerate('mod','mod'));assert.ok(!canModerate('mod','owner'));assert.ok(canModerate('owner','mod'));assert.ok(!canModerate('owner','owner'));assert.ok(!canModerate('member','member'));assert.ok(!canModerate('owner','member',true),'not yourself');
+ for(const a of ['timeout','ban','setRole','pin','slow','lock','rooms','rules','announce','queue','log'])assert.ok(!can('member',a,{target:'member'}),'members can’t '+a);
+ for(const a of ['timeout','pin','slow','queue','log','sanctions','postLocked'])assert.ok(can('mod',a,{target:'member'}),'mods can '+a);
+ for(const a of ['ban','setRole','lock','rooms','rules','announce','archive'])assert.ok(!can('mod',a,{target:'member'}),'mods can’t '+a);
+ for(const a of ['ban','setRole','lock','rooms','rules','announce','timeout'])assert.ok(can('owner',a,{target:'mod'}),'the owner can '+a);
+ assert.ok(!can('owner','setRole',{target:'owner'}));assert.ok(can('member','delete',{mine:true}));assert.ok(!can('member','delete',{target:'member'}));assert.ok(can('mod','delete',{target:'member'}));assert.ok(!can('mod','delete',{target:'owner'}));
+ assert.deepEqual(core.TIMEOUTS.mod,[5,60,1440]);assert.ok(core.TIMEOUTS.owner.includes(10080));assert.deepEqual([5,60,1440,10080].map(core.timeoutLabel),['5 min','1 h','1 day','1 week']);
+});
+
+test('The post gate: bans, hidden profiles, time-outs, rules, locked rooms and slow mode',()=>{
+ const g=(me,room={},o={})=>core.postGate({me,room,now:1e6,...o}).reason;
+ assert.equal(g({role:'member',agreed:true}),'');assert.equal(g({role:'member',agreed:true,banned:true}),'banned');assert.equal(g({role:'member',agreed:true},{},{hidden:true}),'hidden');
+ assert.equal(g({role:'member',agreed:true,muted_until:new Date(1e6+60000).toISOString()}),'timeout');assert.equal(core.postGate({me:{muted_until:new Date(1e6+60000).toISOString()},now:1e6}).wait,60000);
+ assert.equal(g({role:'member',agreed:true,muted_until:new Date(1e6-1).toISOString()}),'','an expired time-out is over');
+ assert.equal(g({role:'member',agreed:false}),'rules');assert.equal(g({role:'mod',agreed:false}),'','staff skip the rules step');
+ assert.equal(g({role:'member',agreed:true},{locked:true}),'locked');assert.equal(g({role:'mod',agreed:true},{locked:true}),'');
+ assert.equal(g({role:'member',agreed:true},{slow:10},{lastAt:1e6-4000}),'slow');assert.equal(core.postGate({me:{agreed:true},room:{slow:10},lastAt:1e6-4000,now:1e6}).wait,6000);
+ assert.equal(g({role:'member',agreed:true},{slow:10},{lastAt:1e6-10000}),'');assert.equal(g({role:'owner'},{slow:10},{lastAt:1e6-1}),'','staff skip slow mode');
+ assert.equal(core.slowWait(0,10,5,'member'),0);assert.deepEqual([999,59000,61000,7200000].map(core.waitLabel),['1 s','59 s','2 min','2 h']);
+ assert.match(core.errorHint('slow mode 7 seconds'),/Wait 7 more seconds/);assert.match(core.errorHint('banned from chat'),/banned/);assert.match(core.errorHint('room is locked'),/locked/);
+ assert.match(core.errorHint('agree to the chat rules first'),/rules/);assert.match(core.errorHint('you can not moderate that player'),/can’t moderate/);assert.match(core.errorHint('too late to edit'),/5 minutes/);
+});
+
+test('Mentions: @Name with _ for spaces, never inside words or e-mail addresses, at most five',()=>{
+ assert.deepEqual(core.mentionTokens('hi @Nova. and @Top_Dog, mail a@b.com and @nova again'),['nova','top_dog']);
+ assert.deepEqual(core.mentionTokens('@a1 @b2 @c3 @d4 @e5 @f6'),['a1','b2','c3','d4','e5']);assert.deepEqual(core.mentionTokens('no@mention here'),[]);
+ assert.equal(core.mentionHandle('Top  Dog'),'Top_Dog');assert.ok(core.mentions('yo @top_dog!','Top Dog'));assert.ok(!core.mentions('yo @top','Top Dog'));
+ assert.deepEqual(core.mentionParts('hey @Rex! <b>'),[{text:'hey '},{text:'@Rex',mention:'rex'},{text:'! <b>'}],'parts stay plain text');
+ assert.deepEqual(core.mentionQuery('hello @No',9),{start:6,query:'No'});assert.equal(core.mentionQuery('a@b',3),null);assert.deepEqual(core.mentionQuery('@',1),{start:0,query:''});
+ const people=[{name:'Nova'},{name:'Top Dog'},{name:'Snowy'},{name:'nova'}];assert.deepEqual(core.mentionSuggest('no',people).map(p=>p.handle),['Nova','Snowy']);assert.equal(core.mentionSuggest('',people).length,3);
+ assert.deepEqual(core.applyMention('hey @to and',4,7,'Top_Dog'),{text:'hey @Top_Dog  and',caret:13});
+ // The server uses the same pattern.
+ assert.ok(fn2('chat_mentions_in').includes("'(^|[^A-Za-z0-9_])@([A-Za-z0-9](?:[A-Za-z0-9_.-]{0,22}[A-Za-z0-9])?)'"));
+ assert.equal(core.MENTION.source,'(^|[^A-Za-z0-9_])@([A-Za-z0-9](?:[A-Za-z0-9_.-]{0,22}[A-Za-z0-9])?)');
+ assert.match(fn2('chat_mentions_in'),/limit 5/);assert.ok(fn2('chat_mentions_in').includes("replace(coalesce(p.display_name, 'Guest ' || p.friend_code), ' ', '_')"));
+});
+
+test('Replies, edits and v2 rows from the server',()=>{
+ const t=1.8e12,m={id:5,at:t,mine:true,body:'hi'};
+ assert.ok(core.canEdit(m,t+299999));assert.ok(!core.canEdit(m,t+300001));assert.ok(!core.canEdit({...m,mine:false},t));assert.ok(!core.canEdit({...m,pending:true},t));assert.ok(!core.canEdit({...m,body:''},t),'moment-only posts have no text to edit');
+ assert.equal(core.lastEditable([m,{...m,id:6},{...m,id:7,mine:false}],t).id,6);assert.equal(core.lastEditable([m],t+400000),null);assert.equal(core.EDIT_MS,300000);
+ const r=core.normalizeRow({id:9,created_at:new Date(t).toISOString(),body:'x',role:'mod',room:'bite-night',reply_id:4,reply_player:' Rex ',reply_body:'y'.repeat(200),edited:true,pinned:true,kind:'announce',mentions_me:true});
+ assert.deepEqual([r.role,r.room,r.edited,r.pinned,r.kind,r.mentionsMe],['mod','bite-night',true,true,'announce',true]);assert.deepEqual(r.reply,{id:4,player:'Rex',body:'y'.repeat(90)});
+ const j=core.normalizeRow({id:9,created_at:new Date(t).toISOString(),body:'x',role:'god',room:'../x',reply_id:'nope',kind:'<script>',edited:'yes',mentions_me:1});
+ assert.deepEqual([j.role,j.room,j.reply,j.kind,j.edited,j.mentionsMe],['member','lobby',null,'msg',false,false]);
+ const at=h=>new Date(2026,10,14,h).getTime(),row=(id,o={})=>({id,at:at(9)+id*1000,body:'x',player:'Nova',code:'3FA9C210',mine:false,kind:'msg',...o});
+ assert.deepEqual(core.groupFlags([row(1),row(2),row(3,{reply:{id:1}}),row(4,{kind:'announce'}),row(5)]).map(f=>f.first),[true,false,true,true,true]);
+ assert.equal(core.unreadIndex([row(1),row(2,{mine:true}),row(3)],1),2);assert.equal(core.unreadIndex([row(1)],0),-1);assert.equal(core.unreadIndex([row(1)],5),-1);
+});
+
+test('Rooms, presence and typing',()=>{
+ assert.deepEqual(core.DEFAULT_ROOMS.map(r=>r.slug),['lobby','bite-night','it-learns','help','looking-for-match']);
+ for(const r of core.DEFAULT_ROOMS)assert.ok(sql2.includes(`('${r.slug}', '${r.title}',`),r.slug+' is seeded by the server');
+ assert.ok(core.roomSlugOk('it-learns')&&!core.roomSlugOk('It')&&!core.roomSlugOk('-x')&&!core.roomSlugOk('a'.repeat(25)));
+ const room=core.normalizeRoom({slug:'help',title:' help ',topic:'t',locked:true,slow_seconds:'30',last_id:12});assert.deepEqual([room.title,room.locked,room.slow,room.lastId],['help',true,30,12]);
+ assert.equal(core.normalizeRoom({slug:'NOPE'}),null);assert.equal(core.normalizeRoom({slug:'ok',slow_seconds:99999}).slow,0);
+ assert.equal(core.roomForGame('fight'),'bite-night');assert.equal(core.roomForGame('nemesis'),'it-learns');
+ const p=core.presenceRooms({a:[{code:'AAAAAAAA',name:'Nova',room:'lobby',level:4,role:'member'}],b:[{code:'BBBBBBBB',name:'TopX',room:'lobby',role:'owner'},{code:'BBBBBBBB',name:'TopX again',room:'help'}],c:[{code:'bad',name:'x'}],d:[{code:'CCCCCCCC',name:'<i>',room:'../evil'}]});
+ assert.equal(p.total,3);assert.deepEqual(p.rooms.lobby.map(x=>x.name),['TopX','<i>','Nova'],'owner first, one entry per player, bad rooms fall back to the lobby');
+ assert.equal(core.typingLine([]),'');assert.equal(core.typingLine(['Moxie']),'Moxie is typing…');assert.equal(core.typingLine(['A','B']),'A and B are typing…');assert.equal(core.typingLine(['A','B','C','D']),'Several people are typing…');
+ assert.match(core.logLine({actor:'TopX',action:'timeout',target:'Rex',detail:{minutes:60}}),/TopX timed out Rex for 1 h/);assert.match(core.logLine({actor:'TopX',action:'make_mod',target:'Nova'}),/made Nova a mod/);
+ assert.match(core.logLine({actor:'Moxie',action:'room',room:'lobby',detail:{slow:10}}),/slow mode 10s/);assert.equal(core.REPORT_REASONS.length,5);assert.ok(core.EMOJI_PICKER.length>=40);
+});
+
+test('v2 SQL: new tables locked down, every write through a role-checked function',()=>{
+ for(const t of ['chat_rooms','chat_roles','chat_bans','chat_mod_log','chat_config','chat_rules_ack']){
+  assert.match(sql2,new RegExp(`create table if not exists public\\.${t} \\(`),t);assert.match(sql2,new RegExp(`alter table public\\.${t} enable row level security`),t+' has RLS');
+  assert.match(sql2,new RegExp(`revoke all on public\\.${t} from public, anon, authenticated`),t+' is closed to clients');}
+ // Clients read only signal columns of messages (for Realtime); text and authors come through chat_feed.
+ assert.ok(sql2.includes('revoke select on public.chat_messages from authenticated;\ngrant select (id, room, created_at, touched_at, deleted, hidden, pinned_at) on public.chat_messages to authenticated;'));
+ assert.match(sql2,/pg_publication_tables where pubname = 'supabase_realtime'/,'adding to the Realtime publication is safe to re-run');
+ assert.equal((sql2.match(/\$\$/g)||[]).length%2,0);assert.doesNotMatch(sql2,/sb_secret|service_role/);
+ const helpers=sql2.slice(sql2.indexOf('-- Helpers: nobody calls these directly.'),sql2.indexOf('-- Player and staff functions'));
+ assert.ok(helpers.includes("revoke all on function public.%s from public, anon, authenticated"));
+ for(const f of ['chat_role_of(uuid)','chat_is_staff(uuid)','chat_log(text, uuid, bigint, text, text, jsonb)','chat_can_moderate(uuid)','chat_target(text)','chat_name(uuid)','chat_mentions_in(text)'])assert.ok(helpers.includes(`'${f}'`),f+' is not callable by players');
+ const grants=sql2.slice(sql2.indexOf('-- Player and staff functions'));
+ for(const f of ['chat_send(text, text, jsonb, bigint, boolean)','chat_post(text, jsonb)','chat_edit(bigint, text)','chat_me()','chat_agree(int)','chat_rooms()','chat_feed(text, bigint, bigint, int, boolean)','chat_mentions(bigint)','chat_staff()','chat_react(bigint, text)','chat_report(bigint, text)','chat_delete(bigint)','chat_timeout(text, int, text)','chat_mute(text, int)','chat_ban(text, text)','chat_unban(text)','chat_set_role(text, text)','chat_sanctions()','chat_report_queue()','chat_resolve_report(bigint, text, text)','chat_pin(bigint, boolean)','chat_room_settings(text, int, boolean, text, text, boolean)','chat_room_create(text, text)','chat_set_rules(text)','chat_mod_log(bigint, int)','delete_my_data()']){
+  assert.ok(grants.includes(`'${f}'`),f+' is granted to signed-in players only');const name=f.slice(0,f.indexOf('('));const at=sql2.indexOf('function public.'+name+'(');assert.match(sql2.slice(at,at+900),/security definer set search_path = public/,name);}
+ assert.match(grants,/revoke all on function public\.%s from public, anon'/);assert.match(grants,/grant execute on function public\.%s to authenticated'/);
+});
+
+test('v2 SQL: staff functions check the caller’s role and write the audit log',()=>{
+ const staffOnly=['chat_timeout','chat_sanctions','chat_report_queue','chat_resolve_report','chat_pin','chat_room_settings','chat_mod_log'],ownerOnly=['chat_ban','chat_unban','chat_set_role','chat_room_create','chat_set_rules'];
+ for(const f of staffOnly)assert.ok(fn2(f).includes("if not chat_is_staff(auth.uid()) then raise exception 'only staff can do that'"),f+' is staff only');
+ for(const f of ownerOnly)assert.ok(fn2(f).includes("if chat_role_of(auth.uid()) <> 'owner' then raise exception 'only the arcade owner can do that'"),f+' is owner only');
+ assert.match(fn2('chat_mute'),/arcade_owners where user_id = auth\.uid\(\)/);
+ const cm=fn2('chat_can_moderate');for(const s of ["chat_role_of(p_target) <> 'owner'","chat_role_of(p_target) = 'member' or chat_role_of(auth.uid()) = 'owner'",'p_target is distinct from auth.uid()'])assert.ok(cm.includes(s),s);
+ for(const f of ['chat_timeout','chat_ban'])assert.ok(fn2(f).includes('if not chat_can_moderate(target) then raise exception'),f+' respects the hierarchy');
+ assert.ok(fn2('chat_timeout').includes("= 'mod' and span not in (0, 5, 60, 1440)"),'mods get three lengths');assert.ok(fn2('chat_set_role').includes("p_role not in ('mod', 'member')"));assert.ok(fn2('chat_set_role').includes("chat_role_of(target) = 'owner'"));
+ assert.ok(fn2('chat_room_settings').includes('if not owner and (p_locked is not null or p_title is not null or p_topic is not null or p_archived is not null)'),'mods only change slow mode');
+ assert.ok(fn2('chat_delete').includes("chat_can_moderate(m.author) or chat_role_of(uid) = 'owner'"));
+ const logged={chat_delete:'delete',chat_timeout:'timeout',chat_ban:'ban',chat_unban:'unban',chat_set_role:'make_mod',chat_pin:'pin',chat_room_settings:'room',chat_room_create:'room_create',chat_set_rules:'rules',chat_resolve_report:'report_',chat_send:'announce'};
+ for(const [f,a] of Object.entries(logged))assert.ok(fn2(f).includes('chat_log(')&&fn2(f).includes(`'${a}`),f+' writes the audit log');
+ assert.match(fn2('chat_log'),/insert into chat_mod_log \(actor, action, target, message_id, room, reason, detail\)\s+values \(auth\.uid\(\)/,'the actor is always the caller');
+ assert.ok(fn2('chat_report_queue').includes('r.resolved_at is null'));assert.ok(fn2('chat_report').includes('r.resolved_at is null'),'dismissed reports stop counting');
+});
+
+test('v2 SQL: chat_send enforces every rule, and v1 clients go through it',()=>{
+ const send=fn2('chat_send'),order=['banned from chat','public boards','chat muted for','agree to the chat rules','room is locked','only the arcade owner','message too long','message not allowed','bad moment','pg_advisory_xact_lock','slow down','slow mode','too many messages','duplicate message','insert into chat_messages'];
+ let at=-1;for(const s of order){const i=send.indexOf(s);assert.ok(i>at,s+' is checked, in order');at=i;}
+ for(const s of ['if r.locked and not staff','if r.slow_seconds > 0 and not staff','not staff and not exists (select 1 from chat_rules_ack',"coalesce(p_announce, false) and my_role <> 'owner'",'not archived','where id = p_reply and room = r.slug and not deleted','chat_mentions_in(clean)'])assert.ok(send.includes(s),'chat_send: '+s);
+ assert.ok(fn2('chat_post').includes("select chat_send('lobby', p_body, p_moment, null, false)"),'v1 posts follow every v2 rule');
+ for(const f of ['chat_react','chat_report','chat_edit'])assert.ok(fn2(f).includes("chat_bans where user_id = uid) then raise exception 'banned from chat'"),f+' is closed to banned players');
+ const edit=fn2('chat_edit');for(const s of ['m.author <> uid',"interval '5 minutes'",'chat_text_ok(clean)','edited_at = now()','until > now()'])assert.ok(edit.includes(s),'chat_edit: '+s);
+ const feed=fn2('chat_feed');for(const s of ['not m.deleted','not m.hidden or m.author = auth.uid()','p.is_public or m.author = auth.uid()','chat_reports x where x.message_id = m.id and x.user_id = auth.uid()','chat_role_of(m.author)','auth.uid() = any (m.mentions)'])assert.ok(feed.includes(s),'chat_feed: '+s);
+ assert.doesNotMatch(feed.slice(0,feed.indexOf('language sql')),/\bauthor\b|user_id/,'account ids never leave the server');
+ assert.ok(fn2('chat_agree').includes('p_version is distinct from v'));assert.ok(fn2('chat_set_rules').includes('rules_version = rules_version + 1'),'new rules ask everyone again');
+});
+
+test('v2 SQL: deleting your data covers the new chat tables too',()=>{
+ const wipe=fn2('delete_my_data'),before=fn('delete_my_data');
+ for(const line of before.match(/delete from [^;]+;/g))assert.ok(wipe.includes(line),'still removes: '+line);
+ for(const t of ['chat_bans where user_id','chat_roles where user_id','chat_rules_ack where user_id'])assert.ok(wipe.includes('delete from '+t+' = auth.uid()'),t);
+ for(const s of ['update chat_mod_log set actor = null where actor = auth.uid()','update chat_mod_log set target = null where target = auth.uid()','array_remove(mentions, auth.uid())'])assert.ok(wipe.includes(s),s);
+ assert.ok(wipe.indexOf('delete from chat_messages')<wipe.indexOf('delete from profiles'));
+ assert.match(read('../SUPABASE_SETUP.md'),/20261115000000_chat_v2\.sql/);
+});
+
+test('v2 view: chat keys stay in chat, staff tools only for staff, realtime with a polling fallback',()=>{
+ const js=read('../dist/chat.js'),html=read('../dist/index.html');
+ for(const id of ['chatShell','chatRooms','chatRoomList','chatPeople','chatPeopleList','chatMod','chatModBtn','chatModOpen','chatGate','chatContext','chatSuggest','chatTyping','chatPins','chatEmojiBtn','chatAnnounce','chatTopic','chatOnline','chatScrim'])assert.ok(html.includes(`id="${id}"`),id);
+ assert.ok(js.includes("$('viewChat').addEventListener('keydown',e=>{esc(e);e.stopPropagation();})"),'typing in chat never steers a game');
+ for(const s of ["postgres_changes',{event:'*',schema:'public',table:'chat_messages'}",".on('presence',{event:'sync'}","event:'typing'",'const live=this.live?.ok;if(!live||Date.now()-(this.lastFetch||0)>30000)this.refresh()',"$('chatModBtn').hidden=$('chatModOpen').hidden=!this.staffMode",'get staffMode(){return this.v2&&isStaff(this.role);}','catch(error){if(!isMissing(error)){if(this.v2===null)throw error;return true;}this.v2=false;'])assert.ok(js.includes(s),s);
+ assert.doesNotMatch(js+read('../dist/chat-core.js'),/innerHTML|insertAdjacentHTML|outerHTML|document\.write|\.href\s*=|createElement\('a'\)|el\('a'/);
+});

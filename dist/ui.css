@@ -671,7 +671,8 @@ dialog button.primary:not(.btn),.share-actions>button.primary:not(.btn){justify-
 .results-name{display:grid;gap:8px;margin:var(--sp-2) 18px 0;padding:12px;border-radius:var(--r-1);border:1px dashed var(--volt);text-align:left}
 .results-name[hidden]{display:none}
 .results-name label{font:700 var(--fs-2)/1.2 var(--ui-body);color:var(--volt)}
-.results-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);padding:16px 18px 0}
+.results-actions{position:sticky;bottom:0;z-index:2!important;display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:6px;padding:14px 18px 10px;background:linear-gradient(180deg,#0e101300,var(--ink-1) 14px)}
+@media (max-height:760px){.results-score{padding-top:12px}.results-score b{font-size:clamp(52px,15vw,80px)}.results-actions .btn.primary{min-height:50px}}
 .results-actions .btn.primary{grid-column:1/-1;min-height:56px;font-size:18px}
 .results-actions .btn[hidden]{display:none}
 .results-actions .btn:only-of-type,.results-actions .btn:not(.primary):nth-last-child(1):nth-child(2){grid-column:1/-1}

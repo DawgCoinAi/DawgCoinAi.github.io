@@ -60,7 +60,7 @@ export function aiInput(g,side){
   if(lv==='throw'){if(r()<P.block*.8){if(r()<.5)plan(ai,['8']);else plan(ai,['A']);return 0;}}
   else if(r()<pb){const wrong=ai.lvl<=2&&r()<.35,low=lv==='low'?!wrong:lv==='over'?wrong:r()<.3;ai.hold=low?D:0;const n=shot?14:Math.max(8,om.s+om.a-seen.mt+10);ai.q.push({b:G|(low?D:0),n});
    // The best rivals answer invulnerable moves on a read.
-   if(ai.lvl>=4&&om&&dist<1.4&&r()<.18&&me.meter>=100){ai.q=[];const up=F.specials.findIndex(id=>F.moves[id].inv&&F.moves[id].dmg>0);if(up>=0)plan(ai,[SLOT_TOKEN[up]]);}
+   if(ai.lvl>=4&&om&&dist<1.4&&r()<.18&&me.meter>=100){ai.q=[];const up=F.specials.findIndex(id=>F.moves[id].inv&&F.moves[id].dmg>0);if(up>=0)plan(ai,[SLOT_TOKEN[up]]);else ai.q.push({b:G|(low?D:0),n});}
    return rel(ai.q[0].b,me.face);}
   else if(ai.lvl<=2){ai.wait=6;}}
  if(ai.wait>0){ai.wait--;return 0;}

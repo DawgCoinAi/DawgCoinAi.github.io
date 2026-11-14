@@ -28,13 +28,14 @@ const STYLE=`.snake3d .s3-stage{position:absolute;left:18px;top:calc(var(--d3-to
 .snake3d .s3-radar{position:absolute;left:14px;top:calc(var(--d3-top) + clamp(60px,9vw,92px));width:clamp(150px,36vmin,250px);height:auto;border-radius:50%;border:1px solid #7dffb088;background:#050812e0;box-shadow:0 0 24px #000a}
 .snake3d .s3-powers{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 8px);transform:translateX(-50%);display:flex;gap:6px}
 .snake3d .s3-powers span{padding:5px 10px;border-radius:999px;background:#0b0a16d0;border:1px solid currentColor;font:800 10px var(--mono);letter-spacing:1px;white-space:nowrap}
-.snake3d .s3-warn{position:absolute;left:50%;top:27%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#2a0a14e0;border:1px solid #ff4f6a;color:#ffe0e5;font:900 clamp(14px,2.8vw,22px)/1 var(--display);letter-spacing:1px;box-shadow:0 0 24px #ff4f6a88;white-space:nowrap}
+.snake3d .s3-warn{position:absolute;left:50%;top:35%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:#2a0a14e0;border:1px solid #ff4f6a;color:#ffe0e5;font:900 clamp(14px,2.8vw,22px)/1 var(--display);letter-spacing:1px;box-shadow:0 0 24px #ff4f6a88;white-space:nowrap}
 .snake3d .s3-warn[data-soft="1"]{background:#0b1a12e0;border-color:#7dffb0;color:#dfffe9;box-shadow:0 0 18px #7dffb055}
 .snake3d .s3-edge{position:absolute;top:44%;padding:10px 12px;border-radius:14px;background:#141003d9;border:1px solid #ffd25e;color:#ffe08a;font:900 clamp(16px,3vw,24px)/1 var(--display);box-shadow:0 0 22px #ffb43a66}
 .snake3d .s3-edge[data-side=left]{left:10px}.snake3d .s3-edge[data-side=right]{right:10px}.snake3d .s3-edge[data-side=back]{left:50%;top:auto;bottom:30%;transform:translateX(-50%)}
 .snake3d .s3-tip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 96px);transform:translateX(-50%);max-width:82%;padding:8px 14px;border-radius:12px;background:#0b0a16d9;border:1px solid #ffd25e88;color:#ffe9b0;font:700 12px/1.35 var(--mono);text-align:center}
 .snake3d .s3-boost{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 84px);width:84px;height:84px;border-radius:50%;border:2px solid #ffd25eaa;background:#171003d9;color:#ffe9b0;font:900 13px var(--display);letter-spacing:1px;pointer-events:auto;touch-action:none;cursor:pointer;box-shadow:0 0 22px #ffb43a55}
 .snake3d .s3-boost small{display:block;font:700 9px var(--mono);opacity:.8}.snake3d .s3-boost[data-on="1"]{background:#ffd25e;color:#1a1203;box-shadow:0 0 34px #ffb43a}
+@media (max-width:520px){.snake3d .s3-fp{left:12px;transform:none;top:auto;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 150px);font-size:9px}}
 .snake3d [hidden]{display:none!important}@media (pointer:fine){.snake3d .s3-boost{width:64px;height:64px;font-size:11px}}`;
 
 export class ThreeSnake {
@@ -140,7 +141,7 @@ export class ThreeSnake {
   this.curtainMat.opacity+=((g.wrap?.55+beat*.2:0)-this.curtainMat.opacity)*Math.min(1,dt*4);
   // Bodies.
   const seg=this.glide(g.body,g.dir,g),n0=seg.length-1;this.gulp+=dt;this.deadT=over?this.deadT+dt:0;this.poolN=0;const dead=over&&!reduced?Math.min(1,this.deadT*1.6):over?1:0;
-  let n=this.lay(seg,0,L[2],L[3],{tall:1+mix*1.5,dead,wave:reduced?-9:this.gulp*26,skip:1});
+  let n=this.lay(seg,0,L[2],L[3],{tall:1+mix*.9,dead,wave:reduced?-9:this.gulp*26,skip:1});
   (g.rivals||[]).forEach((v,i)=>{// Rivals move every other step; each segment is drawn sliding from where it was to where it is, so a turn never snaps.
    const rf=playing?Math.min(1,(g.elapsed+(g.stepN%2?g.interval:0))/(g.interval*2)):1,rs=v.body.map((p,j)=>{const from=v.body[j+1]||p;return Math.abs(from.x-p.x)+Math.abs(from.y-p.y)>1?{x:p.x,y:p.y,cut:true}:{x:from.x+(p.x-from.x)*rf,y:from.y+(p.y-from.y)*rf};}),c=RIVAL[v.kind];n=this.lay(rs,n,c,c.clone().multiplyScalar(.45),{tall:1+mix*1.5,skip:1});const hd=this.rivalHeads[i],dx=rs[0].x-(rs[1]?.x??rs[0].x),dz=rs[0].y-(rs[1]?.y??rs[0].y);hd.visible=true;hd.position.set(rs[0].x,0,rs[0].y);if(Math.abs(dx)+Math.abs(dz)>.01&&Math.abs(dx)+Math.abs(dz)<1.5)hd.rotation.y=Math.atan2(dx,dz);hd.children[0].material.color.copy(c);hd.children[0].material.emissive.copy(c);});
   for(let i=(g.rivals||[]).length;i<3;i++)this.rivalHeads[i].visible=false;

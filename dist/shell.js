@@ -8,7 +8,7 @@ const $=id=>document.getElementById(id);
 // Elements the home screen adds are optional: an older index.html (or a test DOM) may lack them.
 const opt=id=>{try{return document.getElementById(id)||null;}catch{return null;}};
 export const VIEWS=['play','rankings','friends','chat','me'];
-const POSTER={classic:'maze',rush:'maze',daily:'maze'};
+const POSTER={classic:'maze'};
 export const posterOf=id=>`assets/posters/${POSTER[id]||id}.jpg`;
 // One paragraph of copy per game for the game sheet and the jump-back-in panel.
 export const BLURBS={

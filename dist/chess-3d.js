@@ -234,7 +234,7 @@ export class ThreeChess {
   // The attack ends on its decisive blow; then the defender goes out in its own way.
   if(ep)await enPassant(X);else await ATTACK[M.attack](X);
   await DEFEAT[M.defeat](X);vic.visible=false;
-  if(!quick)await VICTORY[M.victory](X);
+  if(!quick&&!m.promo)await VICTORY[M.victory](X);
   // The victor takes the square.
   const a=att.position.clone(),b=X.to,y0=att.rotation.y,y1=this.homeYaw(att.userData.c),dy=Math.atan2(Math.sin(y1-y0),Math.cos(y1-y0));this.cam({at:b.clone().setY(.5),yaw:1.2,pitch:.5,w:4.4,h:3.2,dur:.35});
   await this.tween(.32,k=>{const e=ease(k);att.position.lerpVectors(a,b,e);att.position.y=Math.sin(e*Math.PI)*.3;att.rotation.set(att.rotation.x*(1-e),y0+dy*e,att.rotation.z*(1-e));att.scale.setScalar(1);});this.dust(b,6);}

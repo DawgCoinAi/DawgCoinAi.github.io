@@ -41,6 +41,7 @@ const STYLE=`.flappy3d .f3-zone{position:absolute;left:18px;top:calc(var(--d3-to
 .flappy3d .f3-tip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 96px);transform:translateX(-50%);max-width:82%;padding:8px 14px;border-radius:12px;background:#0b0a16d9;border:1px solid #ffd25e88;color:#ffe9b0;font:700 12px/1.35 var(--mono);text-align:center}
 .flappy3d .f3-dive{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 84px);width:84px;height:84px;border-radius:50%;border:2px solid #5ee7ffaa;background:#07101cd9;color:#dffaff;font:900 14px var(--display);letter-spacing:1px;pointer-events:auto;touch-action:none;cursor:pointer;box-shadow:0 0 22px #5ee7ff55;--cd:0;background-image:conic-gradient(#5ee7ff55 calc(var(--cd)*360deg),#0000 0)}
 .flappy3d .f3-dive small{display:block;font:700 9px var(--mono);letter-spacing:1px;opacity:.8}.flappy3d .f3-dive[data-ready="0"]{opacity:.55}
+@media (max-width:520px){.flappy3d .f3-fp{left:12px;transform:none;top:auto;bottom:calc(env(safe-area-inset-bottom) + var(--d3-bottom) + 150px);font-size:9px}}
 .flappy3d [hidden]{display:none!important}@media (pointer:fine){.flappy3d .f3-dive{width:64px;height:64px;font-size:12px}}`;
 
 export class ThreeFlappy {
@@ -183,7 +184,7 @@ export class ThreeFlappy {
   // DAWG. A burn squashes and springs back, the wings beat, a dive tucks them; a crash tumbles.
   this.flapT+=dt;if(over){this.deadT+=dt;this.fall=Math.min(p.y+12,this.fall+(4+this.deadT*26)*dt);this.spin+=dt*9;}else{this.deadT=0;this.fall=0;this.spin=0;}
   const boost=g.boost>0,beat=reduced?0:Math.exp(-this.flapT*9),sq=beat*.2;this.holder.position.set(p.x,p.y-this.fall,0);this.holder.rotation.z=reduced?0:over?tilt-this.spin:tilt*(first?.5:1);this.holder.scale.set(1+sq*.5,1-sq,1+sq*.5);
-  const dihedral=first?(boost?.5:.1+beat*.3):boost?.95:.5-beat*.95+(reduced?0:Math.sin(real*7)*.05);this.wingL.position.y=this.wingR.position.y=first?-.5:.22;this.wingL.rotation.x=-dihedral;this.wingR.rotation.x=dihedral;this.tipMat.color.set(boost?0xffffff:0x5ee7ff).multiplyScalar(boost?3:2);
+  const dihedral=first?(boost?.5:.1+beat*.3):boost?.95:.5-beat*.95+(reduced?0:Math.sin(real*7)*.05);this.wingL.position.y=this.wingR.position.y=first?-.78:.22;this.wingL.rotation.x=-dihedral;this.wingR.rotation.x=dihedral;this.tipMat.color.set(boost?0xffffff:0x5ee7ff).multiplyScalar(boost?3:2);
   const burn=playing?(boost?1.9:.5+beat*1.5):.2;this.flame.visible=this.flameGlow.visible=!over&&!first;this.trail.visible=!first;this.birdLight.intensity=first?2:6;this.wingMat.emissiveIntensity=first?.15:.55;this.flame.scale.set(burn*(reduced?1:.9+Math.random()*.2),.7+burn*.35,.7+burn*.35);this.flame.material.color.setRGB(boost?1.2:3,boost?2.6:1.6,boost?4:.5);this.flameGlow.scale.setScalar(.8+burn*.9);this.flameGlow.material.color.copy(this.flame.material.color).multiplyScalar(.8);
   this.bubble.visible=!!g.shield&&!over;this.bubble.scale.setScalar(reduced?1:1+Math.sin(real*5)*.05);this.holder.visible=!(this.asset&&g.ghost>0&&!reduced)||Math.floor(real*14)%2===0;
   // From the helmet camera the body would fill the screen: only the wings stay, low in the frame.

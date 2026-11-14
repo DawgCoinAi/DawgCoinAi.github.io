@@ -359,5 +359,5 @@ export async function checkmateScene(S,s,winner,from=[]){const g=S.pieces.get(s)
  if(g){g.scale.setScalar(1);g.userData.fallen=true;await kingFall(S,g,away,S.teamColor(g.userData.c),true);}
  // The hall erupts.
  S.cam({at:V(0,.6,0),yaw:.35,pitch:.5,w:10.5,h:8.5,dur:.9,drift:.3});S.sfx('fanfare');S.crowdHop=1;S.flinchT=0;S.flinchAmp=.45;S.flinchAt=kp.clone();
- for(let i=0;i<5;i++){S.puff(V((Math.random()-.5)*7,3.5+Math.random()*1.5,(Math.random()-.5)*7),60,[GOLD,wc,0xffffff][i%3],{speed:5,life:2,gravity:-4,up:2,spread:2});await S.wait(.22);if(i===2){S.crowdHop=1;S.flinchT=0;}}
- await S.wait(.5);return g?S.fx.children.find(o=>o.userData.crown)||null:null;}
+ for(let i=0;i<4;i++){S.puff(V((Math.random()-.5)*7,3.5+Math.random()*1.5,(Math.random()-.5)*7),60,[GOLD,wc,0xffffff][i%3],{speed:5,life:2,gravity:-4,up:2,spread:2});await S.wait(.18);if(i===2){S.crowdHop=1;S.flinchT=0;}}
+ await S.wait(.3);return g?S.fx.children.find(o=>o.userData.crown)||null:null;}

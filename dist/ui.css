@@ -740,6 +740,18 @@ dialog button.primary:not(.btn),.share-actions>button.primary:not(.btn){justify-
  .feat-dot.on i{transform:scaleX(1)}
 }
 
+/* ---------- In-game top bar and on-screen pad (shell chrome around every quick game) ---------- */
+/* SCORE and BEST each get an equal, clipped column and digits that shrink to fit it, so a long
+   score can never run into its neighbour. */
+.pack-header{gap:8px}
+.pack-header>div{flex:1 1 0;min-width:0;overflow:hidden;container-type:inline-size}
+.pack-header small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pack-header strong{font:700 condensed clamp(13px,23cqi,24px)/1.1 var(--ui-display);letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+@media (max-width:480px){.pack-header{gap:6px}.pack-header>button{width:40px;height:40px;font-size:20px}}
+/* With a mouse and keyboard the arrow pad is redundant, and in the full-window view it sat on top
+   of the bottom-right of the game. Touch screens keep it. */
+@media (hover:hover) and (pointer:fine){body.pack-session.pack-full .pack-controls .pack-dpad{display:none}}
+
 /* ---------- Settings, help and the rest ---------- */
 .setting-range{width:min(180px,45vw);accent-color:var(--volt)}
 .setting-row{border-bottom-color:var(--ui-line);padding:14px 0}

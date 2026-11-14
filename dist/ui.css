@@ -545,7 +545,7 @@ dialog button.primary:not(.btn),.share-actions>button.primary:not(.btn){justify-
 .sheet-demo.is-poster{animation:sheet-pan 18s ease-in-out infinite alternate}
 @keyframes sheet-pan{from{background-size:112%;background-position:30% 30%}to{background-size:130%;background-position:70% 70%}}
 .sheet-media::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#08090bf0 0,#08090b99 24%,#08090b00 52%);pointer-events:none}
-.sheet-badge{position:absolute;left:16px;top:16px;z-index:3;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-pill);background:#0b0c0fcc;color:var(--bone);font:700 10px/1 var(--ui-mono);letter-spacing:.16em}
+.sheet-badge{position:absolute;right:16px;top:16px;z-index:3;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-pill);background:#0b0c0fcc;color:var(--bone);font:700 10px/1 var(--ui-mono);letter-spacing:.16em}
 .sheet-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--rose);animation:ui-blink 1.4s ease-in-out infinite}
 .game-sheet.no-demo .sheet-badge{display:none}
 .sheet-headline{position:absolute;z-index:2;left:24px;right:24px;bottom:22px;display:grid;gap:8px;justify-items:start}

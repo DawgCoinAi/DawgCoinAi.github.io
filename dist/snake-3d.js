@@ -124,7 +124,7 @@ export class ThreeSnake {
  lay(seg,n,head,tail,{tall=1,dead=0,wave=-9,skip=0}={}){const d=this.dummy,col=this.col,last=seg.length-1;for(let i=skip;i<=last;i++){const p=seg[i],t=last?i/last:0,bulge=Math.exp(-((i-wave)**2)/3)*.4,s=(1-.32*t+bulge)*(1-dead*.7);col.copy(head).lerp(tail,t);if(dead)col.lerp(this.cDead,.8);else if(bulge>.02)col.lerp(col.clone().setRGB(1,.85,.35),Math.min(1,bulge*2.2));
    d.position.set(p.x,0,p.y);d.rotation.set(0,0,0);d.scale.set(s,s*tall,s);d.updateMatrix();this.joints.setMatrixAt(n,d.matrix);this.joints.setColorAt(n,col);
    const q=seg[i+1],linked=q&&!p.cut&&Math.abs(q.x-p.x)+Math.abs(q.y-p.y)<1.5;if(linked){const dx=q.x-p.x,dz=q.y-p.y,len=Math.hypot(dx,dz)||.001;d.position.set((p.x+q.x)/2,0,(p.y+q.y)/2);d.rotation.set(0,Math.atan2(dx,dz),0);d.scale.set(s,s*tall,len);}else d.scale.set(0,0,0);d.updateMatrix();this.links.setMatrixAt(n,d.matrix);this.links.setColorAt(n,col);
-   if(linked){d.scale.set(1,1,d.scale.z);d.position.y=.26*s*tall*.78+(.26*s*tall-.26)-.01;d.updateMatrix();}this.cores.setMatrixAt(n,d.matrix);this.cores.setColorAt(n,this.col.clone().multiplyScalar(dead?.6:2.6));
+   if(linked){d.scale.set(1,1,d.scale.z);d.position.y=.494*s*tall-.49;d.updateMatrix();}this.cores.setMatrixAt(n,d.matrix);this.cores.setColorAt(n,this.col.clone().multiplyScalar(dead?.6:2.6));
    if(this.poolN<this.pools.instanceMatrix.count&&i%2===0){d.position.set(p.x,0,p.y);d.rotation.set(0,0,0);d.scale.set(1,1,1);d.updateMatrix();this.pools.setMatrixAt(this.poolN,d.matrix);this.pools.setColorAt(this.poolN++,col);}n++;}return n;}
  render(g,now){
   this.stage.resize();if(this.rockSeed!==g.worldSeed||!this.rocks||this.rockCount!==g.rocks.length){this.rockCount=g.rocks.length;this.buildRocks(g);}const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
@@ -139,7 +139,8 @@ export class ThreeSnake {
   // Bodies.
   const seg=this.glide(g.body,g.dir,g),n0=seg.length-1;this.gulp+=dt;this.deadT=over?this.deadT+dt:0;this.poolN=0;const dead=over&&!reduced?Math.min(1,this.deadT*1.6):over?1:0;
   let n=this.lay(seg,0,L[2],L[3],{tall:1+mix*1.5,dead,wave:reduced?-9:this.gulp*26,skip:1});
-  (g.rivals||[]).forEach((v,i)=>{const rs=this.glide(v.body,v.dir,{...g,elapsed:g.stepN%2?g.elapsed+g.interval:g.elapsed,interval:g.interval*2,next:(p,d)=>g.next(p,d),status:g.status}),c=RIVAL[v.kind];n=this.lay(rs,n,c,c.clone().multiplyScalar(.45),{tall:1+mix*1.5,skip:1});const hd=this.rivalHeads[i],dx=rs[0].x-(rs[1]?.x??rs[0].x),dz=rs[0].y-(rs[1]?.y??rs[0].y);hd.visible=true;hd.position.set(rs[0].x,0,rs[0].y);if(Math.abs(dx)+Math.abs(dz)>.01&&Math.abs(dx)+Math.abs(dz)<1.5)hd.rotation.y=Math.atan2(dx,dz);hd.children[0].material.color.copy(c);hd.children[0].material.emissive.copy(c);});
+  (g.rivals||[]).forEach((v,i)=>{// Rivals move every other step; each segment is drawn sliding from where it was to where it is, so a turn never snaps.
+   const rf=playing?Math.min(1,(g.elapsed+(g.stepN%2?g.interval:0))/(g.interval*2)):1,rs=v.body.map((p,j)=>{const from=v.body[j+1]||p;return Math.abs(from.x-p.x)+Math.abs(from.y-p.y)>1?{x:p.x,y:p.y,cut:true}:{x:from.x+(p.x-from.x)*rf,y:from.y+(p.y-from.y)*rf};}),c=RIVAL[v.kind];n=this.lay(rs,n,c,c.clone().multiplyScalar(.45),{tall:1+mix*1.5,skip:1});const hd=this.rivalHeads[i],dx=rs[0].x-(rs[1]?.x??rs[0].x),dz=rs[0].y-(rs[1]?.y??rs[0].y);hd.visible=true;hd.position.set(rs[0].x,0,rs[0].y);if(Math.abs(dx)+Math.abs(dz)>.01&&Math.abs(dx)+Math.abs(dz)<1.5)hd.rotation.y=Math.atan2(dx,dz);hd.children[0].material.color.copy(c);hd.children[0].material.emissive.copy(c);});
   for(let i=(g.rivals||[]).length;i<3;i++)this.rivalHeads[i].visible=false;
   for(const m of [this.links,this.joints,this.cores]){m.count=n;m.instanceMatrix.needsUpdate=true;m.instanceColor.needsUpdate=true;}this.pools.count=this.poolN;this.pools.instanceMatrix.needsUpdate=true;this.pools.instanceColor.needsUpdate=true;
   // The head and the look of its powers.
@@ -163,7 +164,7 @@ export class ThreeSnake {
   this.particles.update(dt);this.updateHud(g,seg,look,first,playing,dt);this.stage.render(dt,real,{reduced,aberration:g.boosting?.004:.0018});
  }
  // What lies along the path the snake will take: the next five cells, how far the first blocked one is, and which sides are open.
- ahead(g){const cells=[];let p=g.body[0],dir=g.dir,turns=[g.queued,g.queued2].filter(Boolean),dist=0;for(let i=1;i<=5;i++){if(turns.length)dir=turns.shift();p=g.next(p,dir);const bad=g.blocked(p)&&!(g.body.at(-1).x===p.x&&g.body.at(-1).y===p.y&&i>=1&&g.body.length>3&&i===g.body.length);cells.push({x:p.x,y:p.y,bad});if(bad&&!dist)dist=i;if(bad)break;}
+ ahead(g){const cells=[];let p=g.body[0],dir=g.dir,turns=[g.queued,g.queued2].filter(Boolean),dist=0;for(let i=1;i<=5;i++){if(turns.length)dir=turns.shift();p=g.next(p,dir);const bad=g.blocked(p);cells.push({x:p.x,y:p.y,bad});if(bad&&!dist)dist=i;if(bad)break;}
   const h=g.body[0],facing=g.queued2||g.queued||g.dir;return {cells,dist,left:!g.blocked(g.next(h,LEFT[g.dir])),right:!g.blocked(g.next(h,RIGHT[g.dir])),facing};}
  updateHud(g,seg,look,first,playing,dt){
   const h=this.hud,ui=this.ui;h.set(ui.len,'l',String(g.body.length));h.set(ui.gold,'g',String(g.coins));h.live(playing);const streak=g.streak||0;if(ui.streak.hidden===(streak>1))ui.streak.hidden=streak<2;h.set(ui.streakN,'s','×'+streak);

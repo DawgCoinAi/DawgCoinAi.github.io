@@ -160,7 +160,10 @@ export class ThreeSnake {
   // Rider camera aids: the cells ahead along your path (through a queued turn), red where blocked.
   const look=this.ahead(g);let pn=0;if(first&&playing)for(const c of look.cells){this.dummy.position.set(c.x,0,c.y);this.dummy.rotation.set(0,0,0);this.dummy.scale.setScalar(1);this.dummy.updateMatrix();this.path.setMatrixAt(pn,this.dummy.matrix);this.path.setColorAt(pn++,this.col.setRGB(c.bad?2.4:.3,c.bad?.2:1.5,c.bad?.3:.7));}this.path.count=pn;this.path.instanceMatrix.needsUpdate=true;if(pn)this.path.instanceColor.needsUpdate=true;
   // Cameras: the whole arena from the south stand, or just behind DAWG's ears, level, looking down the lane.
-  const f=[Math.sin(this.yaw),Math.cos(this.yaw)],firstPose={pos:new T.Vector3(head.x-f[0]*1.9,1.95,head.y-f[1]*1.9),at:new T.Vector3(head.x+f[0]*3.4,.2,head.y+f[1]*3.4)};
+  const f=[Math.sin(this.yaw),Math.cos(this.yaw)],firstPose={pos:new T.Vector3(head.x+f[0]*.2,1.05,head.y+f[1]*.2),at:new T.Vector3(head.x+f[0]*5,.3,head.y+f[1]*5)};
+  // Riding the head: the camera sits at the rider's eyes, so the rider (and the head under it) are hidden in first person.
+  // The head, its glow cores and floor pools sit right at the eye in first person and would wash the view out.
+  {const inside=mix>=.55;this.head.visible=!inside;this.cores.visible=this.pools.visible=!inside;}
   const third={pos:new T.Vector3(CX,22.5,CZ+12.5),at:new T.Vector3(CX,0,CZ+.9)};
   this.rig.update(dt,third,firstPose,{follow:first?26:8});if(!first||over)this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera;cam.fov+=(fitFov(first?70:44,cam.aspect,first?76:41)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);

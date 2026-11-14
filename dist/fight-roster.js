@@ -160,7 +160,7 @@ function finish(m,f){const out={push:.06,jp:1,x0:-.15,hits:1,gap:0,cancel:[],...
  if(out.kind!=='throw'&&out.lv!=='throw'){out.hs??=18;out.bs??=12;}out.chip??=out.kind==='special'||out.kind==='super'?Math.round(out.dmg*.12):0;return out;}
 function build(raw){
  const ds=raw.ds||0,pow=raw.pow||1,reach=raw.reach||1,moves={};
- for(const [id,n]of Object.entries(NORMALS)){const m=finish({id,kind:'normal',...n},raw);m.s=Math.max(3,m.s+ds);m.dmg=Math.round(m.dmg*pow);m.x1=+(m.x1*(/H$/.test(id)||id==='5LLL'?reach:Math.min(reach,1.1))*raw.scale).toFixed(3);if(raw.weapon&&/H$/.test(id)){m.s+=1;m.weapon=1;}moves[id]=m;}
+ for(const [id,n]of Object.entries(NORMALS)){const m=finish({id,kind:'normal',push:.035,...n},raw);m.s=Math.max(3,m.s+ds);m.dmg=Math.round(m.dmg*pow);m.x1=+(m.x1*(/H$/.test(id)||id==='5LLL'?reach:Math.min(reach,1.1))*raw.scale).toFixed(3);if(raw.weapon&&/H$/.test(id)){m.s+=1;m.weapon=1;}moves[id]=m;}
  const add=m=>{const out=finish(m,raw);if(out.proj){out.proj={hs:18,bs:12,lv:'mid',w:.45,h:.45,hits:1,gap:8,...out.proj};}moves[out.id]=out;return out;};
  for(const sp of raw.specials){const {ex,...base}=sp;add(base);const e={...base,...ex,id:base.id+'+',name:'Amped '+base.name,ex:1,cost:100};if(ex?.proj)e.proj={...ex.proj};add(e);}
  for(const m of [...(raw.extra||[]),...(raw.extra2||[])])add(m);

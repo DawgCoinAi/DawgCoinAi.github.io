@@ -57,10 +57,10 @@ export class FightPlay {
   // Touch: a floating stick on the left, buttons on the right.
   const stick=this.pad.querySelector('.ft-stick'),nub=stick.firstChild;let sid=null,sx=0,sy=0;
   const stickMove=e=>{const dx=e.clientX-sx,dy=e.clientY-sy,len=Math.hypot(dx,dy),max=44,k=len>max?max/len:1;nub.style.transform=`translate(${dx*k}px,${dy*k}px)`;let b=0;if(len>14){const a=Math.atan2(dy,dx),oct=Math.round(a/(Math.PI/4));b=[R,R|D,D,D|L,L,L|U,U,U|R,R][(oct+8)%8];if(oct===4||oct===-4)b=L;}this.touch=(this.touch&~(U|D|L|R))|b;};
-  stick.addEventListener('pointerdown',e=>{e.preventDefault();sid=e.pointerId;const r=stick.getBoundingClientRect();sx=r.left+r.width/2;sy=r.top+r.height/2;stick.setPointerCapture?.(sid);stickMove(e);});
+  stick.addEventListener('pointerdown',e=>{e.preventDefault();sid=e.pointerId;const r=stick.getBoundingClientRect();sx=r.left+r.width/2;sy=r.top+r.height/2;try{stick.setPointerCapture(sid);}catch{}stickMove(e);});
   stick.addEventListener('pointermove',e=>{if(e.pointerId===sid)stickMove(e);});
   const stickUp=e=>{if(e.pointerId!==sid)return;sid=null;nub.style.transform='';this.touch&=~(U|D|L|R);};stick.addEventListener('pointerup',stickUp);stick.addEventListener('pointercancel',stickUp);
-  const down=new Map();this.pad.querySelector('.ft-btns').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-b]');if(!b)return;e.preventDefault();down.set(e.pointerId,Number(b.dataset.b));b.classList.add('on');b.setPointerCapture?.(e.pointerId);sync();});
+  const down=new Map();this.pad.querySelector('.ft-btns').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-b]');if(!b)return;e.preventDefault();down.set(e.pointerId,Number(b.dataset.b));b.classList.add('on');try{b.setPointerCapture(e.pointerId);}catch{}sync();});
   const sync=()=>{let m=0;for(const v of down.values())m|=v;this.touch=(this.touch&(U|D|L|R))|m;},up=e=>{if(!down.has(e.pointerId))return;down.delete(e.pointerId);e.target.closest?.('[data-b]')?.classList.remove('on');for(const b of this.pad.querySelectorAll('.ft-b.on'))if(![...down.values()].includes(Number(b.dataset.b)))b.classList.remove('on');sync();};
   this.pad.addEventListener('pointerup',up);this.pad.addEventListener('pointercancel',up);this.pad.addEventListener('contextmenu',e=>e.preventDefault());
  }

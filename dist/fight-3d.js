@@ -184,8 +184,8 @@ export class FightScene {
   this.fx.add(g);this.projMesh.set(p,g);return g;}
  events(g,events){const P=this.particles,R=this.rigs;
   for(const e of events){switch(e.type){
-   case 'hit':{const c=R[e.by].color,n=(this.lite?6:14)*e.w;P.burst(e.x,e.y,.25,n,c,{speed:3+e.w*1.6,life:.45,gravity:-9,up:1.5});P.burst(e.x,e.y,.25,Math.ceil(n/2),0xffffff,{speed:5+e.w,life:.25,gravity:-4,up:.5});this.ring(e.x,e.y,.3,e.counter?0xff4d5e:0xffffff,.8+e.w*.5);
-    this.fill.position.set(e.x,e.y,1.4);this.fill.color.set(c);this.fill.intensity=14+e.w*8;R[e.side].flash=.35+e.w*.1;this.stage.shake(.12+e.w*.09);if(e.w>=3)this.stage.flashOnce(c,.12,this.reduced);this.excite=Math.min(1,this.excite+.12*e.w);this.roll=(e.side?1:-1)*.012*e.w;this.sfx('hit'+Math.min(3,e.w));break;}
+   case 'hit':{const c=R[e.by].color,n=(this.lite?6:14)*e.w;P.burst(e.x,e.y,.25,n,c,{speed:3+e.w*1.6,life:.45,gravity:-9,up:1.5});P.burst(e.x,e.y,.25,Math.ceil(n/2),0xffffff,{speed:5+e.w,life:.25,gravity:-4,up:.5});this.ring(e.x,e.y,.3,e.counter?0xff4d5e:c,.6+e.w*.35);
+    this.fill.position.set(e.x,e.y,1.4);this.fill.color.set(c);this.fill.intensity=3+e.w*2;R[e.side].flash=.1+e.w*.04;this.stage.shake(.12+e.w*.09);if(e.w>=3)this.stage.flashOnce(c,.12,this.reduced);this.excite=Math.min(1,this.excite+.12*e.w);this.roll=(e.side?1:-1)*.012*e.w;this.sfx('hit'+Math.min(3,e.w));break;}
    case 'throw':P.burst(e.x,.4,.2,this.lite?16:40,0xffffff,{speed:5,life:.6,gravity:-8,up:3});this.ring(e.x,.1,0,R[e.side].color,3,true);this.stage.shake(.5);this.excite=1;this.sfx('boom');break;
    case 'block':P.burst(e.x,e.y,.3,this.lite?4:9,0x8fd8ff,{speed:2.6,life:.3,gravity:-3,up:.6});this.sfx('block');break;
    case 'snap':P.burst(e.x,e.y,.3,this.lite?8:18,0xffffff,{speed:4,life:.4,gravity:-2,up:.8});this.ring(e.x,e.y,.3,0x8fd8ff,1.5);this.sfx('snap');break;
@@ -230,9 +230,9 @@ export class FightScene {
   for(const [p]of this.projMesh)if(!g.proj.includes(p))this.dropProj(p);
   // Camera.
   const [a,b]=g.f,ia=this.rigs[0].holder.position.x,ib=this.rigs[1].holder.position.x,mid=(ia+ib)/2,dist=Math.abs(ib-ia),top=Math.max(a.y,b.y),cam=this.camera,vf=38,hf=2*Math.atan(Math.tan(vf*Math.PI/360)*cam.aspect);
-  let z=Math.max(5.4,(dist/2+1.45)/Math.tan(hf/2)),cx=mid*.92,cy=1.5+top*.35+z*.04,ax=mid,ay=1.12+top*.4;
+  let z=Math.max(cam.aspect<1?6.6:5.4,(dist/2+(cam.aspect<1?1.75:1.45))/Math.tan(hf/2)),cx=mid*.92,cy=1.5+top*.35+z*.04,ax=mid,ay=1.12+top*.4;
   this.zoom=Math.max(0,this.zoom-dt*(g.freeze>0?0:1.6));
-  if(g.freeze>0||this.zoom>0){const k=Math.min(1,this.zoom),r=this.rigs[this.zoomSide||0].holder.position;cx=lerp(cx,r.x,k*.7);z=lerp(z,Math.max(3.6,z*.55),k);cy=lerp(cy,1.3,k);ax=lerp(ax,r.x,k*.7);}
+  if(g.freeze>0||this.zoom>0){const k=Math.min(1,this.zoom),r=this.rigs[this.zoomSide||0].holder.position;cx=lerp(cx,r.x,k*.7);z=lerp(z,Math.max(4.7,z*.66),k);cy=lerp(cy,1.5,k);ax=lerp(ax,r.x,k*.7);}
   if(g.phase==='ko'){const l=g.f[1-(g.koBy?.winner??0)];const k=clamp(g.pt/40,0,1)*.5;cx=lerp(cx,l.x,k);ax=lerp(ax,l.x,k);z=lerp(z,z*.72,k);}
   if(g.phase==='finish'){z*=.9;cy-=.25;}
   if(g.phase==='over'&&g.result){const wr=this.rigs[g.result.winner].holder.position;cx=lerp(cx,wr.x,.8);ax=lerp(ax,wr.x,.8);z=Math.max(3.4,z*.5);cy=1.35;ay=1.15;}
@@ -246,15 +246,15 @@ export class FightScene {
   this.dim=lerp(this.dim,this.dimGoal,Math.min(1,dt*6));const b=this.base;if(b){this.hemi.intensity=b.hemi*this.dim;this.key.intensity=b.key*(.25+.75*this.dim);}
   this.fill.intensity*=Math.pow(.0005,dt);
   for(const a of this.arcs){if(a.t>.2){a.m.visible=false;continue;}a.t+=dt;const k=a.t/.2;a.m.material.opacity=(1-k)*.6;a.m.rotation.z+=dt*-9*Math.sign(a.m.scale.x);}
-  for(const r of this.rings){if(r.t>.35){r.m.visible=false;continue;}r.t+=dt;const k=r.t/.35,s=r.s*(.3+k*1.2);r.m.scale.set(s,s,s);r.m.material.opacity=(1-k)*.9;if(r.m.rotation.x===0)r.m.quaternion.copy(this.camera.quaternion);}
+  for(const r of this.rings){if(r.t>.35){r.m.visible=false;continue;}r.t+=dt;const k=r.t/.35,s=r.s*(.3+k*1.2);r.m.scale.set(s,s,s);r.m.material.opacity=(1-k)*.55;if(r.m.rotation.x===0)r.m.quaternion.copy(this.camera.quaternion);}
   if(this.hazard){const h=this.hazard;h.t+=dt;const p=h.g.userData.p;if(p)p.material.emissiveIntensity=h.t<1?(Math.sin(t*60)>0?6:.2):1.2+.5*Math.sin(t*3);h.g.rotation.z=h.t<.6?Math.sin(h.t*40)*.06*(1-h.t/.6):0;}
   this.particles.update(dt);this.sky.position.copy(this.camera.position);this.stage.resize();this.stage.render(dt,t,{reduced:this.reduced});}
  /** Character select / gallery: one fighter posing on the stage. */
  showcase(fid,dt,dawg,pose='stand',side=1){if(!this.ready||this.dead)return;this.time+=dt;const t=this.time;if(this.director.active)this.director.stop();
   if(this.showId!==fid+pose[0]||this.rigs[1]){this.showId=fid+pose[0];for(const r of this.rigs)if(r){r.holder.removeFromParent();r.shadow.removeFromParent();}const r=this.rig(fid,dawg);this.rigs=[r,null];r.setMat('normal');r.holder.visible=true;r.holder.scale.setScalar(1);r.extra=[0,0,0];r.spin=0;this.scene.add(r.holder,r.shadow);this.showT=0;}
   const r=this.rigs[0];this.showT+=dt;const cyc=this.showT%6;namedPose(r.tgt,pose!=='stand'?pose:cyc<3.4?'stand':cyc<4.6?'taunt':'cheer',t);if(pose==='stand'&&cyc<3.4){statePose(r.tgt,{st:'idle'},t);}
-  r.holder.position.set(0,0,0);r.holder.rotation.y=.35*side+Math.sin(t*.5)*.25;r.apply(1,Math.min(1,dt*9));r.shadow.position.set(0,.02,0);r.aura.intensity=6;
-  const cam=this.camera,asp=cam.aspect,z=asp<1?5.6:4.3;cam.fov=38;cam.updateProjectionMatrix();const cx=asp<1?0:-1.25*side;cam.position.set(cx,1.25,z);cam.up.set(0,1,0);cam.lookAt(cx,asp<1?1.25:.95,0);this.dimGoal=.8;this.common(dt,false);}
+  r.holder.position.set(0,0,0);r.holder.rotation.y=-.4*side+Math.sin(t*.5)*.22;r.apply(1,Math.min(1,dt*9));r.shadow.position.set(0,.02,0);r.aura.intensity=6;
+  const cam=this.camera,asp=cam.aspect,z=asp<1?5.6:4.3;cam.fov=38;cam.updateProjectionMatrix();const cx=asp<1?0:-1.25*side;cam.position.set(cx,asp<1?.9:1.25,asp<1?6.4:z);cam.up.set(0,1,0);cam.lookAt(cx,asp<1?.25:.95,0);this.dimGoal=.8;this.common(dt,false);}
  /** A small head-and-shoulders picture of a fighter as a data URL (for portraits). */
  portrait(fid,dawg,size=128){try{const r=this.rig(fid,dawg),sc=new T.Scene(),cam=new T.PerspectiveCamera(30,1,.1,30),par=r.holder.parent;sc.environment=this.scene.environment;sc.environmentIntensity=.6;sc.background=new T.Color(r.color).multiplyScalar(.16);
    sc.add(new T.HemisphereLight(0xffffff,0x303040,1.6));const k=new T.DirectionalLight(0xffffff,2.6);k.position.set(-2,3,4);const rim=new T.DirectionalLight(r.color,3);rim.position.set(3,2,-3);sc.add(k,rim);

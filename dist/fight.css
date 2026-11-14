@@ -126,3 +126,6 @@ body.story-focus #fightPanel.is-focus .fight-view{flex:1;aspect-ratio:auto;max-h
 @media (prefers-reduced-motion:reduce){.fight-vs,.fv-a,.fv-b,.fv-mid strong{animation-duration:.01s}}
 
 body.story-focus:has(#fightPanel.is-focus .fight-stage[data-state="fight"]) .story-focus-exit,body.story-focus:has(#fightPanel.is-focus .fight-stage[data-state="vs"]) .story-focus-exit,body.story-focus:has(#fightPanel.is-focus .fight-stage[data-state="result"]) .story-focus-exit{display:none}
+@media (max-height:640px) and (orientation:landscape){.fr-stats,.fr-loop{display:none}.fr-card h3{font-size:24px}.fr-card{padding:8px 12px}.fr-line{margin-bottom:4px}}
+.fh-call b,.fc-stamp b,.fh-combo b{paint-order:stroke fill}
+.fm-moves table{table-layout:fixed}.fm-moves td:last-child{width:26%}

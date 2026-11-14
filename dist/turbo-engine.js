@@ -194,7 +194,8 @@ export class TurboGame {
   return [-1,1];}
  fuelUp(n){this.fuel=Math.min(1,this.fuel+n);}
  // A trick scores its points times the combo, tops up the turbo and keeps the combo alive.
- trick(name,points=TRICKS[name],extra={}){this.combo=this.comboTime>0?this.combo+1:1;this.comboTime=TURBO.comboWindow;this.bestCombo=Math.max(this.bestCombo,this.combo);if(this.combo>=TURBO.maxCombo)this.feat('turbo.combo10');const mult=Math.min(TURBO.maxCombo,this.combo),total=points*mult;this.bonus+=total;this.tricks++;this.fuelUp(FUEL[name]||0);this.events.push({type:name,points:total,combo:this.combo,...extra});}
+ trick(name,points=TRICKS[name],extra={}){this.combo=this.comboTime>0?this.combo+1:1;this.comboTime=TURBO.comboWindow;this.bestCombo=Math.max(this.bestCombo,this.combo);if(this.combo>=TURBO.maxCombo)this.feat('turbo.combo10');// Overtakes keep the combo going but pay flat, so passing the same rivals again cannot snowball.
+  const mult=extra.flat?1:Math.min(TURBO.maxCombo,this.combo),total=points*mult;this.bonus+=total;this.tricks++;this.fuelUp(FUEL[name]||0);this.events.push({type:name,points:total,combo:this.combo,...extra});}
  breakCombo(){if(this.combo>=3)this.events.push({type:'combobreak',n:this.combo});this.combo=0;this.comboTime=0;}
  start(){if(this.status==='ready'||this.status==='paused')this.status='playing';}
  pause(){if(this.status==='playing'){this.status='paused';this.boostHeld=false;}}
@@ -313,7 +314,7 @@ export class TurboGame {
    const before=r.s-prev,gap=r.s-this.s,v=this.pace*RIVALS[r.id].pace*(this.twist==='rivalry'?1.08:1)*(gap>90?.75:1);r.s+=v*dt;const c=chunkAt(seed,r.s);
    if(!locked(c,r.s)){const blocked=l=>c.hazards.some(b=>b.lane!==null&&b.type!=='bot'&&b.s>r.s-2&&b.s<r.s+34&&b.lane===l)||c.rails.some(g=>g.lane===l&&g.s0<r.s+30&&g.s1>r.s);if(blocked(r.lane)){const free=[r.lane-1,r.lane+1,r.lane-2,r.lane+2].find(l=>l>=-1&&l<=1&&!blocked(l));if(free!==undefined)r.lane=free;}}
    const tx=r.lane*LW,dx=tx-r.x,step=10*dt;r.x=Math.abs(dx)<=step?tx:r.x+Math.sign(dx)*step;
-   if(before>0&&r.s-this.s<=0){this.passed++;if(this.passed>=10)this.feat('turbo.pack');this.trick('overtake',TRICKS.overtake*(this.twist==='rivalry'?3:1),{id:r.id,name:RIVALS[r.id].name});}
+   if(before>0&&r.s-this.s<=0){this.passed++;if(this.passed>=10)this.feat('turbo.pack');this.trick('overtake',TRICKS.overtake*(this.twist==='rivalry'?3:1),{id:r.id,name:RIVALS[r.id].name,flat:true});}
    // Tucked in close behind a rival: the slipstream pulls the pup along.
    else if(gap>0&&gap<14&&Math.abs(this.x-r.x)<1.3&&this.grounded&&this.v<this.cruise+9){this.v+=9*dt;if(!this.draft)this.events.push({type:'draft'});this.draft=.6;}
    if(this.s-r.s>45){r.gen++;r.s=this.s+130+r.id*35;r.lane=Math.floor(hash(seed,9000+r.id*31+r.gen)*3)-1;r.x=r.lane*LW;}

@@ -206,7 +206,7 @@ export class ThreeDash {
  placeGates(travelled,real){for(let k=0;k<this.gates.length;k++){const a=firstSlot(this.GATE_SPACING,travelled,2)+k;this.gates[((a%this.gates.length)+this.gates.length)%this.gates.length].position.z=slotZ(a,this.GATE_SPACING,travelled)-30;}
   const pulse=this.reduced?1:.75+.25*Math.sin(real*5);this.gateStreakA.opacity=.45*pulse;this.gateStreakB.opacity=.45*(1.75-pulse);}
  placePlayer(g,p,lift,since,real){
-  const h=this.holder,v=this.pivot,a=this.asset,over=g.status==='over',ready=g.status==='ready',first=this.rig.mix>.55;h.position.set(p.x,lift,0);v.rotation.set(0,0,0);
+  const h=this.holder,v=this.pivot,a=this.asset,over=g.status==='over',ready=g.status==='ready',first=this.rig.mix>.55;this.glowMats.gold.opacity=first?.38:1;h.position.set(p.x,lift,0);v.rotation.set(0,0,0);
   if(a){a.root.visible=true;if(ready)setDawgPose(a,real,'idle');else if(over)setDawgPose(a,0,'still');else setDawgPose(a,g.time,'run');}
   // Flips belong to the chase view; in first person the camera rises with the jump instead.
   if(g.jump>0&&!this.reduced&&!first){const q=1-g.jump/.85;v.rotation.x=-smooth(Math.min(1,q*1.15))*Math.PI*2;}

@@ -57,4 +57,24 @@ test('Every feat can be earned, and nothing is earned by a blank game',()=>{
  c=new Chess('7k/5K1p/6P1/8/8/8/8/8 w - - 0 1');mv(c,'g6g7');assert.equal(c.status(),'checkmate');assert.ok(add(facts(c,'w',{result:'win'})).includes('chess.pawnmate'));
  add(facts(new Chess(),'w',{beaten:['pup','biscuit','duchess','brick','grand']}));add(facts(new Chess(),'w',{puzzle:true,tries:0,result:'win'}));
  assert.deepEqual([...got].sort(),[...FEAT_IDS].sort(),'every feat was earned by one of the games above');
- assert.ok(validFeats(undefined));assert.ok(validFeats(['chess.win','chess.mini']));assert.equal(validFeats(['chess.win','chess.win']),false);assert.equal(validFeats(['nope']),false);assert.equal(validFeats('
+ assert.ok(validFeats(undefined));assert.ok(validFeats(['chess.win','chess.mini']));assert.equal(validFeats(['chess.win','chess.win']),false);assert.equal(validFeats(['nope']),false);assert.equal(validFeats(7),false);
+ assert.match(resultLine(facts(c,'w',{result:'win'})),/Checkmate in 1 with a pawn/);assert.match(resultLine({puzzle:true,mate:2,tries:0}),/first glance/);assert.match(resultLine(facts(new Chess(),'w',{result:'loss'})),/Lasted/);
+});
+
+test('Daily puzzles are forced mates in exactly the stated number, the same for everyone on a day',()=>{
+ for(const p of PUZZLES){const c=new Chess(p.fen);assert.equal(c.status(),'playing',p.title);assert.ok(mateIn(c,p.mate),p.title+' has a mate in '+p.mate);if(p.mate>1)assert.equal(mateIn(c,p.mate-1),null,p.title+' is not shorter');assert.equal(c.fen(),p.fen);}
+ assert.ok(PUZZLES.length>=10);assert.equal(new Set(PUZZLES.map(p=>p.title)).size,PUZZLES.length);
+ const a=dailyPuzzle('2026-11-14'),b=dailyPuzzle('2026-11-14'),n=dailyPuzzle('2026-11-15');assert.deepEqual(a,b);assert.notEqual(a.index,n.index);
+ assert.equal(new Set(Array.from({length:PUZZLES.length},(_,i)=>dailyPuzzle('2026-12-'+String(i+1).padStart(2,'0')).index)).size,PUZZLES.length,'a run of days covers every puzzle');
+ // The right first move keeps the mate; a wrong one is caught.
+ const two=PUZZLES.find(p=>p.title==='The Ladder'),c=new Chess(two.fen);mv(c,'a2a7');const r=puzzleReply(c,1);assert.ok(r);c.play(r);assert.ok(mateIn(c,1));
+ const w=new Chess(two.fen);mv(w,'g1f1');assert.equal(puzzleReply(w,1),null);
+});
+
+test('Each rival has a character and a signature opening it can actually play',()=>{
+ for(const [id,l] of Object.entries(RIVAL_LORE)){assert.ok(l.look&&l.manner&&l.opening,id);
+  for(const side of ['white','black']){const c=new Chess();let played=0;for(let i=0;i<8&&c.status()==='playing';i++){const rivalsTurn=(c.turn==='w')===(side==='white');
+    if(rivalsTurn){const b=bookMove(c,id);if(!b)break;assert.ok(c.play(b),id+' '+side);played++;}else{const idle=(side==='white'?['a7a6','b7b6','c7c6','d7d6']:['a2a3','b2b3','c2c3','d2d3'])[Math.floor(i/2)];assert.ok(mv(c,idle),idle);}}
+   assert.ok(played>=2,id+' plays its opening as '+side);}}
+ assert.equal(new Set(Object.values(RIVAL_LORE).map(l=>l.opening)).size,5);assert.equal(bookMove(new Chess(START),'nobody'),null);
+});

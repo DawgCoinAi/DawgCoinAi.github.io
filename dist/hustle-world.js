@@ -37,17 +37,17 @@ for(const e of EDGES){const a=NODES[e.a],b=NODES[e.b],w=ROAD_HALF+WALK;RECTS.pus
 for(const a of ALLEYS)RECTS.push({kind:'alley',cop:false,edge:null,x0:Math.min(a.x0,a.x1)-ALLEY_HALF,z0:Math.min(a.z0,a.z1)-ALLEY_HALF,x1:Math.max(a.x0,a.x1)+ALLEY_HALF,z1:Math.max(a.z0,a.z1)+ALLEY_HALF});
 RECTS.push({kind:'beach',cop:false,edge:null,...BEACH});
 // Districts by where you are: The Block in the middle, the other four in the corners.
-export function districtAt(x,z){if(Math.abs(x)<=70&&Math.abs(z)<=70)return 0;return z<0?(x>=0?1:2):(x>=0?3:4);}
+export function districtAt(x,z){if(Math.abs(x)<=105&&Math.abs(z)<=105)return 0;return z<0?(x>=0?1:2):(x>=0?3:4);}
 // Marked spots at the curb: each district's dealer, and two spray shops. h is the way you face
 // when parked (the curb is on your right).
 export const STOPS=[
- {id:0,kind:'market',district:0,name:'The Block',x:56,z:8,h:Math.PI/2,r:7.5},
- {id:1,kind:'market',district:1,name:'Neon Strip',x:184,z:-148,h:-Math.PI/2,r:7.5},
- {id:2,kind:'market',district:2,name:'The Docks',x:-196,z:-272,h:Math.PI/2,r:7.5},
- {id:3,kind:'market',district:3,name:'Uptown',x:212,z:148,h:Math.PI/2,r:7.5},
- {id:4,kind:'market',district:4,name:'Underground',x:-148,z:238,h:Math.PI,r:7.5},
- {id:5,kind:'garage',district:1,name:'Paw & Spray',x:8,z:-210,h:0,r:7.5},
- {id:6,kind:'garage',district:3,name:'Paw & Spray',x:272,z:214,h:Math.PI,r:7.5}
+ {id:0,kind:'market',district:0,name:'The Block',x:56,z:6,h:Math.PI/2,r:7.5},
+ {id:1,kind:'market',district:1,name:'Neon Strip',x:184,z:-146,h:-Math.PI/2,r:7.5},
+ {id:2,kind:'market',district:2,name:'The Docks',x:-196,z:-274,h:Math.PI/2,r:7.5},
+ {id:3,kind:'market',district:3,name:'Uptown',x:212,z:146,h:Math.PI/2,r:7.5},
+ {id:4,kind:'market',district:4,name:'Underground',x:-146,z:238,h:Math.PI,r:7.5},
+ {id:5,kind:'garage',district:1,name:'Paw & Spray',x:6,z:-210,h:0,r:7.5},
+ {id:6,kind:'garage',district:3,name:'Paw & Spray',x:274,z:214,h:Math.PI,r:7.5}
 ];
 // Shortest street routes between intersections (hops are all 140 m).
 export const HOPS=NODES.map(s=>{const d=NODES.map(()=>99),q=[s.id];d[s.id]=0;for(let k=0;k<q.length;k++){const n=NODES[q[k]];for(const m of n.links)if(d[m]===99){d[m]=d[n.id]+1;q.push(m);}}return d;});
@@ -87,11 +87,11 @@ export class WorldSim {
  get wanted(){return this.chase?this.chase.stars:0;}
  get seen(){return !!this.chase&&this.chase.seen;}
  emit(type,extra={}){this.events.push({type,t:this.t,...extra});if(this.events.length>80)this.events.shift();}
- spawnTraffic(count=26){const r=this.random;for(let i=0;i<count;i++){for(let tries=0;tries<20;tries++){const e=EDGES[Math.floor(r()*EDGES.length)],flip=r()<.5,a=flip?e.b:e.a,b=flip?e.a:e.b,u=NODE_R+4+r()*(140-NODE_R*2-8),lane=LANES[Math.floor(r()*2)],p=lanePoint(a,b,u,lane);
+ spawnTraffic(count=38){const r=this.random;for(let i=0;i<count;i++){for(let tries=0;tries<20;tries++){const e=EDGES[Math.floor(r()*EDGES.length)],flip=r()<.5,a=flip?e.b:e.a,b=flip?e.a:e.b,u=NODE_R+4+r()*(140-NODE_R*2-8),lane=LANES[Math.floor(r()*2)],p=lanePoint(a,b,u,lane);
    if(dist(p.x,p.z,this.x,this.z)<45||this.cars.some(c=>dist(c.x,c.z,p.x,p.z)<14))continue;this.cars.push({a,b,c:-1,u,lane,v:8+r()*4,vmax:10+r()*5,kind:Math.floor(r()*6),mode:'edge',w:0,p0:null,p1:null,p2:null,len:0,x:p.x,z:p.z,h:p.h,stun:0,close:false,cool:0,held:0});break;}}}
  spawnPickups(){const r=seededRandom((this.seed+this.day*7919)>>>0||1);this.pickups=[];for(let i=0;i<16;i++){const e=EDGES[Math.floor(r()*EDGES.length)],flip=r()<.5,p=lanePoint(flip?e.b:e.a,flip?e.a:e.b,NODE_R+10+r()*(140-NODE_R*2-20),LANES[Math.floor(r()*2)]);this.pickups.push({x:p.x,z:p.z,value:15+Math.floor(r()*5)*5,taken:false});}}
  spawnCop(mode,far=110){const r=this.random,options=NODES.filter(n=>{const d=dist(n.x,n.z,this.x,this.z);return d>far&&d<far+260&&!lineOfSight(n.x,n.z,this.x,this.z,400)&&!this.cops.some(c=>c.mode!=='off'&&dist(c.x,c.z,n.x,n.z)<30);});
-  const pool=options.length?options:NODES.filter(n=>dist(n.x,n.z,this.x,this.z)>far),n=pool[Math.floor(r()*pool.length)]||NODES[24],goal=n.links[Math.floor(r()*n.links.length)],g=NODES[goal];
+  const all=options.length?options:NODES.filter(n=>dist(n.x,n.z,this.x,this.z)>far),pool=mode==='chase'?[...all].sort((p,q)=>dist(p.x,p.z,this.x,this.z)-dist(q.x,q.z,this.x,this.z)).slice(0,3):all,n=pool[Math.floor(r()*pool.length)]||NODES[24],goal=n.links[Math.floor(r()*n.links.length)],g=NODES[goal];
   const cop={x:n.x,z:n.z,h:Math.atan2(g.x-n.x,-(g.z-n.z)),v:0,mode,goal,prev:n.id,sees:false,cool:0,stuck:0};const free=this.cops.findIndex(c=>c.mode==='off');if(free>=0)this.cops[free]=cop;else if(this.cops.length<8)this.cops.push(cop);return cop;}
  // Feed real elapsed time; the sim runs whole fixed steps so the rules never depend on frame rate.
  advance(elapsed,input){this.acc=Math.min(this.acc+Math.max(0,elapsed),.2);let n=0;while(this.acc>=STEP){this.acc-=STEP;this.step(input);n++;}return n;}
@@ -161,7 +161,7 @@ export class WorldSim {
     if(sees&&!this.calm&&(stars>0||this.speed>32&&d<26)){this.startChase(c,stars>0?'wanted':'speeding');return;}
     this.cruise(c,dt,9);}
    else{if(sees)anySees=true;if(d<8.5)close=true;
-    if(sees){c.goal=-1;this.moveAgent(c,this.x+this.vx*.35,this.z+this.vz*.35,31+ch.stars*1.3,dt,d<14?Math.max(this.speed-2,8):99);}
+    if(sees){c.goal=-1;this.moveAgent(c,this.x+this.vx*.35,this.z+this.vz*.35,31+ch.stars*1.3,dt,d<6.5&&this.speed<6?0:d<14?Math.max(this.speed-2,8):99);}
     else{const known=nearestNode(ch.lastX,ch.lastZ);if(c.goal<0){const r=rectAt(c.x,c.z,-2,true),near=nearestNode(c.x,c.z);
       if(dist(c.x,c.z,NODES[near].x,NODES[near].z)<NODE_R||!r?.edge)c.goal=near;else{const {a,b}=r.edge,da=dist(c.x,c.z,NODES[a].x,NODES[a].z)+HOPS[a][known]*140,db=dist(c.x,c.z,NODES[b].x,NODES[b].z)+HOPS[b][known]*140;c.goal=da<db?a:b;}}
      const g=NODES[c.goal];if(dist(c.x,c.z,g.x,g.z)<9){const from=c.goal;c.goal=from===known?(g.links.filter(n=>n!==c.prev)[Math.floor(this.random()*Math.max(1,g.links.length-1))]??g.links[0]):nextHop(from,known);c.prev=from;}
@@ -180,7 +180,7 @@ export class WorldSim {
   if(c.bust>=2.4){this.bustNow();return;}
   if(c.evade>=evadeTime(c.stars)){this.endChase(true);return;}
   // More cruisers roll in from out of sight, and at three stars they start blocking the road ahead.
-  c.spawn-=dt;if(c.spawn<=0){c.spawn=6;if(this.cops.filter(k=>k.mode==='chase').length<PURSUERS[c.stars]){const k=this.spawnCop('chase',120);k.goal=-1;}}
+  c.spawn-=dt;if(c.spawn<=0){c.spawn=6;if(this.cops.filter(k=>k.mode==='chase').length<PURSUERS[c.stars]){const k=this.spawnCop('chase',80);k.goal=-1;}}
   c.block-=dt;if(c.stars>=3&&c.block<=0&&this.speed>14&&this.blocks.length<(c.stars>=5?2:1)){c.block=c.stars>=5?9:14;this.roadblock();}}
  // Patrol driving: lane to lane between intersections, turning at random (or toward you, once you're hot).
  cruise(c,dt,top){let g=NODES[c.goal],p=NODES[c.prev];const dx=Math.sign(g.x-p.x),dz=Math.sign(g.z-p.z),tx=g.x-dx*NODE_R*.8-dz*LANES[0],tz=g.z-dz*NODE_R*.8+dx*LANES[0];
@@ -208,7 +208,7 @@ export class WorldSim {
  respray(){if(this.chase&&this.chase.seen)return false;const was=!!this.chase;if(was){this.endChase(true);}this.calm=40;this.emit('respray',{chase:was});return true;}
  // ── Cash on the street, district lines, the delivery clock.
  world(dt){for(const q of this.pickups)if(!q.taken&&dist(q.x,q.z,this.x,this.z)<2.7){q.taken=true;this.addCash(q.value);this.emit('cash',{value:q.value});}
-  const d=districtAt(this.x,this.z);if(d!==this.district){this.district=d;this.emit('district',{district:d});}
+  const d=districtAt(this.x,this.z);if(d===this.district)this.crossing=0;else if((this.crossing=(this.crossing||0)+dt)>1){this.crossing=0;this.district=d;this.emit('district',{district:d});}
   if(this.run&&!this.run.late){this.run.t+=dt;if(this.run.t>this.run.par){this.run.late=true;this.emit('late',{});}}}
  addCash(n){const room=DRIVE_CASH_CAP-this.trip.cash,got=Math.max(0,Math.min(room,n));this.trip.cash+=got;return got;}
  // A delivery run: the clock starts when you pull away with the goods on board.

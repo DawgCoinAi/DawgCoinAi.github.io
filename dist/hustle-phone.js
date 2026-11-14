@@ -23,7 +23,7 @@ export function runnableOrder(trade){const c=trade.world.contract;return c.statu
 export class Hustle {
  constructor({game,act,save,money,settings}){this.game=game;this.act=act;this.save=save;this.money=money;this.settings=settings;this.world=null;this.live=false;this.loading=false;this.session=false;this.open=true;this.tab='market';this.seen=null;this.busted=false;this.newsFor='';
   document.querySelectorAll('[data-hp-tab]').forEach(b=>{b.onclick=()=>this.show(b.dataset.hpTab);});
-  $('hustlePhoneToggle').onclick=()=>this.toggle();$('resprayButton').onclick=()=>this.respray();$('hustleMap').addEventListener('click',e=>this.mapTap(e));
+  $('hustlePhoneToggle').onclick=()=>this.toggle();$('hustleExit').onclick=()=>this.exit();$('resprayButton').onclick=()=>this.respray();$('hustleMap').addEventListener('click',e=>this.mapTap(e));
   $('dailyDeliver').onclick=()=>{const t=this.game();if(t&&this.canDeal())this.act(()=>t.deliverDaily(todayKey()));};}
  info(){const t=this.game(),w=t.world;return {seed:w.seed,day:t.day,heat:t.heat,weather:w.weather,district:t.district,cash:t.cash,used:t.used,capacity:t.capacity,pending:w.pending?.kind||null};}
  get sim(){return this.live?this.world.sim:null;}
@@ -103,7 +103,7 @@ export class Hustle {
  mapView(){const c=$('hustleMap'),w=c.width,h=c.height,x0=BEACH.x0-56,x1=XS[4]+34,z0=ZS[0]-34,z1=ZS[4]+34,k=Math.min(w/(x1-x0),h/(z1-z0));return {c,w,h,k,ox:(w-(x1-x0)*k)/2-x0*k,oz:(h-(z1-z0)*k)/2-z0*k};}
  drawMap(){const t=this.game();if(!t)return;const {c,w,h,k,ox,oz}=this.mapView(),x=c.getContext('2d');if(!x)return;const X=v=>v*k+ox,Z=v=>v*k+oz,sim=this.sim,cn=t.world.contract;
   x.clearRect(0,0,w,h);x.fillStyle='#0c1424';x.fillRect(0,0,w,h);x.fillStyle='#123a55';x.fillRect(0,0,X(BEACH.x0),h);x.fillStyle='#6b5b3e';x.fillRect(X(BEACH.x0),0,(BEACH.x1-BEACH.x0)*k,h);
-  const zones=[[-70,-70,70,70],[0,-300,300,0],[-290,-300,0,0],[0,0,300,300],[-290,0,0,300]];x.globalAlpha=.16;[1,2,3,4,0].forEach(d=>{const [a,b,e,f]=zones[d];x.fillStyle=COLORS[d];x.fillRect(X(a),Z(b),(e-a)*k,(f-b)*k);});x.globalAlpha=1;
+  const zones=[[-105,-105,105,105],[0,-300,300,0],[-290,-300,0,0],[0,0,300,300],[-290,0,0,300]];x.globalAlpha=.16;[1,2,3,4,0].forEach(d=>{const [a,b,e,f]=zones[d];x.fillStyle=COLORS[d];x.fillRect(X(a),Z(b),(e-a)*k,(f-b)*k);});x.globalAlpha=1;
   x.lineCap='round';x.strokeStyle='#ffffff30';x.lineWidth=14*k;x.beginPath();for(const e of EDGES){const a=NODES[e.a],b=NODES[e.b];x.moveTo(X(a.x),Z(a.z));x.lineTo(X(b.x),Z(b.z));}x.stroke();
   x.strokeStyle='#ffffff1c';x.lineWidth=5*k;x.beginPath();for(const a of ALLEYS){x.moveTo(X(a.x0),Z(a.z0));x.lineTo(X(a.x1),Z(a.z1));}x.stroke();x.strokeStyle='#6dff9a99';x.lineWidth=14*k;x.beginPath();x.moveTo(X(XS[1]),Z(ZS[4]));x.lineTo(X(XS[2]),Z(ZS[4]));x.stroke();
   x.textAlign='center';x.textBaseline='middle';x.font='800 '+Math.round(w*.03)+'px system-ui,sans-serif';

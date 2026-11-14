@@ -40,13 +40,13 @@ float pSeam=smoothstep(.12,.5,1.-dot(pk,1.-step(.5,abs(pid-pTop)))/pks);
 vec2 pGrad=vec2((pa.y-pa.x)*(1.-pf.y)+(pa.w-pa.z)*pf.y,(pa.z-pa.x)*(1.-pf.x)+(pa.w-pa.y)*pf.x);
 float pEdge=pMask*(1.-pMask)*4.,pStreet=dot(diffuseColor.rgb,vec3(.3,.6,.1));
 float pN0=pNoise(vCell*2.6),pLit=dot(normalize(pGrad+1e-4),vec2(.55,-.83));
-vec3 pWet=paintCol*(.56+pStreet*1.3)*(.88+.16*pN0)*(1.-.5*pSeam)*(1.+pEdge*pLit*.45);
+vec3 pWet=paintCol*(.44+pStreet*1.25)*(.86+.18*pN0)*(1.-.5*pSeam)*(1.+pEdge*pLit*.45);
 float pShade=smoothstep(.16,.5,pP)*(1.-pMask);
 diffuseColor.rgb=mix(diffuseColor.rgb*(1.-.6*pShade),pWet,pMask);`)
   .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.1+.14*pNoise(vCell*4.),pMask);')
   .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=mix(metalnessFactor,0.,pMask);')
   .replace('#include <normal_fragment_maps>','#include <normal_fragment_maps>\nvec2 pRip=vec2(pNoise(vCell*2.6+vec2(.35,0.))-pN0,pNoise(vCell*2.6+vec2(0.,.35))-pN0)*pMask*1.1;\nnormal=normalize(normal-(viewMatrix*vec4(pGrad.x*pEdge*1.1+pRip.x,0.,pGrad.y*pEdge*1.1+pRip.y,0.)).xyz);')
-  .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=paintCol*pMask*(.07+pFresh*.8)+vec3(1.)*pFresh*pMask*.12;');};
+  .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=paintCol*pMask*(.035+pFresh*.8)+vec3(1.)*pFresh*pMask*.12;');};
  m.customProgramCacheKey=()=>'paint-ground';return m;}
 
 // A wall or roof material that can be flooded with paint from the street up. uPLevel is the
@@ -60,9 +60,9 @@ uniform vec3 uPCol,uPOld;uniform float uPOldOn,uPLevel;varying vec3 vWp;${NOISE}
 float bN=pNoise(vec2(vWp.x+vWp.z,vWp.x-vWp.z)*2.3),bLvl=uPLevel-.3+bN*.4+pow(abs(sin((vWp.x+vWp.z)*4.+bN*4.)),5.)*.45;
 float bM=(1.-smoothstep(bLvl-.05,bLvl+.05,vWp.y))*step(0.,uPLevel),bOn=max(uPOldOn,bM);
 vec3 bCoat=mix(uPOld,uPCol,bM);
-diffuseColor.rgb=mix(diffuseColor.rgb,bCoat*(.55+.45*bN),bOn*.9);`)
+diffuseColor.rgb=mix(diffuseColor.rgb,bCoat*(.42+.4*bN),bOn*.88);`)
   .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.2,bOn);')
-  .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance=totalEmissiveRadiance*(1.-.35*bOn)+bCoat*bOn*.22+uPCol*smoothstep(.16,0.,abs(vWp.y-bLvl))*step(0.,uPLevel)*1.3;');};
+  .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance=totalEmissiveRadiance*(1.-.3*bOn)+bCoat*bOn*.07+uPCol*smoothstep(.16,0.,abs(vWp.y-bLvl))*step(0.,uPLevel)*1.3;');};
  m.customProgramCacheKey=()=>'paint-wall';return m;}
 
 // The street map for a city: asphalt, lane lines down every avenue, crosswalks, sidewalks round
@@ -282,7 +282,7 @@ export class ThreePaint {
   if(wide){wantW=W/2+1.5;wantD=H/2+1.5;cx=W/2;cz=H/2+(aspect<1?1:0);}
   else if(you.trail.length>1&&you.alive){let x0=me.x,x1=me.x,z0=me.z,z1=me.z;for(const i of you.trail){const x=i%W+.5,z=(i-i%W)/W+.5;if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;}wantW=Math.min(aspect<1?8:11,Math.max(wantW+1,(x1-x0)/2+3));wantD=Math.min(aspect<1?10.5:7,Math.max(wantD+1,(z1-z0)/2+3.4));cx=me.x*.55+(x0+x1)/2*.45;cz=me.z*.55+(z0+z1)/2*.45;}
   else{const [dx,dz]=DIRS[you.dir];cx+=dx*1.1;cz+=dz*1.1-(aspect<1?.6:.2);}
-  if(!wide){const mx=Math.min(W/2,wantW*.72),mz=Math.min(H/2,wantD);cx=Math.max(mx,Math.min(W-mx,cx));cz=Math.max(mz,Math.min(H-mz*.45,cz));}
+  if(!wide){const mx=Math.min(W/2,wantW*.72),mz=Math.min(H/2,wantD*.62);cx=Math.max(mx,Math.min(W-mx,cx));cz=Math.max(mz,Math.min(H-mz*.7,cz));}
   const zf=Math.min(1,dt*(wide?1.6:2.6));this.zoom.w+=(wantW-this.zoom.w)*zf;this.zoom.d+=(wantD-this.zoom.d)*zf;this.focus.x+=(cx-this.focus.x)*Math.min(1,dt*(wide?2:5));this.focus.z+=(cz-this.focus.z)*Math.min(1,dt*(wide?2:5));if(!this.camReady){this.camReady=true;this.focus.set(cx,0,cz);this.zoom.w=wantW;this.zoom.d=wantD;}
   const pitch=wide?1.25:PITCH,dist=Math.max(this.zoom.w/Math.tan(hHalf),this.zoom.d*Math.sin(pitch)/Math.tan(vf/2))*(1-.06*this.punch);this.punch=Math.max(0,this.punch-dt*2.2);
   const at=this.atV??=new T.Vector3(),pos=this.posV??=new T.Vector3();at.set(this.focus.x,.4,this.focus.z);pos.set(at.x,at.y+Math.sin(pitch)*dist,at.z+Math.cos(pitch)*dist);

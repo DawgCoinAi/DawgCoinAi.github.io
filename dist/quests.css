@@ -1,18 +1,39 @@
-/* The quest board on the Play screen. */
-.quest-strip{margin:18px 0 6px;padding:14px 16px 12px;border-radius:18px;background:linear-gradient(160deg,#171a2c,#0f1120);border:1px solid #ffffff14}
-.quest-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
-.quest-head .section-title{margin:0}
-.quest-streak{font:800 11px var(--mono);letter-spacing:1.5px;color:#ffd25e;white-space:nowrap}
-.quest-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-.quest{position:relative;display:grid;grid-template-columns:22px 1fr auto auto;align-items:center;gap:10px;padding:10px 12px 12px;border-radius:12px;background:#ffffff08;overflow:hidden}
-.quest-check{width:20px;height:20px;border-radius:50%;border:2px solid #ffffff38;display:grid;place-items:center;font:900 12px var(--mono);color:#0b0a16}
-.quest.done .quest-check{background:#b9ff5e;border-color:#b9ff5e}
-.quest-text{font:600 14px/1.3 var(--body,system-ui);color:#f1eeff}.quest-text b{color:#5ee7ff;font:800 12px var(--mono);margin-left:4px}
-.quest.done .quest-text{color:#9a98b3;text-decoration:line-through}
-.quest-reward{font:800 12px var(--mono);color:#ffd25e;white-space:nowrap}
-.quest-go{padding:6px 12px;border-radius:9px;border:0;background:#b9ff5e;color:#0b0a16;font:900 11px var(--mono);letter-spacing:1px;cursor:pointer}
-.quest-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#ffffff10}.quest-bar em{display:block;height:100%;background:linear-gradient(90deg,#5ee7ff,#b9ff5e);transform-origin:left}
-.quest-note{margin:10px 2px 0;font:500 12px/1.4 var(--body,system-ui);color:#a9a6c4}
-.quest-week{margin-top:10px}.quest-week summary{cursor:pointer;font:800 11px var(--mono);letter-spacing:1.5px;color:#c9c6e6;padding:6px 2px}.quest-week summary b{color:#5ee7ff}
-.quest-week .quest-list{margin-top:6px}
-@media (max-width:420px){.quest{grid-template-columns:22px 1fr auto;row-gap:6px}.quest-go{grid-column:2/-1;justify-self:start}}
+/* The quest board on the Play screen: today's three beside this week's three. Uses the shell's
+   design tokens (ui.css). */
+.quest-strip{display:grid;gap:var(--sp-4,16px) var(--sp-6,32px);margin:0 0 var(--sp-2,8px);padding:var(--sp-4,16px);border-radius:var(--r-3,22px);background:var(--ink-2,#14171b);border:1px solid var(--ui-line,#272b33);box-shadow:var(--e-1,none)}
+.quest-strip[hidden]{display:none}
+@media (min-width:900px){.quest-strip{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start;padding:var(--sp-5,24px)}}
+.quest-col{min-width:0}
+.quest-head,.quest-week summary{display:flex;align-items:center;gap:12px;min-height:30px;margin:0 0 12px}
+.quest-head .section-title,.quest-week .section-title{margin:0}
+.quest-count{color:var(--dust,#8b909b);font:700 13px/1 var(--ui-mono);letter-spacing:.1em}
+.quest-count b{color:var(--volt,#c6ff3a);font:inherit}
+.quest-streak{margin-left:auto;padding:5px 10px;border-radius:999px;background:#ffc2471a;border:1px solid #ffc24766;color:var(--gold,#ffc247);font:700 11px/1 var(--ui-mono);letter-spacing:.12em;white-space:nowrap}
+.quest-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.quest{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:48px;padding:8px 12px 10px;border-radius:var(--r-1,8px);background:var(--ink-1,#0e1013);border:1px solid var(--ui-line,#272b33);overflow:hidden}
+.quest-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--ui-line2,#3a404c);display:grid;place-items:center;font:900 12px/1 var(--ui-body);color:var(--volt-ink,#131a00)}
+.quest.done .quest-check{background:var(--volt,#c6ff3a);border-color:var(--volt,#c6ff3a)}
+.quest-text{font:600 14px/1.3 var(--ui-body);color:var(--bone,#f4f2ea);min-width:0}
+.quest-text b{margin-left:4px;color:var(--volt,#c6ff3a);font:700 12px/1 var(--ui-mono);letter-spacing:.08em;white-space:nowrap}
+.quest.done .quest-text{color:var(--dust,#8b909b)}
+.quest.done .quest-text b{display:none}
+.quest-reward{color:var(--gold,#ffc247);font:700 13px/1 var(--ui-mono);letter-spacing:.06em;white-space:nowrap}
+.quest-reward small{font:inherit;font-size:10px;letter-spacing:.12em;opacity:.8}
+.quest.done .quest-reward{color:var(--dust,#8b909b)}
+.quest-go{min-height:32px;padding:0 14px;border-radius:var(--r-1,8px);border:0;background:var(--volt,#c6ff3a);color:var(--volt-ink,#131a00);font:700 12px/1 var(--ui-mono);letter-spacing:.12em;cursor:pointer;transition:background .12s,transform .12s}
+.quest-go:hover{background:var(--volt-2,#dcff7e)}
+.quest-go:active{transform:scale(.96)}
+.quest-go.alt{background:none;border:1px solid var(--hair-2,#ffffff2b);color:var(--bone,#f4f2ea)}
+.quest-go.alt:hover{border-color:var(--bone,#f4f2ea);background:#ffffff14}
+.quest-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:#ffffff0f}
+.quest-bar em{display:block;height:100%;background:var(--volt,#c6ff3a);transform-origin:left;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.quest.done .quest-bar{display:none}
+.quest-note{margin:10px 2px 0;font:500 12px/1.4 var(--ui-body);color:var(--dust,#8b909b)}
+.quest-week{min-width:0}
+.quest-week summary{cursor:pointer;list-style:none;border-radius:6px}
+.quest-week summary::-webkit-details-marker{display:none}
+.quest-week summary::after{content:'';margin-left:auto;width:8px;height:8px;border-right:2px solid var(--dust,#8b909b);border-bottom:2px solid var(--dust,#8b909b);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+.quest-week[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.quest-week:not([open]) summary{margin-bottom:0}
+@media (max-width:899px){.quest-week{padding-top:var(--sp-4,16px);border-top:1px solid var(--ui-line,#272b33)}}
+@media (max-width:460px){.quest-head{flex-wrap:wrap;gap:8px 10px}.quest-head .section-title,.quest-week .section-title{font-size:20px;white-space:nowrap}.quest-streak{font-size:10px;padding:4px 8px}.quest{grid-template-columns:22px minmax(0,1fr) auto;row-gap:6px}.quest-go{grid-column:2/-1;justify-self:start}}

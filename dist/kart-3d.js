@@ -30,7 +30,7 @@ class Puffs{
  constructor(scene,n){this.n=n;this.pos=new Float32Array(n*3);this.vel=new Float32Array(n*3);this.col=new Float32Array(n*4);this.size=new Float32Array(n);this.life=new Float32Array(n);this.max=new Float32Array(n);this.grow=new Float32Array(n);this.alpha=new Float32Array(n);this.next=0;
   const g=this.geo=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(this.pos,3).setUsage(T.DynamicDrawUsage));g.setAttribute('aColor',new T.BufferAttribute(this.col,4).setUsage(T.DynamicDrawUsage));g.setAttribute('aSize',new T.BufferAttribute(this.size,1).setUsage(T.DynamicDrawUsage));
   this.mat=new T.ShaderMaterial({uniforms:{uScale:{value:600}},transparent:true,depthWrite:false,vertexShader:'attribute vec4 aColor;attribute float aSize;uniform float uScale;varying vec4 vC;void main(){vC=aColor;vec4 mv=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*mv;gl_PointSize=aSize*uScale/max(.1,-mv.z);}',
-   fragmentShader:'varying vec4 vC;void main(){float d=length(gl_PointCoord-.5)*2.;float a=smoothstep(1.,.15,d)*vC.a;if(a<.004)discard;gl_FragColor=vec4(vC.rgb,a);}'});
+   fragmentShader:'varying vec4 vC;void main(){float d=length(gl_PointCoord-.5)*2.;float a=pow(max(0.,1.-d),1.7)*vC.a;if(a<.004)discard;gl_FragColor=vec4(vC.rgb,a);}'});
   this.points=new T.Points(g,this.mat);this.points.frustumCulled=false;this.points.renderOrder=3;scene.add(this.points);this.c=new T.Color();}
  emit(x,y,z,{color=0xd8dce8,size=.7,grow=1.6,life=.7,alpha=.4,vx=0,vy=.8,vz=0,spread=.6}={}){const k=this.next=(this.next+1)%this.n,c=this.c.set(color);this.pos.set([x,y,z],k*3);this.vel.set([vx+(Math.random()-.5)*spread,vy+Math.random()*spread*.5,vz+(Math.random()-.5)*spread],k*3);this.col.set([c.r,c.g,c.b,alpha],k*4);this.size[k]=size;this.grow[k]=grow;this.life[k]=this.max[k]=life*(.7+Math.random()*.6);this.alpha[k]=alpha;}
  update(dt){for(let i=0;i<this.n;i++){if(this.life[i]<=0){if(this.col[i*4+3]!==0)this.col[i*4+3]=0;continue;}this.life[i]-=dt;const k=i*3,f=Math.max(0,this.life[i]/this.max[i]);this.pos[k]+=this.vel[k]*dt;this.pos[k+1]+=this.vel[k+1]*dt;this.pos[k+2]+=this.vel[k+2]*dt;this.size[i]+=this.grow[i]*dt;this.col[i*4+3]=this.alpha[i]*f;}
@@ -110,8 +110,8 @@ export class ThreeKart {
    const limb=(x0,y0,z0,x1,y1,z1,r)=>{const a=new T.Vector3(x0,y0,z0),b=new T.Vector3(x1,y1,z1),m=new T.Mesh(new T.CylinderGeometry(r,r*1.15,a.distanceTo(b),8),fur);m.position.copy(a).lerp(b,.5);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());return m;};
    wheel.add(new T.Mesh(new T.TorusGeometry(.16,.026,8,24).rotateY(Math.PI/2),dark),new T.Mesh(new T.BoxGeometry(.02,.04,.32),dark),new T.Mesh(new T.BoxGeometry(.02,.16,.04).translate(0,-.08,0),dark));
    for(const z of [-.15,.15]){const paw=new T.Mesh(new T.SphereGeometry(.058,12,10).scale(1.15,.95,1.1),fur);paw.position.set(-.012,.02,z);wheel.add(paw);for(const dz of [-.03,0,.03]){const toe=new T.Mesh(new T.SphereGeometry(.02,6,5),pad);toe.position.set(.045,.03,z+dz);wheel.add(toe);}}
-   wheel.position.set(.4,.96,0);wheel.rotation.z=-.45;cockpit.add(wheel);for(const z of [-.15,.15])cockpit.add(limb(.385,.965,z,.1,.7,z*2.5,.032));
-   cockpit.add(new T.Mesh(new T.CylinderGeometry(.2,.42,1.25,4,1).rotateY(Math.PI/4).rotateZ(-Math.PI/2).scale(1,.38,1).translate(1.25,.5,0),paint),new T.Mesh(new T.BoxGeometry(.14,.04,1.46).translate(1.9,.36,0),paint),new T.Mesh(new T.BoxGeometry(.5,.1,.5).translate(.62,.6,0),dark),new T.Mesh(new T.CylinderGeometry(.02,.025,.4,8).rotateZ(Math.PI/2-.45).translate(.56,.88,0),dark));
+   wheel.position.set(.62,.86,0);wheel.rotation.z=-.45;cockpit.add(wheel);for(const z of [-.15,.15])cockpit.add(limb(.605,.865,z,.1,.3,z*2.6,.034));
+   cockpit.add(new T.Mesh(new T.BoxGeometry(1.15,.14,.6).translate(1.25,.5,0),paint),new T.Mesh(new T.BoxGeometry(.5,.05,.3).translate(1.2,.6,0),dark),new T.Mesh(new T.BoxGeometry(.14,.04,1.46).translate(1.9,.36,0),paint),new T.Mesh(new T.BoxGeometry(.4,.1,.5).translate(.84,.56,0),dark),new T.Mesh(new T.CylinderGeometry(.02,.025,.34,8).rotateZ(Math.PI/2-.45).translate(.77,.79,0),dark));
    for(const z of [-.74,.74]){const ty=new T.Mesh(new T.CylinderGeometry(.27,.27,.26,18).rotateX(Math.PI/2),dark);ty.position.set(1.32,.27,z);tyres.push(ty);cockpit.add(ty);}
    cockpit.visible=false;g.add(cockpit);}
   this.scene.add(g);return {cockpit,wheel,tyres,g,body,root:stand.root,head:stand.head,blob,glow,flames,flameMat,shield,aura,tag,roll:0,pitch:0,squash:0,drop:0};}
@@ -123,7 +123,7 @@ export class ThreeKart {
  pose(t,k){const p=trackPoint(t,k.p,k.d),q=trackAt(t,k.p);return {x:p.x,y:trackHeight(t,k.p,k.d)+(k.y||0),z:-p.y,yaw:q.ang+k.a};}
  event(e,g){if(!this.ready||!this.karts.length)return;const st=this.stage,hud=this.hud,t=g.track,me=this.pose(t,g.you),fx=Math.cos(me.yaw),fz=-Math.sin(me.yaw),P=this.particles,name=id=>g.karts[id]?.name.toUpperCase()||'';
   const at=id=>this.pose(t,g.karts[id]||g.you);
-  if(e.type==='coin'){P.burst(me.x+fx,me.y+1,me.z+fz,14,0xffc14d,{speed:3,life:.5});hud.pop('+50');}
+  if(e.type==='coin'){P.burst(me.x+fx,me.y+1,me.z+fz,14,0xffc14d,{speed:3,life:.5});}
   else if(e.type==='item'){hud.pop(ICONS[e.item]+' '+LABELS[e.item],'big');P.burst(me.x+fx*2,me.y+1,me.z+fz*2,30,0x5ee7ff,{speed:5,life:.6});this.ui.item.classList.remove('k-got');void this.ui.item.offsetWidth;this.ui.item.classList.add('k-got');}
   else if(e.type==='hop'){this.hopAt=performance.now();}
   else if(e.type==='go'){this.goAt=performance.now();hud.banner('GO!');st.flashOnce(0x9dff7a,.16,this.reduced);}
@@ -133,14 +133,14 @@ export class ThreeKart {
   else if(e.type==='draft'){hud.pop('SLIPSTREAM! +50','shield');st.flashOnce(0x9fdcff,.1,this.reduced);P.burst(me.x-fx,me.y+.6,me.z-fz,30,0x9fdcff,{speed:6,life:.5,gravity:0,up:.2});}
   else if(e.type==='slip'){hud.pop(name(e.kart)+' RUNS WIDE','dodge');}
   else if(e.type==='charge'){st.flashOnce(e.level===2?0xff8a3d:0x5ec8ff,.07,this.reduced);}
-  else if(e.type==='miniturbo'){hud.pop(e.level===2?'SUPER TURBO! +200':'MINI-TURBO! +100','big');st.shake(e.level===2?.3:.16);st.flashOnce(e.level===2?0xff8a3d:0x5ec8ff,.14,this.reduced);P.burst(me.x-fx*1.2,me.y+.4,me.z-fz*1.2,40,e.level===2?0xff8a3d:0x5ec8ff,{speed:6,life:.5});}
+  else if(e.type==='miniturbo'){hud.pop(e.level===2?'SUPER TURBO! +200':'MINI-TURBO! +100','big');st.shake(e.level===2?.3:.16);st.flashOnce(e.level===2?0xff8a3d:0x5ec8ff,.08,this.reduced);P.burst(me.x-fx*1.2,me.y+.4,me.z-fz*1.2,24,e.level===2?0xff8a3d:0x5ec8ff,{speed:6,life:.5});}
   else if(e.type==='boost'||e.type==='pad'){if(!e.kart){st.shake(.12);st.flashOnce(0x5ee7ff,.12,this.reduced);}}
   else if(e.type==='shield'){if(!e.kart)hud.pop('🛡️ SHIELD UP','shield');}
   else if(e.type==='howl'){const p=at(e.kart);this.ring.visible=true;this.ring.position.set(p.x,p.y+.3,p.z);this.ringAt=performance.now();P.burst(p.x,p.y+1,p.z,60,0xffd25e,{speed:11,life:.5,gravity:0,up:0});if(!e.kart){hud.pop(e.n?'HOWL! '+e.n+' SPUN +'+150*e.n:'HOWL!','big');st.shake(.3);}else if(Math.hypot(p.x-me.x,p.z-me.z)<30)st.shake(.2);}
   else if(e.type==='rocket'){if(e.to===0&&e.kart){this.warnUntil=performance.now()+1100;this.hud.set(this.ui.warn,'w','⚠ '+name(e.kart)+'’S ROCKET'+(g.you.item==='shield'?' · SHIELD!':''));}}
   else if(e.type==='hit'){hud.pop('DIRECT HIT +200','big');}
-  else if(e.type==='wipeout'){const p=at(e.kart);if(Math.hypot(p.x-me.x,p.z-me.z)<70){P.burst(p.x,p.y+1,p.z,50,e.cause==='rocket'?0xff4f6a:0xffe45e,{speed:8,life:.8});for(let i=0;i<8;i++)this.puffs.emit(p.x,p.y+.5,p.z,{size:1,grow:3,life:.9,alpha:.45,spread:3});if(e.by>0&&e.by!==e.kart)hud.pop(name(e.by)+' GOT '+name(e.kart),'dodge');}}
-  else if(e.type==='spin'){st.shake(.65);st.flashOnce(0xff3355,.32,this.reduced);P.burst(me.x,me.y+1,me.z,60,0xffe45e,{speed:7,life:.8});for(let i=0;i<10;i++)this.puffs.emit(me.x,me.y+.5,me.z,{size:1,grow:3,life:1,alpha:.5,spread:3});hud.pop(e.by>0?name(e.by)+'’S '+(CAUSE[e.cause]||'HIT')+'!':'SPUN OUT!','magnet');}
+  else if(e.type==='wipeout'){const p=at(e.kart);if(Math.hypot(p.x-me.x,p.z-me.z)<70){P.burst(p.x,p.y+1,p.z,50,e.cause==='rocket'?0xff4f6a:0xffe45e,{speed:8,life:.8});for(let i=0;i<8;i++)this.puffs.emit(p.x,p.y+.5,p.z,{size:.9,grow:2.6,life:.9,alpha:.32,spread:3,color:this.dust});if(e.by>0&&e.by!==e.kart)hud.pop(name(e.by)+' GOT '+name(e.kart),'dodge');}}
+  else if(e.type==='spin'){st.shake(.65);st.flashOnce(0xff3355,.32,this.reduced);P.burst(me.x,me.y+1,me.z,60,0xffe45e,{speed:7,life:.8});for(let i=0;i<10;i++)this.puffs.emit(me.x,me.y+.5,me.z,{size:.9,grow:2.6,life:1,alpha:.34,spread:3,color:this.dust});hud.pop(e.by>0?name(e.by)+'’S '+(CAUSE[e.cause]||'HIT')+'!':'SPUN OUT!','magnet');}
   else if(e.type==='block'){const p=at(e.kart);P.burst(p.x,p.y+1,p.z,40,0x7fe9ff,{speed:7,life:.5});if(!e.kart){hud.pop('BLOCKED! +100','shield');st.shake(.2);st.flashOnce(0x7fe9ff,.15,this.reduced);}}
   else if(e.type==='wall'){st.shake(.28);P.burst(me.x,me.y+.5,me.z,22,0xffd9a0,{speed:5,life:.3});}
   else if(e.type==='bump'||e.type==='clash'){const a=at(e.a),b=at(e.b);if(Math.hypot(a.x-me.x,a.z-me.z)<60)P.burst((a.x+b.x)/2,a.y+.45,(a.z+b.z)/2,e.hard?26:10,0xffe9b0,{speed:e.hard?7:4,life:.35,up:1.5});if(e.type==='bump'){st.shake(e.hard?.3:.1);if(e.hard)hud.pop(RIVALS[e.b].bully?name(e.b)+' SHOVES YOU':'CONTACT!','dodge');}}
@@ -154,7 +154,7 @@ export class ThreeKart {
   else if(e.type==='pass')hud.pop('▲ '+ordinal(e.place).toUpperCase(),e.place===1?'big':'shield');
   else if(e.type==='heat'){hud.pop(heatLabel(e.tier),'dodge');}
   else if(e.type==='finish'){st.flashOnce(e.place===1?0xb9ff5e:0xffffff,.45,this.reduced);for(let i=0;i<4;i++)P.burst(me.x+(Math.random()-.5)*8,me.y+2+Math.random()*3,me.z+(Math.random()-.5)*8,60,[0xffc83d,0xff5fc8,0x5ee7ff,0xb9ff5e][i],{speed:9,life:1.4});this.finish=e;this.finishAt=performance.now();}}
- draw(g,d,reduced=false){/*DBG*/globalThis.__kart=this;if(!this.ready||this.failed)return false;this.lastGame=g;this.dawg=d;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
+ draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.lastGame=g;this.dawg=d;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<4000));return true;}
  render(g,now){
   this.stage.resize();if(this.trackSeed!==g.worldSeed)this.buildTrack(g);const t=g.track,dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced,live=g.status==='playing',P=this.particles,night=this.look.night;P.reduced=this.hud.reduced=reduced;
@@ -185,9 +185,9 @@ export class ThreeKart {
    // Rubber and smoke: the player's drift, any spin, and rivals running wide.
    const rear=[p.x-fx*.8,p.y+.04,p.z-fz*.8],skid=!air&&!k.sink&&k.v>6&&(k.drift!==0||k.spin>0||k.slip>0&&i>0);for(const sd of [-1,1])this.skids.lay(i*2+(sd>0?1:0),rear[0]+rx*.6*sd,rear[1],rear[2]+rz*.6*sd,skid);
    if(reduced||!live)return;
-   if(skid&&Math.random()<(i?.4:.75)){const sd=Math.random()<.5?-1:1;this.puffs.emit(rear[0]+rx*.6*sd,p.y+.2,rear[2]+rz*.6*sd,{size:.5,grow:2.2,life:.7,alpha:night?.3:.42,vx:-fx*2,vz:-fz*2,color:this.dust});}
+   if(skid&&Math.random()<(i?.4:.75)){const sd=Math.random()<.5?-1:1;this.puffs.emit(rear[0]+rx*.6*sd,p.y+.2,rear[2]+rz*.6*sd,{size:.45,grow:1.7,life:.6,alpha:night?.24:.26,vx:-fx*2,vz:-fz*2,color:this.dust});}
    if(boosting)P.burst(p.x-fx*1.5,p.y+.45,p.z-fz*1.5,2,i?0xff8a3d:0x5ee7ff,{speed:2,life:.25,up:.5});
-   if(Math.abs(k.d)>KART.width/2+.4&&k.v>10&&!air&&Math.random()<.5)this.puffs.emit(rear[0],p.y+.2,rear[2],{size:.6,grow:2.5,life:.8,alpha:.4,color:this.dust,spread:1.5});
+   if(Math.abs(k.d)>KART.width/2+.4&&k.v>10&&!air&&Math.random()<.5)this.puffs.emit(rear[0],p.y+.2,rear[2],{size:.5,grow:2,life:.7,alpha:.28,color:this.dust,spread:1.5});
    if(!i&&k.draft>.25)for(let n=0;n<2;n++)P.burst(p.x+fx*(2+Math.random()*7)+(Math.random()-.5)*2.6,p.y+.4+Math.random()*1.4,p.z+fz*(2+Math.random()*7)+(Math.random()-.5)*2.6,1,0x9fdcff,{speed:.3,life:.3,gravity:0,up:0});
    // Drift sparks change colour with the charge: white, then blue, then orange.
    if(k.drift&&!i&&k.charge>.25){const c=k.charge>=1.8?0xff8a3d:k.charge>=.9?0x5ec8ff:0xffffff,n=k.charge>=1.8?3:k.charge>=.9?2:1;for(const sd of [-1,1])P.burst(rear[0]+rx*.62*sd,p.y+.16,rear[2]+rz*.62*sd,n,c,{speed:3,life:.28,up:1.2});}});
@@ -199,9 +199,9 @@ export class ThreeKart {
   const yawC=this.camYaw+swing,cx=Math.cos(yawC),cz=-Math.sin(yawC),fast=Math.min(1,you.v/KART.top),rush=this.rush+=((you.boost>0&&!you.finished?1:0)-this.rush)*Math.min(1,dt*4),wind=this.wind+=((you.draft>.2?1:0)-this.wind)*Math.min(1,dt*5),tall=Math.max(0,Math.min(1,1.25-this.camera.aspect)),back=6+fast*1.3+rush*1.1+Math.min(3,(you.y||0)*.8)+grid*2.5+outro*1.2+tall*2.2;
   const behind=trackHeight(t,you.p-back*Math.cos(swing),you.d),camY=Math.max(me.y,behind+(you.y||0)*.6)+2.75+fast*.25-rush*.25+Math.min(2,(you.y||0)*.5)-grid*1.2-outro*.8,ahead=trackHeight(t,you.p+7,you.d);
   const third={pos:new T.Vector3(me.x-cx*back,camY,me.z-cz*back),at:new T.Vector3(me.x+cx*7*(1-grid)*(1-outro),(swing>.6?me.y:Math.max(ahead,me.y-1.5)+(you.y||0)*.5)+.9+tall*1.9,me.z+cz*7*(1-grid)*(1-outro))};
-  const fy=Math.cos(me.yaw),fzz=-Math.sin(me.yaw),seat=-.12,first={pos:new T.Vector3(me.x+fy*seat,me.y+1.32,me.z+fzz*seat),at:new T.Vector3(me.x+fy*14,Math.max(trackHeight(t,you.p+14,you.d),me.y-3)+(you.y||0)*.4+.5,me.z+fzz*14)};
+  const fy=Math.cos(me.yaw),fzz=-Math.sin(me.yaw),seat=-.2,first={pos:new T.Vector3(me.x+fy*seat,me.y+1.32,me.z+fzz*seat),at:new T.Vector3(me.x+fy*14,Math.max(trackHeight(t,you.p+14,you.d),me.y-3)+(you.y||0)*.4+.5,me.z+fzz*14)};
   const inside=this.rig.mix>.5;km.body.visible=!inside;km.glow.visible=!inside;if(inside)km.blob.visible=false;if(km.cockpit){km.cockpit.visible=inside;const turn=you.drift?you.drift*.9:you.steer*.7;km.wheel.rotation.x=-turn;for(const ty of km.tyres)ty.rotation.y=turn*.5;}if(this.circuit.line){this.circuit.line.visible=this.rig.mix>.05;this.circuit.line.material.opacity=this.rig.mix*(this.look.night?.5:.75);}
-  this.rig.update(dt,third,first,{follow:grid>0||outro>0?8:30,roll:this.rig.mix>.5?km.roll*.3:0});this.stage.applyShake(real,reduced);this.rig.aim();
+  this.rig.update(dt,third,first,{follow:grid>0||outro>0?8:30,roll:0});this.stage.applyShake(real,reduced);this.rig.aim();
   if(live&&!reduced&&(rush>.2||fast>.97)){const n=rush>.2?3:1;for(let j=0;j<n;j++){const a=Math.random()*Math.PI*2,r=2.6+Math.random()*3.2,ah=9+Math.random()*16;P.burst(me.x+cx*ah-cz*Math.cos(a)*r,me.y+Math.max(.2,1.4+Math.sin(a)*r*.6),me.z+cz*ah+cx*Math.cos(a)*r,1,rush>.2?0x9fe8ff:0xc8ccff,{speed:.2,life:.32,gravity:0,up:0});}}
   const cam=this.camera,boosting=reduced?0:rush*10+fast*5+wind*3;cam.fov+=(fitFov((this.rig.mix>.5?72:61)+boosting,cam.aspect,this.rig.mix>.5?86:70)-cam.fov)*Math.min(1,dt*5);cam.near=.08;cam.far=2400;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);this.sunSprite.position.copy(cam.position).addScaledVector(this.sunDir,800);
   this.puffs.mat.uniforms.uScale.value=this.stage.r.domElement.height/(2*Math.tan(cam.fov*Math.PI/360));

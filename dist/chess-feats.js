@@ -72,7 +72,7 @@ export const PUZZLES=[
  {fen:'R7/8/8/8/8/5K2/8/7k w - - 0 1',mate:2,title:'Cornered'},
  {fen:'r2qkbnr/ppp2ppp/2np4/4N3/2B1P3/2N5/PPPP1PPP/R1BbK2R w KQkq - 0 1',mate:2,title:'A Legal Trick'},
  {fen:'4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 0 1',mate:2,title:'A Night at the Opera'},
- {fen:'6k1/3r1ppp/8/8/8/8/5PPP/3RR1K1 w - - 0 1',mate:2,title:'Two on the File'}];
+ {fen:'r5k1/5ppp/8/8/8/8/4RPPP/4R1K1 w - - 0 1',mate:2,title:'Two on the File'}];
 /** The day number for a date string 'YYYY-MM-DD' (days since 1970). */
 export const dayNumber=key=>Math.floor(Date.UTC(Number(key.slice(0,4)),Number(key.slice(5,7))-1,Number(key.slice(8,10)))/864e5);
 /** Today's puzzle: the same for everyone on the same date. */

@@ -58,7 +58,7 @@ test('Magnetism: a piece dropped near a legal spot clicks into it; carrying foll
  for(const [dx,dy] of [[.2,.1],[-.4,.9],[.3,1.4],[0,-.3]]){const s=snap(lv,0,q.x+dx,q.y+dy);assert.ok(s,'snap '+dx+','+dy);const p=resolve(lv,0,s.gx,s.gy);assert.equal(p.y,q.y);assert.ok(Math.abs(p.x-q.x)<=.5);}
  assert.equal(snap(lv,0,5,15.9),null,'nothing to stand on within reach up there');
  assert.ok(g.grab(0));assert.equal(g.carry(q.x+.2,q.y+.8),true);assert.deepEqual(g.cursor,{gx:sol.gx,gy:sol.gy});assert.equal(g.preview().kind,'place');
- assert.equal(g.carry(5,15.9),false);assert.deepEqual(g.cursor,{gx:10,gy:31});assert.equal(g.preview().kind,'blocked');
+ assert.equal(g.carry(5,15.9),false);assert.deepEqual(g.cursor,{gx:10,gy:31});assert.equal(g.carry(1,1),true,'pulled out of the bin to the nearest free spot');assert.equal(g.preview().kind,'place');
  g.carry(q.x,q.y+.5);assert.ok(g.release());assert.deepEqual(g.placed,[{i:0,gx:sol.gx,gy:sol.gy}]);
  // Standing pieces always get the cell just above their surface, so one spot has one name (and one code).
  const r=fresh(1),ramp=snap(r.lv,0,5.1,11.9);assert.deepEqual(ramp,{gx:10,gy:24});
@@ -68,7 +68,7 @@ test('The forecast shows what a piece will do: a ramp rolls things down its slop
  const g=fresh(1);g.grab(0);g.point(10,24);const f=g.forecast();assert.ok(f?.pts?.length>10);assert.ok(f.pts.at(-1)[0]>f.pts[0][0]+1.5,'rolls right');assert.ok(f.pts.at(-1)[1]<f.pts[0][1],'and down');
  const s=fresh(3);s.grab(0);s.point(8,1);const fs=s.forecast();assert.ok(Math.max(...fs.pts.map(p=>p[1]))>4,'thrown high');assert.ok(fs.pts.at(-1)[0]>4+2,'and to the right');
  const d=fresh(0);d.grab(0);d.point(9,25);const fd=d.forecast();assert.equal(fd.arcs.length,2);assert.ok(Math.abs(fd.arcs[0].at(-1)[0]-(4.5+DOMINO.domH))<1e-9);
- d.point(1,1);assert.equal(d.preview().kind,'place');d.point(3,26);assert.equal(d.forecast()?.arcs.length,2);d.release(false);assert.equal(d.forecast()?.arcs?.length,2,'the keyboard cursor previews too');d.go();assert.equal(d.forecast(),null);
+ d.point(3,26);assert.equal(d.forecast()?.arcs.length,2);d.release(false);assert.equal(d.forecast()?.arcs?.length,2,'the keyboard cursor previews too');d.go();assert.equal(d.forecast(),null);
 });
 
 test('Cursor keys, drop, pick up, blocked spots, and holding to GO',()=>{
@@ -162,4 +162,20 @@ test('Runs save mid-chain and come back exactly; corrupt and pre-pegboard saves 
  for(const bad of bads)assert.equal(restoreQuick(bad),null,JSON.stringify(bad).slice(0,90));
  // A save from the old landscape rooms (fuses, no rev) is rejected cleanly rather than half-loaded.
  assert.equal(restoreQuick({version:1,kind:'domino',worldSeed:5,score:0,time:1,randomState:1,level:0,fuses:10,cleared:0,phase:'place',phaseT:0,placed:[],cursor:{gx:16,gy:10},fails:0,sim:null,codes:[],runT:0,input:{up:false,down:false,left:false,right:false,act:false},holdT:{},actT:-1}),null);
+});
+
+test('The 3D room builds and animates every room without WebGL: tray carry, forecast, chain, win, miss marker (light profile stays light)',async()=>{
+ // A stub stage and DOM: this exercises the scene-building and per-frame code, not the pixels.
+ const noop=()=>{},ctx2d=new Proxy({},{get:(t,k)=>k==='measureText'?()=>({width:10}):k==='createLinearGradient'||k==='createRadialGradient'?()=>({addColorStop:noop}):(t[k]??noop),set:(t,k,v)=>{t[k]=v;return true;}});
+ const el=()=>({style:{setProperty:noop},classList:{add:noop,remove:noop,toggle:noop,contains:()=>false},children:[],append:noop,remove:noop,setAttribute:noop,querySelector:()=>el(),querySelectorAll:()=>[],getContext:()=>ctx2d,getBoundingClientRect:()=>({left:0,top:0,width:375,height:700,bottom:60,right:375}),parentElement:{append:noop,querySelector:()=>null},hidden:false,width:1,height:1,offsetWidth:1});
+ const saved={document:globalThis.document,raf:globalThis.requestAnimationFrame,caf:globalThis.cancelAnimationFrame};globalThis.document={createElement:el,hidden:false,querySelector:()=>null};globalThis.requestAnimationFrame=noop;globalThis.cancelAnimationFrame=noop;
+ try{const {ThreeDomino}=await import('../dist/domino-3d.js'),{T}=await import('../dist/three-kit.js');
+  for(const [quality,w,h] of [['low',375,700],['high',1024,768]]){const r=new ThreeDomino(el(),noop,{quality});r.makeStage=()=>({view:el(),scene:new T.Scene(),camera:new T.PerspectiveCamera(),canvas:el(),w,h,quality,resize:noop,shake:noop,flashOnce:noop,applyShake:noop,render:noop,studioEnvironment:noop,hdrEnvironment:noop,sunShadow:l=>l,dispose:noop});await r.init();
+   const g=new DominoGame(()=>.5,1);g.start();let most=0;const pump=()=>{for(const e of g.events)r.event(e,g);g.events=[];assert.equal(r.draw(g,null),true);};
+   for(let L=0;L<LEVELS.length;L++){assert.equal(g.level,L);pump();if(L===9){g.setPlaced([{i:0,gx:5,gy:25},{i:1,gx:14,gy:5}]);g.go();while(g.phase!=='place'){g.tick(1/30);pump();}pump();assert.ok(r.flag,'the so-close flag is planted');g.clearPlaced();}
+    for(const p of DOMINO_SOLUTIONS[L]){assert.ok(g.grab(p.i));g.held.touch=true;g.held.fx=3;g.held.fy=9;g.carry(3,9);pump();g.point(p.gx,p.gy);pump();assert.ok(r.ghost);const at=r.pick(180,300);assert.ok(Number.isFinite(at.x)&&at.x>0&&at.x<10&&at.y>0&&at.y<16,'a tap on the room lands in the room');g.release();pump();}
+    g.go();let n=0;while(g.status==='playing'&&g.phase!=='place'&&g.level===L&&n++<900){g.tick(1/30);pump();}assert.ok(g.stars[L]>0,LEVELS[L].name);
+    let meshes=0;r.scene.traverse(o=>{if(o.isMesh||o.isSprite||o.isPoints)meshes++;});most=Math.max(most,meshes);}
+   if(quality==='low')assert.ok(most<300,'light profile draw calls: '+most);r.dispose();}
+ }finally{globalThis.document=saved.document;globalThis.requestAnimationFrame=saved.raf;globalThis.cancelAnimationFrame=saved.caf;}
 });

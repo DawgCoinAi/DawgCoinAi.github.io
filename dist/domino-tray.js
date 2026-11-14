@@ -63,7 +63,7 @@ function mount(shell,board){
   const running=g.phase!=='place';goBtn.disabled=running;goBtn.innerHTML=g.phase==='run'?'RUNNING…':g.phase==='won'?'IN THE BIN ✓':g.phase==='failed'?'RESET…':'GO <b>▶</b>';goBtn.classList.toggle('dm-ready',!running);resetBtn.disabled=running||!g.placed.length;
   roomBtn.innerHTML=g.daily?`ROOM OF THE DAY <i>${stars(g.stars[g.level])}</i>`:`ROOM ${g.level+1}<small>/${LEVELS.length}</small> <i>${stars(Math.max(g.best[g.level],g.stars[g.level]))}</i>`;prev.disabled=running||g.daily||g.level<=0;next.disabled=running||g.daily||g.level>=Math.min(g.unlocked,LEVELS.length-1);prev.hidden=next.hidden=!!g.daily;
   tries.textContent=g.attempts?`${g.attempts} ${g.attempts===1?'TRY':'TRIES'}`:'FREE TRIES';skip.hidden=!g.canSkip();
-  const first=g.attempts===0;rules.innerHTML=(g.daily?`<span class="dm-twist">${g.twist.name.toUpperCase()}</span>`:'')+`<span class="on">★ BIN THE BONE</span><span class="${used.size<=lv.par?'on':''}">★ ${lv.par} PIECE${lv.par===1?'':'S'} OR FEWER</span><span class="${first?'on':''}">★ FIRST TRY</span>`;};
+  const first=g.attempts===0||running&&g.attempts===1;rules.innerHTML=(g.daily?`<span class="dm-twist">${g.twist.name.toUpperCase()}</span>`:'')+`<span class="on">★ BIN THE BONE</span><span class="${used.size<=lv.par?'on':''}">★ ${lv.par} PIECE${lv.par===1?'':'S'} OR FEWER</span><span class="${first?'on':''}">★ FIRST TRY</span>`;};
  requestAnimationFrame(frame);
  // Room: grab the piece under the pointer, or carry the next free piece to wherever you press.
  return {

@@ -42,7 +42,7 @@ const kindOf=n=>pieceOf(n)?.type||n;
 export class ThreeDomino {
  constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.clock=performance.now();this.status='';this.statusSince=performance.now();this.level=-1;this.world=-1;this.worldKey='';this.dawgKey='';this.cam={x:5,y:8,z:1};this.kick=0;this.roll=0;this.focus={x:5,y:8};this.inset={top:90,bottom:120,t:0};}
  async init(){
-  this.stage=new Stage({quality:this.quality,className:'dash3d domino3d',onFailure:()=>this.fail(),exposure:1.05}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.base=new T.PerspectiveCamera(FOV,1,.1,300);
+  this.stage=this.makeStage();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.base=new T.PerspectiveCamera(FOV,1,.1,300);
   this.hud=new Hud('<div class="dm-top"><span class="dm-world"></span><b class="dm-name"></b></div><span class="dm-hint"></span><p class="dm-tip" hidden></p><i class="dm-bars" aria-hidden="true"></i>');this.view.append(this.hud.root);
   this.ui={top:this.hud.q('.dm-top'),world:this.hud.q('.dm-world'),name:this.hud.q('.dm-name'),hint:this.hud.q('.dm-hint'),tip:this.hud.q('.dm-tip')};
   this.rig=new CameraRig(this.camera);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
@@ -63,6 +63,7 @@ export class ThreeDomino {
   this.confetti=new T.InstancedMesh(new T.PlaneGeometry(.2,.12),new T.MeshBasicMaterial({side:T.DoubleSide,toneMapped:false}),high?150:60);this.confetti.frustumCulled=false;this.confetti.visible=false;this.confettiBits=[];s.add(this.confetti);
   this.puffs=Array.from({length:high?28:12},()=>{const sp=new T.Sprite(new T.SpriteMaterial({map:this.puffTex,color:0xe9d9bd,transparent:true,opacity:0,depthWrite:false}));sp.visible=false;sp.userData={life:0};s.add(sp);return sp;});this.puffNext=0;
   this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D ROOM · LIVE');return this;}
+ makeStage(){return new Stage({quality:this.quality,className:'dash3d domino3d',onFailure:()=>this.fail(),exposure:1.05}).init();}
  setCamera(){}
  box(parent,w,h,d,mat,x,y,z=0){const m=new T.Mesh(this.geo.unit,mat);m.scale.set(w,h,d);m.position.set(x,y,z);parent.add(m);return m;}
  // World dressing shared by the five rooms of a shop: pegboard, cabinet, bench, lamp, backdrop.
@@ -156,7 +157,6 @@ export class ThreeDomino {
  throwConfetti(x,y){const n=this.confetti.count=this.confetti.instanceMatrix.count,c=new T.Color();this.confettiBits=Array.from({length:n},(_,i)=>{this.confetti.setColorAt(i,c.set(CONFETTI[i%CONFETTI.length]));const a=Math.random()*Math.PI,v=5+Math.random()*8;return {x,y:y+.4,z:0,vx:Math.cos(a)*v*.7,vy:Math.sin(a)*v+3,vz:(Math.random()-.5)*3,r:Math.random()*6,rs:(Math.random()-.5)*14,life:2.6+Math.random()};});if(this.confetti.instanceColor)this.confetti.instanceColor.needsUpdate=true;this.confetti.visible=true;}
  event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced,spot=()=>{if(e.x!==undefined)this.action={x:e.x,y:e.y,t:performance.now()};};
   if(e.type==='level'){if(g.lv!==this.lvRef)this.build(g);}
-  else if(e.type==='feat'){hud.pop('FEAT: '+e.name.toUpperCase(),'gold');}
   else if(e.type==='go'){hud.pop('GO!','big');this.tipUntil=0;this.ui.tip.hidden=true;this.kick=.6;const d=g.world().doms.find(x=>x.start);this.action=d?{x:d.x,y:d.y+.6,t:performance.now()}:null;}
   else if(e.type==='place'){P.burst(e.x,e.y+.2,DEPTH/2,14,0x5effc1,{speed:2,life:.45,gravity:-3});this.puff(e.x,e.y,.5,2);}
   else if(e.type==='pickup'){P.burst(e.x,e.y+.2,DEPTH/2,8,0x5ee7ff,{speed:2,life:.35});}
@@ -196,7 +196,7 @@ export class ThreeDomino {
   let bonePos=null;this.balls.forEach((x,k)=>{const st=sim?sim.balls[k]:x.b,dx=st.x-x.px;x.px=st.x;x.m.position.set(st.x,st.y,0);
    if(x.b.bone){bonePos=st;x.inner.rotation.z-=dx/x.b.r;if(!sim&&!reduced)x.inner.rotation.y=Math.sin(real*1.4)*.5;x.glow.material.opacity=.42+Math.sin(real*4)*.12;const sp=sim?Math.hypot(st.vx,st.vy):0;if(sp>3&&!reduced&&Math.random()<.5)this.particles.burst(st.x,st.y,DEPTH/2,1,0xffd25e,{speed:.6,life:.5,gravity:-1});}
    else x.m.rotation.z-=dx/x.b.r;});
-  this.springs.forEach((s,k)=>{s.sq=Math.max(0,s.sq-dt*4);const f=s.sq>.75?1-(1-s.sq)*2.2:s.sq>0?.45+(.75-s.sq)*.73:1;s.body.scale.y=s.sq>0?Math.max(.45,2.4*f*(s.sq>.75?.5:1)+.2):1;});
+  this.springs.forEach(s=>{s.sq=Math.max(0,s.sq-dt*3.5);s.body.scale.y=1+Math.sin(s.sq*Math.PI)*1.7;});
   for(const x of this.fans){const on=running&&(x.f.sw===undefined||!!sim.sw[x.f.sw]);x.spin+=((on?30:x.f.sw===undefined?3:0)-x.spin)*Math.min(1,dt*3);x.blades.rotation.x+=dt*x.spin;x.wind.forEach((sp,i)=>{const t=((real*1.3+i/x.wind.length)%1);sp.visible=on&&!reduced;sp.position.set(x.f.x+x.f.dir*(.5+t*(DOMINO.fanLen-.6)),x.f.y+Math.sin(i*2.4+real*2.5)*.55,.1+(i%3)*.2);sp.scale.set(.5+t*.9,.16,1);sp.material.opacity=.4*(1-t)*Math.min(1,t*6);});}
   this.gloves.forEach((x,k)=>{const f=sim?sim.gloves[k].f:0,ext=f>0?(f<.07?f/.07:Math.max(0,1-(f-.07)/.5)):0,L=.3+ext*.85;x.rod.scale.x=L;x.rod.position.x=x.q.dir*L/2;x.fist.position.x=x.q.dir*L;x.btn.position.y=f>0?.63:.67;});
   for(const x of this.doors){const open=!!sim&&g.phase!=='place'&&!!sim.sw[x.d.sw];x.a+=((open?1:0)-x.a)*Math.min(1,dt*(open?14:6));x.hinge.rotation.z=-x.a*1.45;}

@@ -75,7 +75,4 @@ test('Saves with drive records validate; corrupt drive records and old saves beh
 test('Radio stations point at real soundtrack tracks',()=>{
  for(const st of RADIO)if(st.track)assert.ok(TRACKS[st.track],st.track);assert.ok(RADIO.some(s=>s.track===null),'radio can be switched off');
 });
-test('The Street Hustle panel carries the drive toggle, phone wire and job card hooks',async()=>{
- const fs=await import('node:fs');const html=fs.readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');for(const id of ['driveToggle','hustlePhoneToggle','hustlePhoneBody','hustleCard','hustleCardTitle'])assert.match(html,new RegExp('id="'+id+'"'),id);
- const app=fs.readFileSync(new URL('../dist/app.js',import.meta.url),'utf8');assert.ok(app.includes("import('./hustle-drive-3d.js')"));assert.ok(!app.includes('trade.travel(Number(b.dataset'),'every travel button goes through the drive');
-});
+// The panel itself (a phone over a drivable city) is covered in hustle-world.test.mjs.

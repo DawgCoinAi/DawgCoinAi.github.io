@@ -18,7 +18,7 @@ export const DISCOVERIES=[
  {id:'cloud',icon:'☁️',title:'Keep your progress anywhere',text:'You already have a cloud save as a guest. Add your email and it follows you to any phone or computer.',cta:'ADD MY EMAIL',go:'cloud',when:c=>c.level>=5&&!c.hasEmail},
  {id:'passport',icon:'🛂',title:'The Arcade Passport',text:'A stamp for every game you play well. Fill the passport for the city legend badge.',cta:'SEE MY PASSPORT',go:'passport',when:c=>c.bests>=4},
  {id:'league',icon:'🏁',title:'The circuit league',text:'Adopt more DAWGs and race them against each other in the circuit league on the Me tab.',cta:'OPEN THE LEAGUE',go:'league',when:c=>c.level>=6},
- {id:'hustle',icon:'💼',title:'Street Hustle is open',text:'Thirty nights, one city, your contact on every corner. Buy low, sell high and handle whoever stops you.',cta:'START HUSTLING',go:'trade',when:c=>c.open.includes('trade')},
+ {id:'hustle',icon:'💼',title:'Street Hustle is open',text:'Thirty nights, one city and your own car. Buy low, drive it across town, sell high, and lose whoever comes after you.',cta:'START HUSTLING',go:'trade',when:c=>c.open.includes('trade')},
  {id:'story',icon:'🌙',title:'After Hours is open',text:'One velvet suit, one night, six endings. Talk to everyone, pick up everything, and try typing commands like the classics.',cta:'START THE NIGHT',go:'story',when:c=>c.open.includes('story')},
  {id:'owner',icon:'🔑',title:'Owner tools',text:'You run this arcade. Open every game for any player by friend code, from the Me tab or any player card.',cta:'OPEN OWNER TOOLS',go:'owner',when:c=>c.owner}
 ];

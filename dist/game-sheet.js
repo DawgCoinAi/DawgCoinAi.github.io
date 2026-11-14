@@ -1,12 +1,14 @@
-// The game sheet: tap a game and it opens with a live demo of the game playing itself, the
-// essentials of how to play, your best, and either a big Play button or what it takes to unlock.
+// The game sheet: a product page for one game. A live demo of the game playing itself, the hook,
+// how to play in three lines, your best and medals, the feats you have collected, the top of this
+// week’s board, and Play / Challenge a friend, or exactly what it takes to unlock.
 import {gameById} from './games.js';
-import {BLURBS,posterOf,fmt} from './shell.js';
+import {BLURBS,HOOKS,BADGES,genresOf,posterOf,fmt} from './shell.js';
+import {medalState} from './results.js';
 
 const $=id=>document.getElementById(id);
 export const HOW={
  classic:['Steer with arrows, WASD, a swipe or the D-pad; turn early and the DAWG takes the corner with a burst','Eat every treat without a gap to build a chain; power treats turn the rivals blue','Dash (Shift or E) straight through a rival to tackle it; each stage adds a new twist'],
- rush:['Sixty seconds on the clock: keep moving to build a ×5 multiplier','Every 20-treat chain and every catch adds time; a hit costs 150 and the multiplier','The last ten seconds pay double'],
+ rush:['Sixty seconds on the clock: keep moving to build a ×5 multiplier','Every 30-treat chain and every catch adds time; a hit costs 150 and the multiplier','The last ten seconds pay double'],
  daily:['One maze and one twist for everyone today','Your first run is the one that scores; clear the maze inside 90 seconds for a time bonus','Later runs are practice, and a new twist arrives tomorrow'],
  trade:['Buy low in one district, sell high in another','Every trip is a night: 30 nights to cash out','Talk to your contact and handle whoever stops you'],
  flappy:['Tap or Space to burn the jet; swipe down or ↓ to dive','Dive through a gate for a bonus, ride thermals, pull the gold lines','Three gold rings in a row earn a shield; a new sky every 8 gates'],
@@ -26,22 +28,58 @@ export const HOW={
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']
 };
 
+// Where each game's FEATS list lives. Static import() calls so the deploy bundle can follow them;
+// a game without an entry simply shows no feats row.
+const FEAT_SOURCES={
+ classic:()=>import('./engine.js'),rush:()=>import('./engine.js'),daily:()=>import('./engine.js'),
+ bark:()=>import('./bark-engine.js'),climb:()=>import('./climb-engine.js'),domino:()=>import('./domino-engine.js'),heist:()=>import('./heist-engine.js'),
+ kart:()=>import('./kart-engine.js'),nemesis:()=>import('./nemesis-engine.js'),paint:()=>import('./paint-engine.js'),pinball:()=>import('./pinball-engine.js'),
+ snake:()=>import('./snake-engine.js'),turbo:()=>import('./turbo-engine.js')
+};
+// A game's feats: [{id,name,text}], or [] when its engine has none.
+export async function featsOf(id){try{const m=await FEAT_SOURCES[id]?.();return (m?.FEATS||[]).filter(f=>f&&typeof f.id==='string'&&f.id.startsWith(id+'.')).map(f=>({id:f.id,name:f.name||f.id,text:f.text||''}));}catch{return [];}}
+const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+const MEDAL_NAMES=['BRONZE','SILVER','GOLD'];
+
 export class GameSheet {
- // io: {best(id), wall(id), play(id), board(id), demo(host,id) → {dispose}}
+ // io: {best(id), wall(id), play(id), board(id), demo(host,id) → {dispose}} and, optionally,
+ // challenge(id), medals(id) → [bronze,silver,gold], feats() → collected ids, social(id) → {rank,friend},
+ // top(id) → {rows,mine}, avatar(dawg,size) → canvas.
  constructor(io){this.io=io;this.demo=null;this.id=null;
   $('sheetPlay').onclick=()=>{const id=this.id;this.close();if(this.io.wall(id).open)this.io.play(id);};
   $('sheetBoard').onclick=()=>{const id=this.id;this.close();this.io.board(id);};
+  $('sheetChallenge').onclick=()=>{const id=this.id;this.close();this.io.challenge?.(id);};
   // The close event arrives a tick late; a sheet reopened in that tick keeps its new demo.
   $('gameSheet').addEventListener('close',()=>{if(!$('gameSheet').open)this.stopDemo();});}
- open(id){const g=gameById(id);if(!g)return;this.id=id;const wall=this.io.wall(id),best=this.io.best(id);
-  $('sheetTitle').textContent=g.title;$('sheetDesc').textContent=BLURBS[id]||'';$('sheetTag').textContent=wall.open?'TAP PLAY TO JUMP IN':'LOCKED · HERE’S HOW TO OPEN IT';
-  $('sheetHow').replaceChildren(...(HOW[id]||[]).map(t=>{const li=document.createElement('li');li.textContent=t;return li;}));
-  $('sheetBest').textContent=best?fmt(best):'—';$('sheetStatus').textContent=wall.open?'UNLOCKED':'LOCKED';
-  $('sheetWall').hidden=wall.open;$('sheetWall').replaceChildren(...(wall.routes||[]).map(r=>{const row=document.createElement('div');row.className='sheet-route'+(r.done?' done':'');const label=document.createElement('span');label.textContent=r.label;const bar=document.createElement('i');bar.style.setProperty?.('--p',String(Math.min(1,r.have/Math.max(1,r.need))));const left=document.createElement('small');left.textContent=r.done?'Done':r.left;row.append(label,bar,left);return row;}));
-  $('sheetPlay').disabled=!wall.open;$('sheetPlay').textContent=wall.open?'PLAY NOW ▶':'LOCKED';
+ open(id){const g=gameById(id);if(!g)return;this.id=id;const wall=this.io.wall(id),best=this.io.best(id),locked=!wall.open,sheet=$('gameSheet');
+  $('sheetTitle').textContent=g.title;$('sheetDesc').textContent=BLURBS[id]||'';$('sheetHook').textContent=HOOKS[id]||'';
+  $('sheetTag').textContent=[locked?'LOCKED':BADGES[id],...genresOf(id).map(x=>x.toUpperCase())].filter(Boolean).join(' · ');
+  $('sheetHow').replaceChildren(...(HOW[id]||[]).map(t=>el('li','',t)));
+  $('sheetBest').textContent=best?(id==='trade'?'$':'')+fmt(best):'—';$('sheetRank').textContent='—';$('sheetStatus').textContent=locked?'LOCKED':'UNLOCKED';
+  sheet.classList.toggle('locked',locked);
+  $('sheetWall').hidden=!locked;$('sheetWall').replaceChildren(...(locked?[el('h3','','Unlock it: any one of these opens it'),...(wall.routes||[]).map(r=>{const row=el('div','sheet-route'+(r.done?' done':''));const bar=el('i');bar.style.setProperty?.('--p',String(Math.min(1,r.have/Math.max(1,r.need))));row.append(el('span','',r.label),bar,el('small','',r.done?'Done':r.left));return row;})]:[]));
+  $('sheetPlay').disabled=locked;$('sheetPlay').textContent=locked?'LOCKED':id==='trade'||id==='story'||id==='chess'?'CONTINUE':'PLAY NOW';
+  $('sheetChallenge').hidden=locked||id==='story'||!this.io.challenge;
   $('sheetDemo').style.setProperty?.('--poster',`url(${posterOf(id)})`);
-  if(!$('gameSheet').open)$('gameSheet').showModal?.();this.startDemo(id);}
- startDemo(id){this.stopDemo();const host=$('sheetDemo');host.classList.toggle('is-poster',id==='story'||id==='trade'||id==='chess');if(id==='story'||id==='trade'||id==='chess')return;
+  this.medals(id,best);this.feats(id);this.social(id);
+  if(!sheet.open)sheet.showModal?.();sheet.scrollTop=0;this.startDemo(id);}
+ // Medal progress against the game's three targets.
+ medals(id,best){const host=$('sheetMedals'),next=$('sheetNext');let targets=[];try{targets=this.io.medals?.(id)||[];}catch{}const m=medalState(best||0,targets),story=id==='story'||id==='trade'||id==='chess';
+  host.hidden=next.hidden=story||!m.targets.length;if(host.hidden)return;
+  host.replaceChildren(...m.targets.map((t,i)=>{const d=el('div','medal '+MEDAL_NAMES[i].toLowerCase()+(i<m.earned?' earned':''));d.append(el('i'),el('b','',MEDAL_NAMES[i]),el('small','',fmt(t)));return d;}));
+  next.textContent=m.next?`${fmt(m.toNext)} more for ${MEDAL_NAMES[m.earned].toLowerCase()}`:'Every medal earned. Now chase the board.';}
+ // Feats collected for this game, when its engine lists them.
+ async feats(id){const host=$('sheetFeats');host.hidden=true;host.replaceChildren?.();const all=await featsOf(id);if(this.id!==id||!all.length)return;let got=[];try{got=this.io.feats?.()||[];}catch{}const have=all.filter(f=>got.includes(f.id)).length;
+  const head=el('h3','','Feats ');head.append(el('small','',have+' / '+all.length));const list=el('ul','feat-list');
+  list.append(...all.map(f=>{const li=el('li',got.includes(f.id)?'got':'');li.title=f.text;li.append(el('b','',f.name),el('span','',f.text));return li;}));host.replaceChildren(head,list);host.hidden=false;}
+ // This week's top three and where you and your friends stand. Quietly absent when offline.
+ async social(id){const list=$('sheetTop'),friend=$('sheetFriend');friend.textContent='';list.replaceChildren(el('li','skeleton'),el('li','skeleton'),el('li','skeleton'));
+  const [top,mine]=await Promise.all([Promise.resolve(this.io.top?.(id)).catch(()=>null),Promise.resolve(this.io.social?.(id)).catch(()=>null)]);if(this.id!==id)return;
+  if(mine){$('sheetRank').textContent=mine.rank||'—';friend.textContent=mine.friend&&mine.friend!=='Add friends'?'Top friend: '+mine.friend:'Add a friend to see their best here.';}
+  if(!top){list.replaceChildren(el('li','sheet-empty','The boards are out of reach right now. Your runs still count on this device.'));return;}
+  if(!top.rows.length){list.replaceChildren(el('li','sheet-empty','No runs this week yet. The top spot is yours for the taking.'));return;}
+  list.replaceChildren(...top.rows.map((r,i)=>{const li=el('li','sheet-rank'+(r.is_me?' me':''));const face=this.io.avatar?.(r.avatar,32);li.append(el('span','place','#'+(r.place||i+1)));if(face)li.append(face);li.append(el('span','who',r.player+(r.is_me?' (you)':'')),el('b','',fmt(r.score)));return li;}));}
+ startDemo(id){this.stopDemo();const host=$('sheetDemo'),still=id==='story'||id==='trade'||id==='chess';host.classList.toggle('is-poster',still);$('gameSheet').classList.toggle('no-demo',still);if(still)return;
   this.demo=this.io.demo(host,id);}
  stopDemo(){try{this.demo?.dispose();}catch{}this.demo=null;}
  close(){this.stopDemo();if($('gameSheet').open)$('gameSheet').close();}

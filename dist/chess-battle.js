@@ -21,14 +21,14 @@ const metal=(S,c=0xdde4ff)=>S.own(new T.MeshStandardMaterial({color:c,metalness:
 const lit=(S,c,k=2.4)=>S.own(new T.MeshBasicMaterial({color:hdr(c,k),toneMapped:false}));
 // All weapons point along +z (the way their owner faces) unless turned.
 function spear(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.02,.02,1.05,8).rotateX(PI/2)),metal(S,0x8a6a48)),new T.Mesh(S.own(new T.ConeGeometry(.06,.26,10).rotateX(PI/2).translate(0,0,.64)),lit(S,c)));return g;}
-function shield(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.24,.24,.04,24).rotateX(PI/2)),metal(S,0xcfd6f0)),new T.Mesh(S.own(new T.TorusGeometry(.24,.025,8,28)),lit(S,c,1.8)),new T.Mesh(S.own(new T.SphereGeometry(.07,12,8).translate(0,0,.03)),lit(S,c)));return g;}
+function shield(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.19,.19,.04,24).rotateX(PI/2)),metal(S,0xcfd6f0)),new T.Mesh(S.own(new T.TorusGeometry(.19,.022,8,28)),lit(S,c,1.8)),new T.Mesh(S.own(new T.SphereGeometry(.07,12,8).translate(0,0,.03)),lit(S,c)));return g;}
 function lance(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.ConeGeometry(.075,1.7,14).rotateX(PI/2).translate(0,0,.6)),metal(S)),new T.Mesh(S.own(new T.CylinderGeometry(.15,.11,.08,16).rotateX(PI/2).translate(0,0,-.2)),lit(S,c,1.8)),new T.Mesh(S.own(new T.ConeGeometry(.03,.3,8).rotateX(PI/2).translate(0,0,1.45)),lit(S,c)));return g;}
 // A blade pointing up from its hilt.
 function blade(S,c,len=.8,w=.06){const g=new T.Group(),b=new T.ConeGeometry(w,len,4).translate(0,len/2+.08,0);b.scale(1,1,.3);g.add(new T.Mesh(S.own(b),lit(S,c,2.6)),new T.Mesh(S.own(new T.BoxGeometry(w*3.4,.035,.05).translate(0,.07,0)),metal(S,GOLD)),new T.Mesh(S.own(new T.CylinderGeometry(.02,.02,.14,8)),metal(S,0x4a3a5a)));return g;}
 function barrel(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.13,.17,1,18).rotateX(PI/2).translate(0,0,.5)),S.own(new T.MeshStandardMaterial({color:0x3a3d52,metalness:.85,roughness:.28,emissive:0x202436}))),new T.Mesh(S.own(new T.TorusGeometry(.14,.03,8,20).translate(0,0,.98)),lit(S,c,1.6)),new T.Mesh(S.own(new T.TorusGeometry(.17,.025,8,20).translate(0,0,.4)),metal(S,GOLD)),new T.Mesh(S.own(new T.CircleGeometry(.1,16).translate(0,0,1.002)),S.own(new T.MeshBasicMaterial({color:0x050308}))));return g;}
 function horseshoe(S,c){return new T.Mesh(S.own(new T.TorusGeometry(.13,.035,8,18,PI*1.35).rotateZ(-PI*.175)),lit(S,c,2.6));}
 function crown(S,k=1){const parts=[new T.CylinderGeometry(.15,.13,.1,20,1,true)];for(let i=0;i<8;i++){const a=i/8*PI*2;parts.push(new T.ConeGeometry(.032,.1,6).translate(Math.sin(a)*.14,.09,Math.cos(a)*.14));}const m=new T.Mesh(S.own(merge(parts)),S.own(new T.MeshStandardMaterial({color:GOLD,metalness:1,roughness:.18,emissive:GOLD,emissiveIntensity:.55,side:T.DoubleSide})));m.scale.setScalar(k);return m;}
-function slab(S,c){return new T.Mesh(S.geo.box,S.own(new T.MeshStandardMaterial({color:c==='w'?0xd8d0ec:0x2a2638,roughness:.5,metalness:.3,emissive:S.teamColor(c),emissiveIntensity:.25})));}
+function slab(S,c){return new T.Mesh(S.geo.box,S.own(new T.MeshStandardMaterial({color:c==='w'?0xd8d0ec:0x2a2638,roughness:.5,metalness:.3,emissive:S.teamColor(c),emissiveIntensity:.07})));}
 function crack(S,p,r=1.3){S.crackTex=S.crackTex||texture(256,256,(c,w)=>{c.clearRect(0,0,w,w);c.translate(w/2,w/2);c.strokeStyle='#05030a';c.lineCap='round';for(let i=0;i<9;i++){let a=i/9*PI*2+Math.random()*.4,x=0,y=0;c.lineWidth=5;c.beginPath();c.moveTo(0,0);for(let j=0;j<5;j++){a+=(Math.random()-.5)*.9;x+=Math.cos(a)*22;y+=Math.sin(a)*22;c.lineTo(x,y);}c.stroke();}c.fillStyle='#05030a';c.beginPath();c.arc(0,0,12,0,PI*2);c.fill();});
  const m=S.add(new T.Mesh(S.own(new T.PlaneGeometry(2,2).rotateX(-PI/2)),S.own(new T.MeshBasicMaterial({map:S.crackTex,transparent:true,opacity:.85,depthWrite:false}))));m.position.set(p.x,.012,p.z);m.scale.setScalar(r);m.rotation.y=Math.random()*6;return m;}
 
@@ -204,10 +204,10 @@ export const BRACE={
  // Knight: rears and snorts.
  async 'rear-up'(X){const {S,D}=X,g=D.g;S.sfx('gallop');await S.tween(.34,k=>{g.rotation.x=-.6*Math.sin(k*PI);g.position.y=.3*Math.sin(k*PI);if(k>.3&&k<.6)S.puff(g.localToWorld(V(0,1,.4)),1,0xffffff,{speed:1,life:.3,gravity:0,up:.3});});S.dust(g.position,6);g.rotation.x=.15;},
  // Bishop: a ward of light closes around it.
- async ward(X){const {S,D,P}=X,bub=S.add(new T.Mesh(S.geo.ball,S.glowMat(D.col,1.1,0)));bub.position.copy(up(P,.65));bub.userData.orb=true;D.guard.push(bub);const sg=S.sigil(up(P,.035),D.col,.2);D.guard.push(sg);S.sfx('chime');
-  await S.tween(.32,k=>{const e=easeOut(k);bub.scale.set(.85*e,1.0*e,.85*e);bub.material.opacity=.26*e;sg.scale.setScalar(.2+.6*e);sg.rotation.y=k*2;D.g.position.y=.12*e;});},
+ async ward(X){const {S,D,P}=X,bub=S.add(new T.Mesh(S.geo.ball,S.glowMat(D.col,.8,0)));bub.material.side=T.FrontSide;bub.position.copy(up(P,.65));bub.userData.orb=true;D.guard.push(bub);const sg=S.sigil(up(P,.035),D.col,.2);D.guard.push(sg);S.sfx('chime');
+  await S.tween(.32,k=>{const e=easeOut(k);bub.scale.set(.85*e,1.0*e,.85*e);bub.material.opacity=.16*e;sg.scale.setScalar(.2+.6*e);sg.rotation.y=k*2;D.g.position.y=.12*e;});},
  // Rook: drops low and throws up a wall of stone slabs.
- async portcullis(X){const {S,D,P,dir,side}=X,g=D.g,slabs=[-1,0,1].map(i=>{const m=S.add(slab(S,D.c));m.scale.set(.34,.7,.12);m.position.copy(along(along(P,dir,-.55+Math.abs(i)*.1),side,i*.4));m.position.y=-.4;m.rotation.y=yawOf(dir)+i*.35;D.guard.push(m);return m;});S.sfx('crumble');
+ async portcullis(X){const {S,D,P,dir,side}=X,g=D.g,slabs=[-1,0,1].map(i=>{const m=S.add(slab(S,D.c));m.scale.set(.3,.55,.1);m.position.copy(along(along(P,dir,-.55+Math.abs(i)*.1),side,i*.4));m.position.y=-.4;m.rotation.y=yawOf(dir)+i*.35;D.guard.push(m);return m;});S.sfx('crumble');
   await S.tween(.3,k=>{squash(g,1-.14*Math.sin(k*PI*.5));for(const [i,m] of slabs.entries())m.position.y=-.4+.75*back(Math.max(0,Math.min(1,k*1.4-i*.12)));});S.dust(along(P,dir,-.5),6);},
  // Queen: she is not waiting to be hit. A lunge and a cut that the attacker has to turn aside.
  async riposte(X){const {S,A,D,P,start,dir}=X,g=D.g,bl=[-1,1].map(s=>{const b=S.attach(g,blade(S,D.col,.7));b.position.set(s*.4,.45,.1);b.rotation.z=-s*.25;b.userData.keep=true;D.guard.push(b);return b;});const clash=up(mix(P,start,.62),.7);
@@ -297,8 +297,8 @@ export const VICTORY={
  async halo(X){const {S,A,ac}=X,g=A.g;hero(X,2.9);S.sfx('chime');const sg=S.sigil(up(g.position,A.h+.35),ac,.1);await S.tween(.55,k=>{const e=easeOut(k);g.position.y=.28*Math.sin(k*PI);sg.position.y=g.position.y+A.h+.3;sg.scale.setScalar(.1+.4*e);sg.rotation.y=k*5;sg.material.opacity=k>.7?(1-k)/.3:1;if(Math.random()<.5)S.motes(orbOf(A),1,ac);});S.drop(sg);},
  async stomp(X){const {S,A,ac}=X,g=A.g,O=g.position.clone();hero(X,2.4);await S.tween(.26,k=>{g.position.y=Math.sin(k*PI)*.5;squash(g,1+.1*Math.sin(k*PI));});S.sfx('boom');S.ring(O,ac,{r1:2,dur:.4});S.dust(O,12);S.stage.shake(.3);await S.tween(.28,k=>{squash(g,1-.22*Math.sin(k*PI)*(1-k));});squash(g,1);},
  async flourish(X){const {S,A,ac}=X,g=A.g,y0=g.rotation.y,[b0,b1]=A.gear.blades;hero(X,2.8);S.sfx('whoosh');await S.tween(.55,(k)=>{const e=easeOut(k);g.rotation.y=y0+e*PI*4;g.position.y=.14*Math.sin(k*PI);b0.rotation.z=.25+1.2*Math.sin(k*PI);b1.rotation.z=-.25-1.2*Math.sin(k*PI);if(k<.7&&Math.random()<.35)S.slashArc(up(g.position,.7),{yaw:g.rotation.y,r:.9,arc:3,color:ac,dur:.2,width:.14});});g.rotation.y=y0;},
- async 'sword-plant'(X){const {S,A,ac}=X,g=A.g,sw=A.gear.sword;hero(X,3);S.sfx('royal');await S.tween(.22,k=>{sw.position.set(-.48+.48*k,.25+.5*k,.1+.3*k);sw.rotation.x=PI*k;});await S.tween(.07,k=>{sw.position.y=.75-.0*k+.55*(1-k)*0+.55*k*0;sw.position.set(0,.75+.55-.0,.4);sw.position.y=1.3-.05*k;});
-  S.ring(up(g.localToWorld(V(0,0,.4)),0),GOLD,{r1:2.4,dur:.5});S.sfx('clang');S.stage.shake(.2);S.sparks(up(g.localToWorld(V(0,0,.4)),.05),10,GOLD);await S.tween(.3,k=>{g.rotation.x=-.14*Math.sin(k*PI*.5);squash(g,1+.05*Math.sin(k*PI));});}};
+ async 'sword-plant'(X){const {S,A,ac}=X,g=A.g,sw=A.gear.sword;hero(X,3);S.sfx('royal');await S.tween(.24,k=>{const e=easeOut(k);sw.position.set(-.48,.25+1.35*e,.1+.15*e);sw.rotation.x=PI*e;});await S.tween(.07,k=>{sw.position.y=1.6-.28*easeIn(k);});
+  S.ring(up(g.localToWorld(V(-.48,0,.25)),0),GOLD,{r1:2.4,dur:.5});S.sfx('clang');S.stage.shake(.2);S.sparks(up(g.localToWorld(V(-.48,0,.25)),.05),10,GOLD);await S.tween(.3,k=>{g.rotation.x=-.14*Math.sin(k*PI*.5);squash(g,1+.05*Math.sin(k*PI));});}};
 
 // ── Special scenes ───────────────────────────────────────────────────────────────────────────
 /** En passant: the attacker slips past onto the square behind and stabs the passing pawn in the back. */
@@ -315,12 +315,12 @@ export async function enPassant(X){const {S,A,D,P,start,to,ac}=X,g=A.g,sp=A.gear
 export async function promotion(S,sq,promo,mode){const old=S.pieces.get(sq);if(!old)return;const pos=sqPos(sq),col=S.teamColor(old.userData.c),quick=mode==='quick';S.cast.add(old);S.begin(quick?2:1);S.playerAxis();S.arena(true,{at:pos,color:GOLD});
  S.title('PROMOTION',false,'Pawn becomes '+NAMES[promo.toLowerCase()]);S.sfx('royal');S.cam({at:()=>up(pos,.7+old.position.y*.5),yaw:.55,pitch:.22,w:3.2,h:3.4,dur:.4,drift:.5});
  const sg=S.sigil(up(pos,.04),GOLD,.2),bm=S.beam(GOLD);let spin=0;
- await S.tween(.7,(k,dt)=>{const e=ease(k);spin+=dt*(3+k*30);old.position.y=1.15*e;old.rotation.y=spin;sg.scale.setScalar(.2+.9*easeOut(k));sg.rotation.y=-k*4;bm.set(up(pos,0),up(pos,6),.32*e);bm.opacity(.5);if(Math.random()<.7)S.motes(up(pos,.2+Math.random()),1,GOLD);});
- const ball=S.glowBall(0xffffff,.05);ball.position.copy(up(pos,1.5));S.sfx('charge');
- await S.tween(.3,(k,dt)=>{spin+=dt*36;old.rotation.y=spin;old.scale.setScalar(Math.max(.001,1-easeIn(k)));ball.scale.setScalar(.05+.5*easeOut(k));});
+ await S.tween(.7,(k,dt)=>{const e=ease(k);spin+=dt*(3+k*30);old.position.y=1.15*e;old.rotation.y=spin;sg.scale.setScalar(.2+.9*easeOut(k));sg.rotation.y=-k*4;bm.set(up(pos,0),up(pos,6),.2*e);bm.opacity(.35);if(Math.random()<.7)S.motes(up(pos,.2+Math.random()),1,GOLD);});
+ const ball=S.glowBall(0xfff0c0,.05,1.3);ball.position.copy(up(pos,1.5));S.sfx('charge');
+ await S.tween(.3,(k,dt)=>{spin+=dt*36;old.rotation.y=spin;old.scale.setScalar(Math.max(.001,1-easeIn(k)));ball.scale.setScalar(.05+.4*easeOut(k));});
  old.removeFromParent();const g=S.makePiece(promo);S.pieces.set(sq,g);S.cast.add(g);g.position.copy(up(pos,1.15));g.scale.setScalar(.01);
  S.hit(up(pos,1.5),.9,GOLD);S.sfx('shatter');S.debris(up(pos,1.5),16,GOLD,{shape:'shard',glow:true,size:.08,speed:3.5,up:1,gravity:-3,life:.9});S.ring(pos,GOLD,{r1:3,dur:.6});
- await S.tween(.38,(k,dt)=>{spin+=dt*30*(1-k);g.rotation.y=S.homeYaw(g.userData.c)+Math.sin((1-k)*6)*(1-k);g.scale.setScalar(Math.max(.01,back(k)*1.0));ball.scale.setScalar(.55*(1-k)+.001);bm.set(up(pos,0),up(pos,6),.32*(1-k));});S.drop(ball);bm.off();
+ await S.tween(.38,(k,dt)=>{spin+=dt*30*(1-k);g.rotation.y=S.homeYaw(g.userData.c)+Math.sin((1-k)*6)*(1-k);g.scale.setScalar(Math.max(.01,back(k)*1.0));ball.scale.setScalar(.45*(1-k)+.001);bm.set(up(pos,0),up(pos,6),.2*(1-k));});S.drop(ball);bm.off();
  S.cam({at:up(pos,.7),yaw:.25,pitch:.03,w:2.6,h:2.8,dur:.25,drift:.3});await S.tween(.1,k=>{g.position.y=1.15*(1-easeIn(k));});g.position.y=0;S.sfx('thud');S.sfx('fanfare');S.dust(pos,14);S.ring(pos,col,{r1:2.2,dur:.45});S.stage.shake(.3);
  await S.tween(.45,k=>{squash(g,1-.2*Math.sin(Math.min(1,k*2.5)*PI)*(1-k));sg.material.opacity=1-k;if(Math.random()<.6)S.motes(up(pos,g.userData.h),1,GOLD);});S.drop(sg);g.scale.setScalar(1);}
 
@@ -336,26 +336,26 @@ export async function castling(S,king,rook,m,rf,rt){const a=sqPos(m.from),b=sqPo
  await S.tween(.5,k=>{const e=easeOut(k);squash(king,1-.2*Math.sin(Math.min(1,k*2)*PI)*(1-k));squash(rook,1-.16*Math.sin(Math.min(1,k*2)*PI)*(1-k));dome.scale.set(1.5*e,1.5*e,1.1*e);dome.material.opacity=.45*(1-k);});S.drop(dome);king.scale.setScalar(1);rook.scale.setScalar(1);}
 
 /** Check: red beams lock on from every piece giving it, and the king flinches. */
-export async function checkScene(S,s,from=[]){const g=S.pieces.get(s),kp=sqPos(s);S.begin(1);S.playerAxis();S.title('CHECK!',true);S.sfx('zap');S.cam({at:up(kp,.7),yaw:.6,pitch:.3,w:3.6,h:2.9,dur:.3,dolly:-.12});
+export async function checkScene(S,s,from=[]){const g=S.pieces.get(s),kp=sqPos(s);S.begin(1);S.playerAxis();S.arena(true,{at:kp,color:RED});S.title('CHECK!',true);S.sfx('zap');S.cam({at:up(kp,.7),yaw:.6,pitch:.3,w:3.6,h:2.9,dur:.3,dolly:-.12});
  S.checkLight.position.set(kp.x,1.6,kp.z);const beams=from.map(f=>({b:S.beam(RED),a:up(sqPos(f),.7)})),sg=S.sigil(up(kp,.04),RED,.2),tgt=up(kp,.75),away=from.length?kp.clone().sub(sqPos(from[0])).setY(0).normalize():V(0,0,1),rel=g?yawOf(away)-g.rotation.y:0;
- await S.tween(.3,k=>{for(const {b,a} of beams)b.set(a,mix(a,tgt,easeOut(k)),.02+.03*k);sg.scale.setScalar(.2+.65*easeOut(k));sg.rotation.y=k*3;S.checkLight.intensity=30*k;});
+ await S.tween(.3,k=>{for(const {b,a} of beams)b.set(a,mix(a,tgt,easeOut(k)),.02+.03*k);sg.scale.setScalar(.2+.65*easeOut(k));sg.rotation.y=k*3;S.checkLight.intensity=10*k;});
  S.hit(tgt,.45,RED);S.sfx('clang');
  await S.tween(.5,k=>{const e=Math.sin(Math.min(1,k*1.6)*PI);if(g){g.rotation.x=-Math.cos(rel)*.38*e;g.rotation.z=Math.sin(rel)*.38*e;g.position.copy(kp).addScaledVector(away,.14*e);g.position.y=.22*Math.sin(Math.min(1,k*2.2)*PI);}
-  for(const {b,a} of beams){b.set(a,tgt,.05*(1-k)*(1+.4*Math.sin(k*50)));b.opacity(1-k*k);}sg.rotation.y+=.1;sg.material.opacity=1-k;S.checkLight.intensity=30*(1-k);});
+  for(const {b,a} of beams){b.set(a,tgt,.05*(1-k)*(1+.4*Math.sin(k*50)));b.opacity(1-k*k);}sg.rotation.y+=.1;sg.material.opacity=1-k;S.checkLight.intensity=10*(1-k);});
  beams.forEach(({b})=>b.off());S.drop(sg);}
 
 /** Checkmate: the threats lock on, the king looks for a way out that is not there, a pillar of the
  * winner's light comes down, and the crown falls to the board in slow motion. */
 export async function checkmateScene(S,s,winner,from=[]){const g=S.pieces.get(s),kp=sqPos(s),wc=S.teamColor(winner),tgt=up(kp,.75);S.begin(1);S.playerAxis();S.arena(true,{at:kp,color:wc});
- S.title('CHECKMATE',true,winner==='w'?'White takes the crown':'Black takes the crown');S.sfx('doom');S.cam({at:up(kp,.8),yaw:.7,pitch:.3,w:4.6,h:3.5,dur:.5,drift:.3});
- const beams=from.map(f=>({b:S.beam(wc),a:up(sqPos(f),.7)})),away=from.length?kp.clone().sub(sqPos(from[0])).setY(0).normalize():V(0,0,winner==='w'?-1:1),y0=g?g.rotation.y:0;
+ const ft=S.finisherTitle;S.finisherTitle=null;S.title(ft?ft[0]:'CHECKMATE',!ft,ft?ft[1]:winner==='w'?'White takes the crown':'Black takes the crown');S.sfx('doom');S.cam({at:up(kp,.8),yaw:.7,pitch:.3,w:4.6,h:3.5,dur:.5,drift:.3});
+ const beams=from.map(f=>({b:S.beam(wc),a:up(sqPos(f),.7)})),away=Math.max(Math.abs(kp.x),Math.abs(kp.z))>1?kp.clone().negate().setY(0).normalize():from.length?kp.clone().sub(sqPos(from[0])).setY(0).normalize():V(0,0,winner==='w'?-1:1),y0=g?g.rotation.y:0;
  await S.tween(.75,k=>{for(const {b,a} of beams)b.set(a,mix(a,tgt,easeOut(Math.min(1,k*2.5))),.03+.02*Math.sin(k*40));if(g){g.rotation.y=y0+Math.sin(k*PI*3)*.9*(1-k*.3);g.position.x=kp.x+Math.sin(k*90)*.012;squash(g,1-.12*k);}if(k>.3&&Math.random()<.2)S.sfx('tick');});
  // The sentence: a seal opens overhead.
  S.cam({at:up(kp,1.3),yaw:1.2,pitch:-.1,w:3.6,h:4.4,dur:.35});S.sfx('royal');const seal=S.sigil(up(kp,3),wc,.2),bm=S.beam(wc);
  await S.tween(.5,k=>{seal.scale.setScalar(.2+1.3*easeOut(k));seal.rotation.y=k*5;if(g){g.rotation.y=y0;g.rotation.x=-.2*k;}if(Math.random()<.7)S.motes(up(kp,2.8),1,wc);});await S.wait(.12);
- S.cam({at:up(kp,.7),yaw:1.5,pitch:.14,w:4.4,h:3.2,dur:.08});S.sfx('whoosh');await S.tween(.08,k=>bm.set(up(kp,7),up(kp,0),.55*k));
+ S.cam({at:up(kp,.7),yaw:1.5,pitch:.14,w:4.4,h:3.2,dur:.08});S.sfx('whoosh');await S.tween(.08,k=>bm.set(up(kp,7),up(kp,0),.38*k));
  S.hit(tgt,1.6,wc);S.sfx('impact');S.sfx('boom');S.ring(kp,wc,{r1:5,dur:.8});S.ring(kp,0xffffff,{r1:2.6,dur:.4,width:.08});crack(S,kp,1.5);S.dust(kp,24);S.debris(up(kp,.1),12,0x8a7ab0,{speed:3.5,up:4,size:.08});beams.forEach(({b})=>b.off());
- S.tween(.35,k=>{bm.set(up(kp,7),up(kp,0),.55*(1-k));bm.opacity(1-k);seal.material.opacity=1-k;}).then(()=>{bm.off();S.drop(seal);});
+ S.tween(.35,k=>{bm.set(up(kp,7),up(kp,0),.38*(1-k));bm.opacity(1-k);seal.material.opacity=1-k;}).then(()=>{bm.off();S.drop(seal);});
  if(g){g.scale.setScalar(1);g.userData.fallen=true;await kingFall(S,g,away,S.teamColor(g.userData.c),true);}
  // The hall erupts.
  S.cam({at:V(0,.6,0),yaw:.35,pitch:.5,w:10.5,h:8.5,dur:.9,drift:.3});S.sfx('fanfare');S.crowdHop=1;S.flinchT=0;S.flinchAmp=.45;S.flinchAt=kp.clone();

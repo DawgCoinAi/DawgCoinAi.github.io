@@ -8,7 +8,7 @@
 // The city comes from worldSeed; the engine's random drives the rivals and the pickups only. Everything
 // runs on a fixed step (PAINT.tps a second), so the same seed and inputs give the same match.
 export const PAINT={cols:30,rows:37,tps:30,seconds:180,podium:4,respawn:2.5,speed:6.2,boost:1.25,dashMult:2.4,dashTime:.45,dashCool:5,homeSize:3,
- loopPts:10,cutPts:100,capturePts:250,landmarkPts:400,pickupPts:50,heldPts:5,placePts:[1500,800,400,0,0],landmarkWeight:4,splash:2,bomb:3.2,maxPickups:3,
+ loopPts:5,cutPts:100,capturePts:250,landmarkPts:400,pickupPts:50,heldPts:20,placePts:[4000,2000,1000,0,0],landmarkWeight:4,splash:2,bomb:3.2,maxPickups:3,
  underdogFrom:40,underdogPace:1.15,finalFrom:150,turnWait:4};
 export const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},OPP={up:'down',down:'up',left:'right',right:'left'};
 const DIR_NAMES=['up','down','left','right'],SIDES={up:['left','right'],down:['right','left'],left:['down','up'],right:['up','down']};
@@ -46,8 +46,8 @@ export const YOU={name:'You',tag:'YOU',color:'#ffd23e'};
 export const LEAGUES=[
  {name:'BACK ALLEY',need:0,pace:1,mult:1,twist:'Rivals take it easy.'},
  {name:'NIGHT MARKET',need:12000,pace:1.06,mult:1.25,twist:'Pickups drop more often.'},
- {name:'NEON HEIGHTS',need:25000,pace:1.12,mult:1.5,twist:'Every crew starts shielded and the hunters never sleep.'},
- {name:'THE CROWN',need:45000,pace:1.18,mult:2,twist:'Double points for the whole last minute.'}];
+ {name:'NEON HEIGHTS',need:24000,pace:1.12,mult:1.5,twist:'Every crew starts shielded and the hunters never sleep.'},
+ {name:'THE CROWN',need:40000,pace:1.18,mult:2,twist:'Double points for the whole last minute.'}];
 export const leagueFor=best=>{let k=0;for(let i=1;i<LEAGUES.length;i++)if(best>=LEAGUES[i].need)k=i;return k;};
 // Today's course: one rule bent for the day, picked by the seed. Applied when game.daily is true.
 export const TWISTS=[

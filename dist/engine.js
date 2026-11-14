@@ -255,11 +255,11 @@ export class MazeGame {
     // Rush pays every coin through the multiplier, doubled again in the last ten seconds.
     const rate=(this.mode==='rush'?this.mult*(this.frenzy?2:1):1)*(this.viewBonus||1);
     this.pellets.delete(k);this.stats.dots++;{const pay=Math.round((item==='o'?50:10)*rate);this.score+=pay;if(this.frenzy)this.run.frenzyScore+=pay;}
-    // Eating without a gap builds a chain: every tenth coin pays out, and in Rush every twentieth buys time.
+    // Eating without a gap builds a chain: every tenth coin pays out, and in Rush every thirtieth buys time.
     this.chain++;this.chainTime=1.6;this.bestChain=Math.max(this.bestChain,this.chain);
     if(item==='o'){this.power=7+(this.career?.power||0);this.combo=0;this.events.push({type:'power',x:p.x,y:p.y});}
     else this.events.push({type:'pellet',x:p.x,y:p.y,chain:this.chain});
-    if(this.chain%10===0){const bonus=Math.round(Math.min(200,this.chain*2)*rate);this.score+=bonus;if(this.frenzy)this.run.frenzyScore+=bonus;this.events.push({type:'chain',chain:this.chain,bonus,x:p.x,y:p.y});if(this.mode==='rush'&&this.chain%20===0)this.addTime(2,'chain');}
+    if(this.chain%10===0){const bonus=Math.round(Math.min(200,this.chain*2)*(this.viewBonus||1));this.score+=bonus;if(this.frenzy)this.run.frenzyScore+=bonus;this.events.push({type:'chain',chain:this.chain,bonus,x:p.x,y:p.y});if(this.mode==='rush'&&this.chain%30===0)this.addTime(2,'chain');}
     const eaten=this.total-this.pellets.size;
     if(!this.loot&&this.lootSpawns<2&&eaten>=(this.lootSpawns+1)*80)this.spawnLoot();
     if(this.pellets.size===0)this.cleared();

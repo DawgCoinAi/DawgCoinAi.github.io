@@ -30,7 +30,7 @@ export class ThreeChess {
   cast:new Set(),chunks:[],trash:[],attached:[],hitstop:0,slowT:0,slowK:.3,timeScale:1,fighting:false,fightClock:0,dim:0,dimTarget:0,flinchT:9,flinchAmp:0,crowdHop:0,rivalAct:null,debug:debug?{}:null,pulse:[],selSq:-1,checkSq:-1});}
  get lite(){return this.quality!=='high';}
  async init(){
-  this.stage=new Stage({quality:this.quality,className:'chess3d',onFailure:()=>this.fail()}).init();this.view3d=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.host.prepend(this.view3d);this.stage.onDowngrade=()=>{this.quality='low';};
+  this.stage=new Stage({quality:this.quality,className:'chess3d',onFailure:()=>this.fail()}).init();this.view3d=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.host.prepend(this.view3d);this.stage.onDowngrade=()=>{this.quality='low';};this.stage.bloomBase=.5;
   const s=this.scene;this.stage.neonEnvironment(.4);this.stage.hdrEnvironment(undefined,.4);s.fog=new T.FogExp2(0x0a0716,.016);s.background=new T.Color(0x07050e);
   this.hemi=new T.HemisphereLight(0xd8d0ff,0x2a1840,.95);s.add(this.hemi);
   this.key=new T.SpotLight(0xfff2dc,40,34,.62,.55,1.25);this.key.position.set(0,13,3);this.key.target.position.set(0,0,0);s.add(this.key,this.key.target);
@@ -62,7 +62,7 @@ export class ThreeChess {
   // The dais the board stands on: a lacquered drum on two stone steps, with gold inlay.
   const table=new T.Mesh(new T.CylinderGeometry(7.2,7.6,1.5,64),pbr({color:0x1f1530,roughness:.36,metalness:.3,clearcoat:1,clearcoatRoughness:.08,sheen:.3,sheenColor:new T.Color(0x6a4a9a)},this.quality));table.position.y=-.86;table.receiveShadow=true;s.add(table);
   const steps=new T.Mesh(merge([new T.CylinderGeometry(8.6,8.9,.45,64).translate(0,-1.38,0),new T.CylinderGeometry(10,10.3,.22,64).translate(0,-1.5,0)]),stone);steps.receiveShadow=true;s.add(steps);
-  const gold=new T.MeshBasicMaterial({color:hdr(GOLD,1.4),toneMapped:false});s.add(new T.Mesh(merge([new T.TorusGeometry(7.25,.05,8,96).rotateX(Math.PI/2).translate(0,-.1,0),new T.TorusGeometry(8.65,.035,8,96).rotateX(Math.PI/2).translate(0,-1.15,0),new T.TorusGeometry(12.5,.05,8,96).rotateX(Math.PI/2).translate(0,-1.58,0)]),gold));
+  const gold=new T.MeshBasicMaterial({color:hdr(GOLD,.9),toneMapped:false});s.add(new T.Mesh(merge([new T.TorusGeometry(7.25,.05,8,96).rotateX(Math.PI/2).translate(0,-.1,0),new T.TorusGeometry(8.65,.035,8,96).rotateX(Math.PI/2).translate(0,-1.15,0),new T.TorusGeometry(12.5,.05,8,96).rotateX(Math.PI/2).translate(0,-1.58,0)]),gold));
   // Twelve columns, a gallery behind them and the outer wall.
   const cols=[],N=12,R=15.2;for(let i=0;i<N;i++){const a=(i+.5)/N*Math.PI*2,x=Math.sin(a)*R,z=Math.cos(a)*R;cols.push(new T.CylinderGeometry(.62,.72,13,16).translate(x,4.9,z),new T.CylinderGeometry(1,1,.5,16).translate(x,-1.35,z),new T.BoxGeometry(1.9,.5,1.9).rotateY(a).translate(x,11.6,z),new T.TorusGeometry(.72,.09,8,20).rotateX(Math.PI/2).translate(x,3.1,z));}
   const columns=new T.Mesh(merge(cols),stone);columns.castShadow=false;s.add(columns);
@@ -77,7 +77,7 @@ export class ThreeChess {
   // Tall moonlit windows above the gallery, with shafts of light falling toward the board.
   const winTex=texture(128,512,(c,w,h)=>{c.clearRect(0,0,w,h);const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#bcd0ff');g.addColorStop(.6,'#6c7fd8');g.addColorStop(1,'#2a2a6a');c.fillStyle=g;c.beginPath();c.moveTo(8,h);c.lineTo(8,w/2);c.arc(w/2,w/2,w/2-8,Math.PI,0);c.lineTo(w-8,h);c.fill();c.fillStyle='#120e20';c.fillRect(w/2-3,0,6,h);for(let y=90;y<h;y+=84)c.fillRect(0,y,w,5);});
   const wins=[];for(let i=0;i<N;i++){const a=i/N*Math.PI*2;wins.push(new T.PlaneGeometry(2.4,8).rotateY(a+Math.PI).translate(Math.sin(a)*20.2,11.4,Math.cos(a)*20.2));}
-  s.add(new T.Mesh(merge(wins),new T.MeshBasicMaterial({map:winTex,transparent:true,toneMapped:false,color:new T.Color(1.5,1.5,1.7)})));
+  s.add(new T.Mesh(merge(wins),new T.MeshBasicMaterial({map:winTex,transparent:true,toneMapped:false,color:new T.Color(.75,.8,.95)})));
   if(high){for(const a of [.52,2.62,3.66,5.76]){const p=new T.Vector3(Math.sin(a)*19,13,Math.cos(a)*19),b=lightShaft(0xaec4ff,{length:22,radius:3.4,top:.5,opacity:.1});b.position.copy(p);b.lookAt(Math.sin(a)*3,-1,Math.cos(a)*3);b.rotateX(-Math.PI/2);s.add(b);this.shafts.push([b,.1]);}
    const beam=lightShaft(0xfff0d8,{length:14,radius:5.4,top:.35,opacity:.07});beam.position.copy(this.key.position);beam.lookAt(0,0,0);beam.rotateX(-Math.PI/2);s.add(beam);this.shafts.push([beam,.07]);}
   // Banners between the columns: ice blue on white's side of the hall, hot pink on black's.
@@ -87,13 +87,13 @@ export class ThreeChess {
   // Candles on every column and along the gallery rail, as one cloud of flickering points.
   const flames=[];for(let i=0;i<N;i++){const a=(i+.5)/N*Math.PI*2;flames.push(Math.sin(a)*14.4,3.5,Math.cos(a)*14.4);for(let j=0;j<3;j++){const b=a+(j-1)*.14;flames.push(Math.sin(b)*16.4,3.6,Math.cos(b)*16.4);}}
   const fg=new T.BufferGeometry();fg.setAttribute('position',new T.Float32BufferAttribute(flames,3));this.candles=new T.Points(fg,new T.PointsMaterial({size:1.5,map:this.glowTex,color:hdr(0xffb060,1.6),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));s.add(this.candles);
-  this.hallA=new T.PointLight(0xffb878,34,34,1.4);this.hallA.position.set(-12,5,0);this.hallB=new T.PointLight(0xffb878,34,34,1.4);this.hallB.position.set(12,5,0);s.add(this.hallA,this.hallB);
+  this.hallA=new T.PointLight(0xffb878,14,40,1.2);this.hallA.position.set(-10,9,0);this.hallB=new T.PointLight(0xffb878,14,40,1.2);this.hallB.position.set(10,9,0);s.add(this.hallA,this.hallB);
   // The club's sign hangs over the far gallery.
   const sign=()=>new T.Mesh(new T.PlaneGeometry(9,1.8),new T.MeshBasicMaterial({map:texture(1024,200,(c,w,h)=>{c.clearRect(0,0,w,h);c.font='900 120px Impact, "Arial Narrow", sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#b9ff5e';c.shadowColor='#b9ff5e';c.shadowBlur=30;c.fillText('DAWG CHESS CLUB',w/2,h/2+6);}),transparent:true,toneMapped:false}));
   const a=sign();a.position.set(0,7.6,-16.2);const b=sign();b.position.set(0,7.6,16.2);b.rotation.y=Math.PI;s.add(a,b);}
  buildBoard(){const s=this.scene,tex=texture(1024,1024,(c,w)=>{const q=w/8;for(let r=0;r<8;r++)for(let f=0;f<8;f++){const light=(r+f)%2===0;const g=c.createLinearGradient(f*q,r*q,(f+1)*q,(r+1)*q);g.addColorStop(0,light?'#f1eaff':'#5d4a98');g.addColorStop(1,light?'#d6cbf0':'#473676');c.fillStyle=g;c.fillRect(f*q,r*q,q,q);
     c.globalAlpha=.09;for(let i=0;i<14;i++){c.strokeStyle=light?'#ffffff':'#8a6bd1';c.lineWidth=1+Math.random()*2;c.beginPath();c.moveTo(f*q+Math.random()*q,r*q);c.bezierCurveTo(f*q+Math.random()*q,r*q+q*.3,f*q+Math.random()*q,r*q+q*.7,f*q+Math.random()*q,r*q+q);c.stroke();}c.globalAlpha=1;c.strokeStyle='#1a122c55';c.lineWidth=2;c.strokeRect(f*q,r*q,q,q);}});
-  this.board=new T.Mesh(new T.BoxGeometry(8,.22,8).translate(0,-.11,0),[...Array(6)].map((_,i)=>i===2?pbr({map:tex,roughness:.38,metalness:.02,clearcoat:.5,clearcoatRoughness:.3},this.quality):new T.MeshStandardMaterial({color:0x140f22,roughness:.4,metalness:.5})));this.board.receiveShadow=true;s.add(this.board);
+  this.board=new T.Mesh(new T.BoxGeometry(8,.22,8).translate(0,-.11,0),[...Array(6)].map((_,i)=>i===2?pbr({map:tex,roughness:.5,metalness:.02,clearcoat:.25,clearcoatRoughness:.35,envMapIntensity:.45},this.quality):new T.MeshStandardMaterial({color:0x140f22,roughness:.4,metalness:.5})));this.board.receiveShadow=true;s.add(this.board);
   const frame=new T.Mesh(new T.BoxGeometry(8.9,.3,8.9).translate(0,-.16,0),pbr({color:0x0c0914,roughness:.25,metalness:.7,clearcoat:1,clearcoatRoughness:.06},this.quality));frame.receiveShadow=true;s.add(frame);
   // The board's edge is a light strip: gold at rest, the attacker's colour during a fight.
   this.edgeMat=new T.MeshBasicMaterial({color:hdr(GOLD,1.5),toneMapped:false});this.edgeColor=hdr(GOLD,1.5);this.edgeTarget=this.edgeColor.clone();
@@ -217,7 +217,7 @@ export class ThreeChess {
  // ── The duel ───────────────────────────────────────────────────────────────────────────────
  fighter(g){g.rotation.order='YXZ';return {g,t:g.userData.t,c:g.userData.c,col:this.teamColor(g.userData.c),h:g.userData.h,gear:{},guard:[]};}
  face(F,p){F.g.rotation.set(0,Math.atan2(p.x-F.g.position.x,p.z-F.g.position.z),0);}
- begin(seconds=1){this.fighting=true;this.fightClock=0;this.timeScale=seconds;}
+ begin(seconds=1){this.sceneN=(this.sceneN||0)+1;this.fighting=true;this.fightClock=0;this.timeScale=seconds;}
  async battle(att,vic,m,capSq,mode){const quick=mode==='quick',ep=m.flag==='e',roll=this.debug?.variant??Math.floor(Math.random()*2),M=matchup(att.userData.t,vic.userData.t,roll),flip=this.flipped?-1:1;
   const P=sqPos(capSq),from=sqPos(m.from),dir=P.clone().sub(from).setY(0),dist=dir.length()||1;dir.normalize();
   let side=new T.Vector3(-dir.z,0,dir.x);if(Math.abs(side.z)>.05?side.z*flip<0:side.x*P.x>0)side.negate();
@@ -256,8 +256,8 @@ export class ThreeChess {
    if(c.m.position.y<c.floor&&c.v.y<0){c.m.position.y=c.floor;c.v.y*=-c.bounce;c.v.x*=.6;c.v.z*=.6;c.w.multiplyScalar(.5);c.onLand?.(c);c.onLand=null;}if(c.life<.3)c.m.scale.setScalar(Math.max(.001,c.s*c.life/.3));if(c.life<=0){c.m.removeFromParent();this.chunks.splice(i,1);}}
   this.stage.resize();const real=now/1000,cam=this.camera,aspect=cam.aspect||1,flip=this.flipped?-1:1;
   // Lights ease between the resting hall and the arena.
-  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.72);this.key.intensity=L.key*(1-d*.8);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*10;this.duelRim.intensity=d*10;
-  if(this.duelAt&&d>.01){const c=this.cine?cam.position:this.duelAt;this.duelRim.position.set(this.duelAt.x+(this.duelAt.x-c.x)*.4,1.5,this.duelAt.z+(this.duelAt.z-c.z)*.4);}
+  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.6);this.key.intensity=L.key*(1-d*.9);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*2.4;this.duelRim.intensity=d*5;this.stage.bloomBase=.5-d*.36;
+  if(this.duelAt&&d>.01){const c=this.cine?cam.position:this.duelAt;this.duelRim.position.set(this.duelAt.x+(this.duelAt.x-c.x)*.4,2.4,this.duelAt.z+(this.duelAt.z-c.z)*.4);}
   this.flashLight.intensity*=Math.max(0,1-dt*9);this.edgeColor.lerp(this.edgeTarget,Math.min(1,dt*5));this.edgeMat.color.copy(this.edgeColor).multiplyScalar(d>.05?1+Math.sin(real*9)*.18:1);
   for(const [m,o] of this.shafts)m.material.uniforms.uOpacity.value=o*Math.max(0,1-d*1.2);if(this.candles)this.candles.material.size=1.5+Math.sin(real*11)*.06+Math.sin(real*23)*.04;
   if(this.crowd){this.crowdHop=Math.max(0,this.crowdHop-dt*2.2);this.crowd.position.y=4.4+Math.abs(Math.sin(this.crowdHop*Math.PI*2))*.35*this.crowdHop+(reduced?0:Math.sin(real*1.3)*.03);}

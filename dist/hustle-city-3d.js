@@ -20,11 +20,11 @@ const rnd=seed=>{let a=seed>>>0;return ()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.
 const rgb=hex=>{const c=new T.Color(hex);return [c.r,c.g,c.b];};
 // The sky each kind of night brings (the trade engine's weather index).
 export const LOOKS=[
- {name:'clear',top:0x1d63c4,horizon:0xffe6c2,glow:0xfff2d2,sun:0xfff3d0,dir:[-.62,.46,-.32],hemi:[0xe4f1ff,0xa08c70,1.55],key:[0xfff0d2,3.1],fog:0xcfe2f0,density:.0021,water:0x1c86b4,night:0,exposure:1,windows:0,lamps:0,ground:0x6f6a62,rain:false},
- {name:'rain',top:0x05040f,horizon:0x4a1660,glow:0xff4fc0,sun:0xff7ad9,dir:[-.7,.2,-.4],hemi:[0x9a8cff,0x1a1028,1.1],key:[0xc8a8ff,.75],fog:0x1a0c2a,density:.0075,water:0x0c1430,night:1,exposure:1.05,windows:1.25,lamps:1.25,ground:0x1b1824,rain:true},
+ {name:'clear',top:0x1558c0,horizon:0x9fd0f6,glow:0x6f9ccc,sun:0xfff3d0,dir:[-.62,.46,-.32],hemi:[0xe4f1ff,0xa08c70,1.55],key:[0xfff0d2,3.1],fog:0xb4d4ee,density:.0013,water:0x1c86b4,night:0,exposure:1,windows:0,lamps:0,ground:0x6f6a62,rain:false},
+ {name:'rain',top:0x05040f,horizon:0x4a1660,glow:0xff4fc0,sun:0xff7ad9,dir:[-.7,.2,-.4],hemi:[0xa698ff,0x2a1c3e,1.7],key:[0xc8a8ff,1.1],fog:0x1a0c2a,density:.0075,water:0x0c1430,night:1,exposure:1.05,windows:1.25,lamps:1.25,ground:0x1b1824,rain:true},
  {name:'fog',top:0x7d8fa3,horizon:0xd3dadf,glow:0xf0ece2,sun:0xfff6e6,dir:[-.5,.38,-.5],hemi:[0xe2eaf2,0x70706e,1.55],key:[0xfff2e2,1],fog:0xbcc7cf,density:.0105,water:0x4a6474,night:.3,exposure:.95,windows:.3,lamps:.5,ground:0x5d5d5c,rain:false},
  {name:'dusk',top:0x2a1a58,horizon:0xff6a3d,glow:0xffa25a,sun:0xffd08a,dir:[-.86,.085,-.22],hemi:[0xffc9a8,0x4a3050,1.25],key:[0xff9a5a,2.5],fog:0xc0685a,density:.003,water:0x24467a,night:.55,exposure:1,windows:.75,lamps:.8,ground:0x4a3f48,rain:false},
- {name:'night',top:0x020309,horizon:0x16204a,glow:0x5ee7ff,sun:0xcfe0ff,dir:[-.45,.5,-.5],hemi:[0x7a8cff,0x0c0a18,1],key:[0x9fb8ff,.7],fog:0x070a18,density:.0052,water:0x0a1226,night:1,exposure:1.05,windows:1.4,lamps:1.3,ground:0x15151e,rain:false}
+ {name:'night',top:0x03061a,horizon:0x1c2c66,glow:0x5ee7ff,sun:0xcfe0ff,dir:[-.45,.5,-.5],hemi:[0x8c9cff,0x221c38,1.7],key:[0xaac0ff,1.15],fog:0x070a18,density:.0052,water:0x0a1226,night:1,exposure:1.05,windows:1.4,lamps:1.3,ground:0x15151e,rain:false}
 ];
 const SIGNS=[...STORE_SIGNS,['CHEW CHEW DINER','#ff8a3d'],['WOOF WASH','#5ee7ff'],['BARKADE','#b9ff5e'],['SIT & STAY INN','#ff9ad5'],['WAG TOWER','#ffe45e'],['LEASH LOUNGE','#c78bff'],['BISCUIT BANK','#5effc1'],['TREAT STREET','#ff5f7a']];
 const DISTRICT_COLORS=['#ffc861','#ff5fc8','#5ee7ff','#fff6e0','#b9ff5e'];
@@ -52,7 +52,7 @@ function facadeTexture(v,lit,scale){const W=256*scale,H=512*scale,r=rnd(900+v*17
    for(let f=1;f<floors;f++){c.fillStyle=v===1?'rgba(60,40,30,.22)':'rgba(40,30,30,.10)';c.fillRect(0,h-f*fh-1,w,v===1?3:2);}}
   for(let f=0;f<floors;f++){const y=h-(f+1)*fh;
    if(f===0){ // shopfronts: big panes, a door, a sill
-    for(let b=0;b<bays;b++){const x=b*bw;if(lit){c.fillStyle=['#ffd9a0','#bfeaff','#ffc0e0','#fff0c0'][Math.floor(r()*4)];c.globalAlpha=.85;c.fillRect(x+bw*.1,y+fh*.18,bw*.8,fh*.62);c.globalAlpha=1;}
+    for(let b=0;b<bays;b++){const x=b*bw;if(lit){const g=c.createLinearGradient(0,y+fh*.18,0,y+fh*.8);const tone=['#ffd9a0','#bfeaff','#ffc0e0','#fff0c0'][Math.floor(r()*4)];g.addColorStop(0,tone);g.addColorStop(1,'#000');c.fillStyle=g;c.globalAlpha=.5;c.fillRect(x+bw*.1,y+fh*.18,bw*.8,fh*.62);c.globalAlpha=1;c.fillStyle='#000';for(let k=1;k<4;k++)c.fillRect(x+bw*.1+bw*.8*k/4-1,y+fh*.18,2,fh*.62);for(let k=0;k<5;k++)c.fillRect(x+bw*(.14+r()*.66),y+fh*(.5+r()*.12),bw*.07,fh*.3);}
      else{c.fillStyle='#22303c';c.fillRect(x+bw*.08,y+fh*.14,bw*.84,fh*.7);c.fillStyle='rgba(160,210,240,.22)';c.fillRect(x+bw*.1,y+fh*.18,bw*.8,fh*.3);c.fillStyle='#1a1f26';c.fillRect(x+bw*.48,y+fh*.14,bw*.04,fh*.7);c.fillStyle='rgba(30,25,25,.5)';c.fillRect(x,y+fh*.9,bw,fh*.1);}}
     continue;}
    for(let b=0;b<bays;b++){const x=b*bw,on=r()>.52,tone=r();
@@ -71,7 +71,9 @@ function iconTexture(kind,color){return paint(256,256,(c,w)=>{c.clearRect(0,0,w,
   if(kind==='market'){c.font='900 124px system-ui,sans-serif';c.fillText('$',128,136);}
   else{c.lineWidth=13;c.lineCap='round';c.strokeStyle='#fff';c.beginPath();c.moveTo(84,172);c.lineTo(150,106);c.stroke();c.fillStyle=color;c.beginPath();c.arc(164,92,26,0,7);c.fill();c.fillStyle='#fff';for(const [x,y] of [[70,96],[92,70],[60,128]]){c.beginPath();c.arc(x,y,7,0,7);c.fill();}}});}
 function beamTexture(){return paint(8,128,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#ffffff00');g.addColorStop(.75,'#ffffff55');g.addColorStop(1,'#ffffffcc');c.fillStyle=g;c.fillRect(0,0,w,h);});}
-function headlightTexture(){return paint(128,256,(c,w,h)=>{const g=c.createRadialGradient(64,236,4,64,150,170);g.addColorStop(0,'#ffffffee');g.addColorStop(.35,'#ffffff66');g.addColorStop(1,'#ffffff00');c.fillStyle=g;c.beginPath();c.moveTo(48,250);c.lineTo(80,250);c.lineTo(126,10);c.lineTo(2,10);c.closePath();c.fill();});}
+function headlightTexture(){return paint(128,256,(c,w,h)=>{c.filter='blur(9px)';const g=c.createRadialGradient(64,232,4,64,150,150);g.addColorStop(0,'#ffffffcc');g.addColorStop(.4,'#ffffff55');g.addColorStop(1,'#ffffff00');c.fillStyle=g;c.beginPath();c.moveTo(50,236);c.lineTo(78,236);c.lineTo(108,30);c.lineTo(20,30);c.closePath();c.fill();});}
+// The player's paint: the kit's colour map with its hues turned, so your car is the pink one.
+export function repaint(map,filter='hue-rotate(205deg) saturate(1.5) brightness(1.2)'){const img=map?.image;if(!img||!img.width)return map;const el=document.createElement('canvas');el.width=img.width;el.height=img.height;const c=el.getContext('2d');c.filter=filter;try{c.drawImage(img,0,0);}catch{return map;}const t=new T.CanvasTexture(el);t.colorSpace=map.colorSpace;t.flipY=map.flipY;t.wrapS=map.wrapS;t.wrapT=map.wrapT;t.magFilter=map.magFilter;t.minFilter=map.minFilter;t.generateMipmaps=map.generateMipmaps;return t;}
 function arrowTexture(){return paint(64,64,(c,w)=>{c.clearRect(0,0,w,w);c.strokeStyle='#fff';c.lineWidth=11;c.lineCap='round';c.lineJoin='round';c.beginPath();c.moveTo(12,44);c.lineTo(32,18);c.lineTo(52,44);c.stroke();});}
 
 // Builds the static city into `w` (the HustleWorld): ground, blocks, buildings, signs, palms, lamps,
@@ -94,7 +96,7 @@ export function buildCity(w){const s=w.scene,high=w.quality==='high',R=rnd(20260
   props.quad([[BEACH.x0-34,-1.1,ZS[4]+W+60],[BEACH.x0-2,.02,ZS[4]+W+60],[BEACH.x0-2,.02,ZS[0]-W-60],[BEACH.x0-34,-1.1,ZS[0]-W-60]],[.03,1,0],sand);
   // Buildings: rows of lots round every block, set back behind the sidewalk, never on anything drivable.
   const fac=[0,1,2,3].map(()=>new Mesher()),lots=[],signSpots=[];
-  const stalls=STOPS.map(q=>({x:q.x+Math.cos(q.h)*5.4,z:q.z+Math.sin(q.h)*5.4,q})),free=(x0,z0,x1,z1)=>!RECTS.some(r=>x0<r.x1+.4&&x1>r.x0-.4&&z0<r.z1+.4&&z1>r.z0-.4)&&!stalls.some(q=>q.x>x0-4.5&&q.x<x1+4.5&&q.z>z0-4.5&&q.z<z1+4.5);
+  const stalls=STOPS.map(q=>({x:q.x+Math.cos(q.h)*7.4,z:q.z+Math.sin(q.h)*7.4,q})),free=(x0,z0,x1,z1)=>!RECTS.some(r=>x0<r.x1+.4&&x1>r.x0-.4&&z0<r.z1+.4&&z1>r.z0-.4)&&!stalls.some(q=>q.x>x0-4.5&&q.x<x1+4.5&&q.z>z0-4.5&&q.z<z1+4.5);
   const lot=(x0,z0,x1,z1,face,scale=1)=>{if(!free(x0,z0,x1,z1))return;const cx=(x0+x1)/2,cz=(z0+z1)/2,d=districtAt(cx,cz),[lo,hi]=HEIGHTS[d],h=Math.min(63,(lo+Math.pow(R(),1.6)*(hi-lo))*scale),tints=TINTS[d],tint=rgb(tints[Math.floor(R()*tints.length)]);
    const v=d===3?(R()<.62?3:2):d===2?1:d===1?(R()<.45?2:0):d===4?(R()<.5?1:0):Math.floor(R()*3),off=Math.floor(R()*4)/4,m=fac[v],col=v===3?[1,1,1]:tint;
    m.walls(x0,CURB,z0,x1,h,z1,col,len=>[off,off+Math.max(1,Math.round(len/4))/4]);props.flat(x0,z0,x1,z1,h,[.34,.33,.35]);
@@ -162,6 +164,6 @@ export function buildCity(w){const s=w.scene,high=w.quality==='high',R=rnd(20260
   w.arrows=new T.InstancedMesh(new T.PlaneGeometry(2.6,2.6).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:arrowTexture(),color:new T.Color(2.2,1.9,.5),transparent:true,depthWrite:false,toneMapped:false,opacity:.9}),40);w.arrows.count=0;w.arrows.frustumCulled=false;w.arrows.renderOrder=2;s.add(w.arrows);
   // Pedestrians: little dawgs on the sidewalks, one instanced mesh.
   const pm=new Mesher(),wht=[1,1,1],dk=[.35,.3,.3];pm.box(-.24,.42,-.16,.24,1.02,.16,wht);pm.box(-.22,1.02,-.2,.22,1.44,.2,wht);pm.box(-.1,1.1,.2,.1,1.28,.36,[.9,.85,.8]);pm.box(-.24,1.4,-.08,-.1,1.66,.06,dk);pm.box(.1,1.4,-.08,.24,1.66,.06,dk);pm.box(-.2,0,-.1,-.06,.42,.06,dk);pm.box(.06,0,-.1,.2,.42,.06,dk);
-  const count=high?90:40;w.peds=new T.InstancedMesh(pm.build(),new T.MeshStandardMaterial({vertexColors:true,roughness:.8}),count);w.peds.frustumCulled=false;if(high)w.peds.castShadow=true;s.add(w.peds);const coat=[0xf2c48a,0xd9a05b,0x8a5a3c,0xf5f0e6,0x4a4a55,0xc98f7a,0xffd27a,0x9fd8e8,0xff9ad5,0xb9ff5e],col=new T.Color();
+  const count=high?170:70;w.peds=new T.InstancedMesh(pm.build(),new T.MeshStandardMaterial({vertexColors:true,roughness:.8}),count);w.peds.frustumCulled=false;if(high)w.peds.castShadow=true;s.add(w.peds);const coat=[0xf2c48a,0xd9a05b,0x8a5a3c,0xf5f0e6,0x4a4a55,0xc98f7a,0xffd27a,0x9fd8e8,0xff9ad5,0xb9ff5e],col=new T.Color();
   w.walkers=Array.from({length:count},(_,i)=>{const e=EDGES[Math.floor(R()*EDGES.length)];w.peds.setColorAt(i,col.set(coat[Math.floor(R()*coat.length)]));return {e,side:R()<.5?-1:1,u:NODE_R+R()*(140-NODE_R*2),v:(R()<.5?-1:1)*(1+R()*.8),phase:R()*6,dodge:0};});}
 export {Mesher,paint,headlightTexture,CAR_MODELS,PLAYER_MODEL,COP_MODEL,MPH,CURB,money,store,clamp,wrap,rnd,DISTRICT_COLORS};

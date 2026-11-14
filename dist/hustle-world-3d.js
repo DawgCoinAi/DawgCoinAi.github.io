@@ -4,7 +4,7 @@
 // wants the phone) to its owner, hustle-phone.js.
 import {T,quality as detectQuality,fitFov,skyMaterial,Stage,Particles,loadModel,cloneModel,fitModel,contactShadowMaterial} from './three-kit.js';
 import {skylineBand,glowTexture} from './city-art.js';
-import {buildCity,LOOKS,paint,headlightTexture,CAR_MODELS,PLAYER_MODEL,COP_MODEL,MPH,CURB,money,store,clamp,wrap,rnd,DISTRICT_COLORS} from './hustle-city-3d.js';
+import {buildCity,LOOKS,paint,repaint,headlightTexture,CAR_MODELS,PLAYER_MODEL,COP_MODEL,MPH,CURB,money,store,clamp,wrap,rnd,DISTRICT_COLORS} from './hustle-city-3d.js';
 import {WorldSim,autopilot,NODES,EDGES,ALLEYS,BEACH,STOPS,XS,ZS,ROAD_HALF,NODE_R,routeTo,evadeTime,rectAt,clampPoint} from './hustle-world.js';
 import {RADIO,DRIVE_CASH_CAP} from './hustle-drive.js';
 import {DISTRICTS} from './engine.js';
@@ -57,7 +57,7 @@ export class HustleWorld {
  wake(){if(!this.audio&&this.sound&&this.state==='live')this.audioStart();}
  // ── Loading and building ───────────────────────────────────────────────────────────────────
  async load(){if(typeof WebGL2RenderingContext==='undefined'){this.fail();return;}
-  const stage=this.stage=new Stage({quality:this.quality,className:'hw-gpu',onFailure:()=>this.fail()}).init();this.$('.hw-view').append(stage.view);this.scene=stage.scene;this.camera=stage.camera;this.camera.far=1300;this.camera.near=.3;
+  let stage;try{stage=this.stage=new Stage({quality:this.quality,className:'hw-gpu',onFailure:()=>this.fail()}).init();}catch(e){console.warn('Street Hustle: no WebGL here, the phone is the game',e);this.fail();return;}this.$('.hw-view').append(stage.view);this.scene=stage.scene;this.camera=stage.camera;this.camera.far=1300;this.camera.near=.3;
   stage.neonEnvironment(.5);stage.hdrEnvironment(undefined,.6);stage.onDowngrade=()=>{this.quality='low';};
   const timeout=new Promise(r=>setTimeout(()=>r(null),15000)),get=p=>loadModel(p).catch(()=>null);
   const art=await Promise.race([Promise.all([Promise.all(CAR_MODELS.map(get)),get(PLAYER_MODEL),get(COP_MODEL)]),timeout]).catch(()=>null);if(this.dead)return;
@@ -83,8 +83,8 @@ export class HustleWorld {
   this.templates=cars.map(fit).filter(Boolean);if(!this.templates.length)this.templates=[boxCar(0x8899aa),boxCar(0xd9a441)];this.copTemplate=fit(copSrc)||boxCar(0x1a2a6a);
   const car=this.car=fit(playerSrc)||boxCar(0xff5fc8);s.add(car);const model=car.userData.model;this.body=model.getObjectByName?.('body')||null;this.wheels=[];model.traverse?.(o=>{if(/^wheel-/.test(o.name)){o.rotation.order='YXZ';this.wheels.push({o,front:/front/.test(o.name)});}});
   // Glossier paint on the player's car so it catches the sky and the neon.
-  model.traverse?.(o=>{if(o.isMesh&&o.name==='body'){o.material=o.material.clone();o.material.metalness=.6;o.material.roughness=.28;o.material.envMapIntensity=1.3;}});
-  this.beams=new T.Mesh(new T.PlaneGeometry(11,19).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:headlightTexture(),color:0xfff0c8,transparent:true,opacity:.5,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.beams.rotation.y=Math.PI;this.beams.position.set(0,.05,11);this.beams.renderOrder=2;car.add(this.beams);
+  let paintJob=null;model.traverse?.(o=>{if(!o.isMesh)return;if(!paintJob){paintJob=o.material.clone();paintJob.map=repaint(o.material.map);paintJob.metalness=.55;paintJob.roughness=.3;paintJob.envMapIntensity=1.3;}o.material=paintJob;});
+  this.beams=new T.Mesh(new T.PlaneGeometry(11,19).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:headlightTexture(),color:0xfff0c8,transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.beams.rotation.y=Math.PI;this.beams.position.set(0,.05,11);this.beams.renderOrder=2;car.add(this.beams);
   // Moving lights (tail lights, headlights, light bars) in one points cloud.
   this.lightN=220;this.lightPos=new Float32Array(this.lightN*3);this.lightCol=new Float32Array(this.lightN*3);const lg=new T.BufferGeometry();lg.setAttribute('position',new T.BufferAttribute(this.lightPos,3).setUsage(T.DynamicDrawUsage));lg.setAttribute('color',new T.BufferAttribute(this.lightCol,3).setUsage(T.DynamicDrawUsage));
   this.lights=new T.Points(lg,new T.PointsMaterial({map:this.glowTex,size:.8,vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.lights.frustumCulled=false;s.add(this.lights);
@@ -97,8 +97,8 @@ export class HustleWorld {
  applyLook(index,force=false){if(index===this.lookIndex&&!force)return;this.lookIndex=index;const L=this.look=LOOKS[index]||LOOKS[0],low=this.quality!=='high',u=this.sky.material.uniforms;u.uTop.value.set(L.top);u.uHorizon.value.set(L.horizon);u.uGlow.value.set(L.glow);
   this.fog.color.set(L.fog);this.fog.density=L.density*(low?1.7:1);this.hemi.color.set(L.hemi[0]);this.hemi.groundColor.set(L.hemi[1]);this.hemi.intensity=L.hemi[2];this.key.color.set(L.key[0]);this.key.intensity=L.key[1];this.sunDir.set(...L.dir).normalize();
   this.stage.r.toneMappingExposure=L.exposure;this.scene.environmentIntensity=L.night>.6?.45:.75;this.ocean.material.color.set(L.water);this.land.material.color.set(L.ground);
-  this.sun.material.color.set(L.sun).multiplyScalar(L.night>.6?.9:L.name==='dusk'?1.05:1.3);this.sun.scale.setScalar(L.night>.6?46:L.name==='dusk'?110:80);this.glitter.material.color.set(L.sun).multiplyScalar(L.night>.6?.3:.75);this.stars.material.opacity=L.night>.6&&!L.rain?.9:0;
-  for(const m of this.mats.fac)m.emissiveIntensity=L.windows;this.lampGlow.material.size=1.2+L.lamps*1.6;this.lampGlow.material.opacity=Math.min(1,.15+L.lamps);this.lampPools.visible=L.lamps>.4;this.lampPools.material.opacity=.14+L.lamps*.2;
+  this.sun.material.color.set(L.sun).multiplyScalar(L.night>.6?.9:L.name==='dusk'?1.05:1.3);this.sun.scale.setScalar(L.night>.6?46:L.name==='dusk'?110:58);this.glitter.material.color.set(L.sun).multiplyScalar(L.night>.6?.3:.75);this.stars.material.opacity=L.night>.6&&!L.rain?.9:0;
+  for(const m of this.mats.fac)m.emissiveIntensity=L.windows;this.lampGlow.material.size=1.2+L.lamps*1.6;this.lampGlow.material.opacity=Math.min(1,.15+L.lamps);this.lampPools.visible=L.lamps>.4;this.lampPools.material.opacity=.16+L.lamps*.3;
   const wet=L.rain;this.mats.road.roughness=wet?.14:L.night>.6?.34:.62;this.mats.road.metalness=wet?.7:L.night>.6?.4:.08;this.mats.road.envMapIntensity=wet?1.5:1;this.mats.plain.roughness=wet?.18:.6;this.mats.plain.metalness=wet?.6:.12;
   for(const m of this.signMats)m.color.setScalar(.75+L.night*1.05);this.mats.glow.color.setScalar(.45+L.night*.75);this.cabins.material.opacity=.25+L.night*.75;
   const dark=L.night>.6;this.palms.children[0].material.color.set(dark?0x2a2026:0x7a5a44);this.palms.children[1].material.color.set(dark?0x5a7a66:0xffffff);this.beams.visible=L.lamps>.4;this.skyline.material.color.setScalar(dark?1:.55);this.skyline.material.opacity=L.name==='fog'?.25:dark?1:.5;}
@@ -125,7 +125,7 @@ export class HustleWorld {
  haptic(p){try{if(navigator.userActivation?.hasBeenActive!==false)navigator.vibrate?.(p);}catch{}}
  setSound(on,volume=this.volume){this.sound=on;this.volume=volume;if(this.out)this.out.gain.value=on?.5*volume:0;this.tune();}
  // The trade state changed: tonight's heat, weather and which district is home.
- sync(info){this.info=info;this.sim.setNight(info);if(this.state==='live')this.applyLook(info.weather);}
+ sync(info){if(this.forceWeather!==undefined)info={...info,weather:this.forceWeather};this.info=info;this.sim.setNight(info);if(this.state==='live')this.applyLook(info.weather);}
  pause(on){this.paused=on;if(on){this.keys.clear();music.setPlaying(false);try{this.audio?.suspend();}catch{}}else{this.last=0;try{this.audio?.resume();}catch{}this.tune();}}
  // ── Each frame ─────────────────────────────────────────────────────────────────────────────
  frame(now){if(this.dead||!this.stage)return;const dt=Math.min(.1,Math.max(0,(now-(this.last||now))/1000));this.last=now;const sim=this.sim,real=now/1000;
@@ -157,7 +157,7 @@ export class HustleWorld {
   const lat=clamp((sim.yaw||0)*(sim.vf||0)/26,-1,1),acc=snap?0:clamp(((sim.vf||0)-(this.prevVf||0))/Math.max(dt,.001)/22,-1,1);this.prevVf=sim.vf||0;this.roll=(this.roll||0)+(lat*.1+clamp(sim.slip/14,-1,1)*.05-(this.roll||0))*Math.min(1,dt*7);this.pitch=(this.pitch||0)+(-acc*.05-(this.pitch||0))*Math.min(1,dt*6);
   if(this.body){this.body.rotation.z=this.roll;this.body.rotation.x=this.pitch;}this.spin=(this.spin||0)+(sim.vf||0)*dt/.33;for(const w of this.wheels){w.o.rotation.x=this.spin;if(w.front)w.o.rotation.y=-sim.steer*.5;}
   // Tyre smoke when the rear lets go, dust on the sand, spray in the rain.
-  if(!snap&&!this.phone){const bx=sim.x-Math.sin(sim.h)*1.7,bz=sim.z+Math.cos(sim.h)*1.7;if(sim.drifting&&!this.reduced)this.particles.burst(bx,.25,bz,low?1:3,L.night>.6?0x8a8aa0:0xd8d8d8,{speed:1.6,life:.7,gravity:1.5,up:.6,spread:5});
+  if(!snap&&!this.phone){const bx=sim.x-Math.sin(sim.h)*1.7,bz=sim.z+Math.cos(sim.h)*1.7;if(sim.drifting&&!this.reduced)this.particles.burst(bx,.25,bz,low?2:6,L.night>.6?0x8a8aa0:0xbdbdbd,{speed:1.8,life:.9,gravity:1.5,up:.6,spread:6});
    if(sim.surface==='sand'&&sim.speed>6)this.particles.burst(bx,.2,bz,2,0xe8c890,{speed:2.4,life:.5,gravity:-2,up:1.4,spread:5});if(L.rain&&sim.speed>12)this.particles.burst(bx,.2,bz,1,0x9fc4ff,{speed:2,life:.35,gravity:-4,up:1.6,spread:4});}
   let n=0;const light=(x,y,z,r,g,b)=>{if(n>=this.lightN)return;this.lightPos.set([x,y,z],n*3);this.lightCol.set([r,g,b],n*3);n++;};
   const lamps=(x,z,h,bright=1)=>{const fx=Math.sin(h),fz=-Math.cos(h),rx=Math.cos(h),rz=Math.sin(h);for(const side of [-.68,.68]){light(x-fx*2.15+rx*side,.82,z-fz*2.15+rz*side,2.1*bright,.14*bright,.1*bright);if(night)light(x+fx*2.15+rx*side,.72,z+fz*2.15+rz*side,2.1,1.9,1.5);}};
@@ -169,7 +169,7 @@ export class HustleWorld {
   for(const c of sim.cops){if(c.mode==='off')continue;const o=take('cop',this.copTemplate);o.position.set(c.x,0,c.z);o.rotation.set(0,Math.PI-c.h,0);bar(c,c.mode==='chase'||sim.busted);lamps(c.x,c.z,c.h,night?1:.5);}
   for(const b of sim.blocks)for(const q of b.cars){const o=take('cop',this.copTemplate);o.position.set(q.x,0,q.z);o.rotation.set(0,Math.PI-q.h,0);bar(q,true);}
   // Whoever you're dealing with pulls up beside you: a rival's ride, or a cruiser on your bumper.
-  if(this.info.pending&&(this.phone||sim.busted)){const cop=this.info.pending==='stop',ki=2%this.templates.length,o=take(cop?'cop':'car'+ki,cop?this.copTemplate:this.templates[ki]),back=cop?-6.4:.6,side=cop?0:-3.1,x=sim.x+Math.sin(sim.h)*back+Math.cos(sim.h)*side,z=sim.z-Math.cos(sim.h)*back+Math.sin(sim.h)*side;o.position.set(x,0,z);o.rotation.set(0,Math.PI-sim.h,0);if(cop)bar({x,z,h:sim.h},true);}
+  if(this.info.pending&&(this.phone||sim.busted)&&!(this.info.pending==='stop'&&sim.cops.some(c=>c.mode!=='off'&&Math.hypot(c.x-sim.x,c.z-sim.z)<14))){const cop=this.info.pending==='stop',ki=2%this.templates.length,o=take(cop?'cop':'car'+ki,cop?this.copTemplate:this.templates[ki]),back=cop?-6.4:.6,side=cop?0:-3.1,x=sim.x+Math.sin(sim.h)*back+Math.cos(sim.h)*side,z=sim.z-Math.cos(sim.h)*back+Math.sin(sim.h)*side;o.position.set(x,0,z);o.rotation.set(0,Math.PI-sim.h,0);if(cop)bar({x,z,h:sim.h},true);}
   for(const q of sim.pickups){if(q.taken||Math.hypot(q.x-sim.x,q.z-sim.z)>reach)continue;const o=take('cash',this.cashTemplate);o.position.set(q.x,1.5+Math.sin(real*3+q.x)*.25,q.z);}
   for(let i=n;i<this.lightN;i++)this.lightCol[i*3]=this.lightCol[i*3+1]=this.lightCol[i*3+2]=0;this.lights.geometry.attributes.position.needsUpdate=true;this.lights.geometry.attributes.color.needsUpdate=true;
   // Stop markers pulse; the GPS target gets a taller, brighter beam. They dim while you're wanted.
@@ -192,9 +192,9 @@ export class HustleWorld {
   const [cx,cz]=clampPoint(pos.x,pos.z,.9);pos.x=cx;pos.z=cz;pos.y=(portrait?3.1:2.5)+v*.014+(this.carY||0);if(sim.surface==='tunnel')pos.y=Math.min(pos.y,3.4);
   let fov=(portrait?64:58)+(this.reduced?0:v*.42+(sim.drifting?4:0)),offX=0,offY=0;
   if(this.phone||sim.busted||sim.parked!==null){ // parked: a slow three-quarter orbit of the car, framed clear of the phone
-   const a=sim.h-.85+Math.sin(real*.12)*.3,r=portrait?9.5:8.2,p=clampPoint(sim.x+Math.sin(a)*r,sim.z-Math.cos(a)*r,1.2);pos.set(p[0],2.1+(this.carY||0),p[1]);at.set(sim.x,.9,sim.z);fov=portrait?56:46;if(this.phone){offX=portrait?0:.2;offY=portrait?.27:0;}}
+   const r=portrait?9.5:8.2,spot=k=>{const a=sim.h+k+Math.sin(real*.12)*.3,p=clampPoint(sim.x+Math.sin(a)*r,sim.z-Math.cos(a)*r,1.2);let near=99;for(const c of sim.cops)if(c.mode!=='off')near=Math.min(near,Math.hypot(c.x-p[0],c.z-p[1]));for(const c of sim.cars)near=Math.min(near,Math.hypot(c.x-p[0],c.z-p[1]));return {p,near,room:Math.hypot(p[0]-sim.x,p[1]-sim.z),k};};if(this.parkSide===undefined||this.parkFor!==sim.parked||real-(this.parkSideAt||0)>4){let best=null;for(const k of [-.85,.85,-2.3,2.3]){const c=spot(k),score=Math.min(c.room,8)+(c.near>4?4:0);if(!best||score>best.score+.3)best={k,score};}this.parkSide=best.k;this.parkFor=sim.parked;this.parkSideAt=real;}const p=spot(this.parkSide).p;pos.set(p[0],2.1+(this.carY||0),p[1]);at.set(sim.x,.9,sim.z);fov=portrait?56:46;if(this.phone){offX=portrait?0:.2;offY=portrait?.27:0;}}
   const intro=this.introAt?Math.min(1,(now-this.introAt)/(this.reduced?1:2600)):1;if(intro<1){ // establishing shot: down out of the sky from the ocean side
-   const e=1-Math.pow(1-intro,3),hi=new T.Vector3(sim.x-80,70,sim.z+60);pos.lerpVectors(hi,pos,e);at.lerp(new T.Vector3(sim.x,2,sim.z),1-e);snap=true;}
+   const e=1-Math.pow(1-intro,3),ia=sim.h-.85,hi=new T.Vector3(sim.x+Math.sin(ia)*46,40,sim.z-Math.cos(ia)*46);pos.lerpVectors(hi,pos,e);at.lerp(new T.Vector3(sim.x,2,sim.z),1-e);snap=true;}
   const f=snap?1:Math.min(1,dt*(this.phone?2.6:7));this.camPos.lerp(pos,f);this.camAt.lerp(at,snap?1:Math.min(1,dt*9));cam.position.copy(this.camPos);this.stage.applyShake(real,this.reduced);cam.lookAt(this.camAt);
   this.fov=snap?fov:(this.fov||fov)+(fov-(this.fov||fov))*Math.min(1,dt*5);cam.fov=fitFov(this.fov,cam.aspect,portrait?58:72);
   this.offX=(this.offX||0)+(offX-(this.offX||0))*Math.min(1,dt*4);this.offY=(this.offY||0)+(offY-(this.offY||0))*Math.min(1,dt*4);const w=this.stage.w||1,h=this.stage.h||1;if(Math.abs(this.offX)>.002||Math.abs(this.offY)>.002)cam.setViewOffset(w,h,this.offX*w,this.offY*h,w,h);else cam.clearViewOffset();cam.updateProjectionMatrix();
@@ -204,7 +204,7 @@ export class HustleWorld {
  // ── HUD ────────────────────────────────────────────────────────────────────────────────────
  set(sel,v,how='text'){const key=sel+'|'+how;if(this.cache[key]===v)return;this.cache[key]=v;const el=this.$(sel);if(!el)return;if(how==='html')el.innerHTML=v;else if(how==='width')el.style.width=v;else if(how==='hidden')el.hidden=v;else el.textContent=v;}
  hud(now){if(now-(this.hudAt||0)<66)return;this.hudAt=now;const sim=this.sim,i=this.info,ch=sim.chase,shown=ch?ch.stars:sim.stars;
-  this.set('.hw-stars','<b>'+'★'.repeat(shown)+'</b><i>'+'★'.repeat(5-shown)+'</i>','html');const w=this.$('.hw-wanted');w.classList.toggle('hot',!!ch);w.classList.toggle('hidden',!!ch&&!ch.seen);w.classList.toggle('calm',!ch&&sim.calm>0);
+  this.root.classList.toggle('hw-siren',!!ch&&ch.seen&&!sim.busted);this.set('.hw-stars','<b>'+'★'.repeat(shown)+'</b><i>'+'★'.repeat(5-shown)+'</i>','html');const w=this.$('.hw-wanted');w.classList.toggle('hot',!!ch);w.classList.toggle('hidden',!!ch&&!ch.seen);w.classList.toggle('calm',!ch&&sim.calm>0);
   this.set('.hw-status',sim.busted?'BUSTED':ch?(ch.bust>.25?'BOXED IN · MOVE!':ch.seen?'CRUISERS ON YOU · BREAK THEIR LINE OF SIGHT':'OUT OF SIGHT · STAY HIDDEN'):sim.calm>0?'LYING LOW':shown?'WANTED · PATROLS ARE LOOKING':'NO HEAT');
   this.set('.hw-bust b',Math.round(ch?Math.min(1,ch.bust/2.4)*100:0)+'%','width');this.set('.hw-evade b',Math.round(ch?Math.min(1,ch.evade/evadeTime(ch.stars))*100:0)+'%','width');
   const d=sim.district,r=rectAt(sim.x,sim.z,0);this.set('.hw-district',DISTRICTS[d].name.toUpperCase());this.set('.hw-night','NIGHT '+String(i.day).padStart(2,'0')+' · '+(WEATHER[i.weather]||'').toUpperCase());this.set('.hw-street',r?.edge?r.edge.name:r?.kind==='beach'?'The Beach':r?.kind==='alley'?'Back alley':'');

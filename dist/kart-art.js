@@ -22,6 +22,8 @@ export function kartRig(scene,{dawg=null,color=null}={}){const model=cloneModel(
  let driver=null;if(seat&&dawg){try{holder.updateMatrixWorld(true);const box=new T.Box3().setFromObject(seat),size=box.getSize(new T.Vector3()),centre=box.getCenter(new T.Vector3());seat.visible=false;
    driver=createDawgAsset(dawg);const root=driver.root,b=new T.Box3().setFromObject(root),h=b.getSize(new T.Vector3()).y||1;root.scale.multiplyScalar(KART_LENGTH*.46/h);
    root.rotation.y=Math.PI/2;root.updateMatrixWorld(true);const b2=new T.Box3().setFromObject(root);const lean=new T.Group();lean.position.set(centre.x,box.min.y-size.y*.08,centre.z);root.position.set(-(b2.min.x+b2.max.x)/2+0,-b2.min.y,-(b2.min.z+b2.max.z)/2);lean.add(root);body.add(lean);driver.lean=lean;}catch{driver=null;if(seat)seat.visible=true;}}
+ // No DAWG at the wheel (light graphics): the stock driver wears the racer's colour.
+ if(!driver&&seat&&tint)seat.traverse(o=>{if(o.isMesh){o.material.color.copy(tint).multiplyScalar(.85);o.material.emissive=tint.clone();o.material.emissiveIntensity=.12;o.material.roughness=.45;}});
  return {root:rig,body,wheels,driver,seat};}
 
 // ── Looks: sky, light and mood per circuit family.
@@ -113,7 +115,7 @@ export function buildCircuit(t,{quality='high',glowTex}={}){
  // Boost pads and the arrows up the ramp scroll forward.
  const padMap=chevron('#ffffff'),padMat=new T.MeshBasicMaterial({map:padMap,color:look.night?new T.Color(.5,2.1,2.6):new T.Color(.25,1.05,1.3),transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2});
  for(const pad of t.pads)add(sweep(t,()=>[[pad.d-1.3,.04],[pad.d+1.3,.04]],{from:pad.s-1.5,to:pad.s+1.5,vScale:1.5}),padMat);
- const rampMap=chevron('#ffffff'),rampMat=new T.MeshBasicMaterial({map:rampMap,color:look.night?new T.Color(2.2,1.2,.3):new T.Color(1.15,.62,.12),transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2});
+ const rampMap=chevron('#ffffff'),rampMat=new T.MeshBasicMaterial({map:rampMap,color:look.night?new T.Color(1.5,.8,.2):new T.Color(1.15,.62,.12),transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2});
  add(sweep(t,()=>[[-3.4,.04],[3.4,.04]],{from:G0-18,to:G0-.4,vScale:4.4}),rampMat);anim.push(real=>{padMap.offset.y=-real*1.6%1;rampMap.offset.y=-real*1.1%1;});
  // The hoop over the gap and the launch gate at the lip.
  const hoopMat=new T.MeshBasicMaterial({color:accent.clone().multiplyScalar(2.2),toneMapped:false}),apex=world(t,G0+j.gap*.55,0,0);apex.y=trackHeight(t,G0)+3.6;
@@ -131,8 +133,8 @@ export function buildCircuit(t,{quality='high',glowTex}={}){
  const lamps=[],poles=[];for(let s=18,i=0;s<t.len-8;s+=high?36:54,i++){if(inTunnel(s)||nearJump(s))continue;const side=i%2?1:-1,d=side*(wallAt(t,s,side)+1),p=world(t,s,d);poles.push({x:p.x,y:p.y,z:p.z,ry:trackAt(t,s).ang+(side>0?Math.PI/2:-Math.PI/2)});const q=world(t,s,d-side*1.6,8.6);lamps.push(q);}
  g.add(instances(merge([box(.24,9,.24),box(.2,.2,2,0,8.8,.9),box(.7,.16,1,0,8.6,1.6)]),std({color:0x2a2c3c,metalness:.6,roughness:.4}),poles));
  const glowPos=[];for(const q of lamps)glowPos.push(q.x,q.y,q.z);
- if(look.night||t.theme==='harbour'){const pts=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(glowPos,3)),new T.PointsMaterial({map:glowTex,size:look.night?2.6:2.4,color:new T.Color(look.night?0xcfe0ff:0xffd9a0).multiplyScalar(1.1),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,fog:false}));pts.frustumCulled=false;g.add(pts);
-  if(high){const shaft=lightShaft(look.night?0xaac4ff:0xffcf96,{length:9,radius:4.2,opacity:look.night?.22:.12,fade:[30,120]}),im=instances(shaft.geometry,shaft.material,lamps.map(q=>({x:q.x,y:q.y,z:q.z})));im.renderOrder=2;g.add(im);}}
+ if(look.night||t.theme==='harbour'){const pts=new T.Points(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(glowPos,3)),new T.PointsMaterial({map:glowTex,size:look.night?2:2.2,color:new T.Color(look.night?0xcfe0ff:0xffd9a0).multiplyScalar(look.night?.7:1),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,fog:false}));pts.frustumCulled=false;g.add(pts);
+  if(high){const shaft=lightShaft(look.night?0xaac4ff:0xffcf96,{length:9,radius:4.2,opacity:look.night?.06:.05,fade:[30,120]}),im=instances(shaft.geometry,shaft.material,lamps.map(q=>({x:q.x,y:q.y,z:q.z})));im.renderOrder=2;g.add(im);}}
  // Grandstands on the outside of the start and by the landing, and the people in them.
  const crowd=[],palette=[0xff5f6d,0xffb547,0x5ee7ff,0xc18cff,0x5cff9b,0xffffff,0xff8ad0,0xffe45e,0x4f7dff];
  const stand=(s,side,len=15)=>{const d=side*(wallAt(t,s,side)+2.6),M=frame(t,s,d),z=k=>-side*k;for(let r=0;r<5;r++){put(bag.pale,box(len,.55+r*.62,1.25,0,-.3,z(r*1.25+.6)),M);for(let x=-len/2+.6;x<len/2;x+=high?.95:1.9)if(rnd()<.86){const v=new T.Vector3(x+(rnd()-.5)*.3,.55+r*.62-.3,z(r*1.25+.6)).applyMatrix4(M);crowd.push({x:v.x,y:v.y,z:v.z,ph:rnd()*6.28,c:palette[Math.floor(rnd()*palette.length)],s:.85+rnd()*.3,cheer:s});}}
@@ -160,7 +162,7 @@ export function buildCircuit(t,{quality='high',glowTex}={}){
 // Sunset harbour: the circuit rings a quay island in open water. Boardwalk and bulbs on the
 // outside, containers, cranes, palms and a big wheel on the inside, boats and a lighthouse offshore.
 function dressHarbour({t,g,look,rnd,high,anim,bag,add,put,std,glowTex,nearJump,nearStart,inTunnel,G0,G1}){
- const wave=waveTex();wave.repeat.set(60,60);const water=add(new T.PlaneGeometry(2400,2400).rotateX(-Math.PI/2),std({color:0x1d5a78,roughness:.16,metalness:.55,normalMap:wave,normalScale:new T.Vector2(.5,.5),envMapIntensity:1.5,emissive:0x7a3520,emissiveIntensity:.22}),{y:-1.9});water.receiveShadow=false;anim.push(real=>{wave.offset.set(real*.012,real*.02);});
+ const wave=waveTex();wave.repeat.set(60,60);const water=add(new T.PlaneGeometry(2400,2400).rotateX(-Math.PI/2),std({color:0x2a7896,roughness:.2,metalness:.35,normalMap:wave,normalScale:new T.Vector2(.6,.6),envMapIntensity:1.6,emissive:0xb0552e,emissiveIntensity:.3}),{y:-1.9});water.receiveShadow=false;anim.push(real=>{wave.offset.set(real*.012,real*.02);});
  // The sun's road on the water.
  const glit=add(new T.PlaneGeometry(90,900).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:texture(64,256,(c,w,h)=>{const gr=c.createLinearGradient(0,0,w,0);gr.addColorStop(0,'#0000');gr.addColorStop(.5,'#ffb060');gr.addColorStop(1,'#0000');c.fillStyle=gr;c.fillRect(0,0,w,h);c.globalCompositeOperation='destination-in';const v=c.createLinearGradient(0,0,0,h);v.addColorStop(0,'#000f');v.addColorStop(1,'#0000');c.fillStyle=v;c.fillRect(0,0,w,h);}),transparent:true,blending:T.AdditiveBlending,depthWrite:false,opacity:.5,fog:false}),{y:-1.85});glit.rotation.y=Math.atan2(look.sunDir[0],look.sunDir[2])+Math.PI;glit.position.set(look.sunDir[0]*520,-1.85,look.sunDir[2]*520);
  // The island: a flat apron inside the circuit rising to a hill, with an inlet cut under the jump.

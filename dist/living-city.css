@@ -126,3 +126,11 @@ body.hustle-session .hp[data-live="false"]{right:50%;transform:translate(50%,-50
 .hp-daily{background:linear-gradient(120deg,#33280a,#131228);border:1px solid #ffd34a55}.hp-daily .hp-who{color:#ffd34a}
 .hp-feats{display:grid;gap:6px}.hp-feat{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:#ffffff08;opacity:.55}.hp-feat i{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:#ffffff14;font-style:normal;font-size:13px}.hp-feat strong{display:block;font-size:12.5px}.hp-feat small{display:block;font-size:10.5px;color:#a7a2c9;line-height:1.35}.hp-feat.got{opacity:1;background:#b9ff5e12}.hp-feat.got i{background:#b9ff5e;color:#10200a}
 .hw-pop-feat{color:#10200a;background:#b9ff5e;font-size:13px;animation-duration:2.6s}
+.hp-exit{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid #ffffff33;background:#ffffff10;color:#fff;font-size:20px;line-height:1;cursor:pointer}
+.hw-pop-tip{color:#dff6ff;background:#0d2330e6;border:1px solid #5ee7ff66;font-size:11.5px;max-width:86vw;text-align:center;white-space:normal;animation-duration:5.2s}
+.hp-wallet strong{font-size:16px;letter-spacing:0;text-overflow:clip}
+.hw-hud::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(120% 90% at 50% 50%,transparent 55%,#ff305566 100%)}.hw-siren .hw-hud::after{opacity:1;animation:hwEdge .7s steps(2) infinite}@keyframes hwEdge{50%{background:radial-gradient(120% 90% at 50% 50%,transparent 55%,#3a7bff66 100%)}}
+@media(prefers-reduced-motion:reduce){.hw-siren .hw-hud::after{animation:none}}
+.hustle .hw-root{display:none}body.hustle-session .hustle .hw-root{display:block}
+.hw-phone .hw-card{left:max(230px,calc((100vw - 440px)/2));top:14%}
+@media(max-width:760px),(max-aspect-ratio:4/5){.hw-phone .hw-card{left:50%;top:max(64px,9%);padding:10px 14px}.hw-phone .hw-card-title{font-size:28px}.hw-phone .hw-card-text{display:none}.hw-phone .hw-card-rows{margin-top:4px}.hw-phone .hw-card-rows dd{font-size:17px}}

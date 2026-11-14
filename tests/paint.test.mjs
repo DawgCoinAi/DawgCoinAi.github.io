@@ -44,7 +44,7 @@ test('Leaving your paint lays a trail; coming back floods the loop, concave shap
  // Up to 4 above the home, right 3, down 3, then left back onto the block: a 4×4 box above and beside the home.
  walk(g,'up','up','right',2,'down',2,'left','left');assert.equal(you.trail.length,0,'back on your own paint: loop closed');assert.equal(g.trail.filter(t=>t>=0).length,0);
  for(let y=h.y-4;y<=h.y-1;y++)for(let x=h.x;x<=h.x+3;x++)assert.equal(g.owner[g.idx(x,y)],0,'cell '+x+','+y+' claimed');assert.equal(own(g,0),9+14);
- const claim=g.events.find(e=>e.type==='claim');assert.equal(claim.area,14);assert.equal(claim.gained.length,14);assert.equal(claim.pts,14*PAINT.loopPts);assert.equal(g.score,140);assert.equal(you.loops,1);
+ const claim=g.events.find(e=>e.type==='claim');assert.equal(claim.area,14);assert.equal(claim.gained.length,14);assert.equal(claim.pts,14*PAINT.loopPts);assert.equal(g.score,14*PAINT.loopPts);assert.equal(you.loops,1);
  // A concave loop: left 2, up 3, right 5, then a staircase (down, left, down, left) back onto the paint, leaving a notch.
  const c=solo(3),cy=c.you,ch=c.city.homes[0];cy.dir='left';walk(c,2,'up',2,'right',4,'down','left','down','left');
  assert.equal(cy.trail.length,0,'loop closed');for(let y=ch.y-3;y<=ch.y-1;y++)for(let x=ch.x-2;x<=ch.x+2;x++)assert.equal(c.owner[c.idx(x,y)],0,'concave fill '+x+','+y);assert.equal(c.owner[c.idx(ch.x+3,ch.y-3)],0);
@@ -227,9 +227,9 @@ test('Every feat can be earned, each is announced once, and feats ride in the sa
 });
 
 test('Leagues are a ladder: your best score picks one, each pays more with faster rivals and a twist, and the result teases the next',()=>{
- assert.deepEqual([0,11999,12000,24999,25000,44999,45000,1e6].map(leagueFor),[0,0,1,1,2,2,3,3]);for(let i=1;i<LEAGUES.length;i++){assert.ok(LEAGUES[i].need>LEAGUES[i-1].need);assert.ok(LEAGUES[i].mult>LEAGUES[i-1].mult);assert.ok(LEAGUES[i].pace>LEAGUES[i-1].pace);assert.ok(LEAGUES[i].name&&LEAGUES[i].twist);}
+ assert.deepEqual([0,11999,12000,23999,24000,39999,40000,1e6].map(leagueFor),[0,0,1,1,2,2,3,3]);for(let i=1;i<LEAGUES.length;i++){assert.ok(LEAGUES[i].need>LEAGUES[i-1].need);assert.ok(LEAGUES[i].mult>LEAGUES[i-1].mult);assert.ok(LEAGUES[i].pace>LEAGUES[i-1].pace);assert.ok(LEAGUES[i].name&&LEAGUES[i].twist);}
  const loopPts=league=>{const g=solo(3);g.setLeague(league);lay(g,g.you,boxTrail(g.city.homes[0]),'left');g.events=[];walk(g,1);return g.events.find(e=>e.type==='claim').pts;};
- assert.equal(loopPts(0),300);assert.equal(loopPts(1),375);assert.equal(loopPts(3),600);
+ assert.equal(loopPts(0),150);assert.equal(loopPts(1),188);assert.equal(loopPts(3),300);
  const a=fresh(2),b=fresh(2);b.league=3;assert.ok(Math.abs(b.speedOf(b.players[1])/a.speedOf(a.players[1])-LEAGUES[3].pace)<1e-9);assert.equal(b.speedOf(b.you),a.speedOf(a.you),'your own pace never changes');
  // The league is fixed once the match is under way, and bad values are ignored.
  const g=fresh(4);assert.equal(g.setLeague(2),2);assert.equal(g.setLeague(9),2);g.step();assert.equal(g.setLeague(0),2);

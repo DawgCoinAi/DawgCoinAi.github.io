@@ -110,7 +110,7 @@ test('Rush: the multiplier climbs while moving, drops when standing, and multipl
 });
 test('Rush: chains and catches buy time, a cleared block reloads without stopping, and the last ten seconds pay double',()=>{
  const g=seeded('rush',34);g.start();still(g);g.time=40;const spots=[...g.pellets].filter(([,v])=>v==='.').map(([k])=>k.split(',').map(Number));
- for(let i=0;i<20;i++){put(g.player,...spots[i]);g.collect();}assert.equal(g.time,42);assert.ok(g.events.some(e=>e.type==='extend'&&e.why==='chain'&&e.seconds===2));
+ for(let i=0;i<30;i++){put(g.player,...spots[i]);g.collect();}assert.equal(g.time,42);assert.ok(g.events.some(e=>e.type==='extend'&&e.why==='chain'&&e.seconds===2));
  g.power=5;const r=g.ghosts[0];r.cooldown=0;put(r,g.player.x,g.player.y);g.tick(1/60);assert.ok(Math.abs(g.time-(45-1/60))<1e-6,'a catch adds three seconds');
  g.time=89.5;g.addTime(5);assert.equal(g.time,90,'the clock is capped at 90');
  // Clear the block: Rush rolls straight into the next one.

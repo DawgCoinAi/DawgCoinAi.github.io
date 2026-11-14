@@ -220,6 +220,8 @@ export class Rankings {
   const who=from?.name||'A friend',title=gameById(ch.game)?.title||ch.game;this.confirm(`${who} challenged you!`,`Beat ${fmt(ch.score)} in ${title}. Accepting adds ${who} to your friends so you can race on the Friends board.`,'ACCEPT & PLAY ↗',async()=>{if(from&&!from.following&&from.code!==this.profile?.code)await this.follow(ch.from);this.play(ch.game,{trial:true});});}
 
  // ── Social lines for the Play hero and game-over screens ──────────────────────────────────
+ // The top three of a game's weekly board for the game sheet. Shares the Rankings view's cached call.
+ async preview(game){if(!this.api||!gameById(game))return null;try{const [rows,mine]=await this.cached('board:'+[game,'week','global'].join(':'),30000,()=>Promise.all([this.rpc('leaderboard',{p_game:game,p_period:'week',p_scope:'global',p_limit:50}),this.rpc('my_rank',{p_game:game,p_period:'week'}).catch(()=>this.rpc('my_standing',{p_game:game,p_period:'week'}))]));return {rows:(rows||[]).slice(0,3),mine:mine||null};}catch{return null;}}
  async heroStats(game){if(!this.api||!gameById(game))return null;try{return await this.cached('hero:'+game,60000,async()=>{
    const [mine,friends]=await Promise.all([this.rpc('my_rank',{p_game:game,p_period:'week'}).catch(()=>this.rpc('my_standing',{p_game:game,p_period:'week'})),this.rpc('leaderboard',{p_game:game,p_period:'all',p_scope:'friends',p_limit:10}).catch(()=>[])]);
    const top=(friends||[]).find(r=>!r.is_me),move=movement(mine?.place,mine?.prev_place);

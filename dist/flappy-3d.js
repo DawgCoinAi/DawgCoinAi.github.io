@@ -46,7 +46,7 @@ const STYLE=`.flappy3d .f3-zone{position:absolute;left:18px;top:calc(var(--d3-to
 export class ThreeFlappy {
  constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.cameraMode='third';this.clock=performance.now();this.status='';this.statusSince=performance.now();this.asset=null;this.assetKey='';this.gates=new Map();this.free=[];this.travel=0;this.deadT=0;this.fall=0;this.spin=0;this.flapT=1;this.hist=[];this.look={...LOOKS[0]};for(const k of LOOK_KEYS)this.look[k]=LOOKS[0][k].clone();this.fwT=0;this.boltT=9;this.nextBolt=3;this.tips={};this.tipT=0;}
  async init(){
-  if(!document.getElementById('f3-style')){const st=document.createElement('style');st.id='f3-style';st.textContent=STYLE;document.head.append(st);}
+  if(!document.querySelector('style#f3-style')){const st=document.createElement('style');st.id='f3-style';st.textContent=STYLE;document.head.append(st);}
   this.stage=new Stage({quality:this.quality,className:'dash3d flappy3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
   this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>GATES</small></div><div class="f3-zone"></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-combo" hidden><b>×2</b><small>PERFECT STREAK</small></div><div class="f3-fp" hidden>HELMET CAM · SCORE ×'+FLAPPY.firstPerson+'</div><canvas class="f3-radar" width="300" height="190" hidden aria-hidden="true"></canvas><div class="f3-cue" hidden></div><div class="f3-tip" hidden></div><button class="f3-dive" type="button" data-flappy="down" aria-label="Dive">DIVE<small>↓ / S</small></button>');this.view.append(this.hud.root);
   this.ui={gates:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),streak:this.hud.q('.d3-combo'),streakN:this.hud.q('.d3-combo b'),zone:this.hud.q('.f3-zone'),fp:this.hud.q('.f3-fp'),radar:this.hud.q('.f3-radar'),cue:this.hud.q('.f3-cue'),tip:this.hud.q('.f3-tip'),dive:this.hud.q('.f3-dive')};
@@ -79,11 +79,11 @@ export class ThreeFlappy {
   this.avenue=add(new T.Mesh(new T.PlaneGeometry(700,9).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:hdr(0xffa24a,.5),toneMapped:false,transparent:true,opacity:.28})));this.avenue.position.set(0,STREET_Y+.02,-2);
   // The city: towers recycled along the route, close behind the lane and far behind it; in the
   // helmet camera a second row stands on the near side so the lane runs between two walls of glass.
-  this.facades=facadeMaterials();this.shells=buildingShells();this.stage.extraGeometries.push(...this.shells.map(sh=>sh.g),this.lowGeo,this.upGeo,this.lowExt,this.upExt,this.lipGeo,this.lipExt,this.chevGeo,this.ringGeo,this.signGeo);
+  this.facades=facadeMaterials();this.hazeMat=new T.MeshBasicMaterial({color:0xffffff});this.shells=buildingShells();this.stage.extraGeometries.push(...this.shells.map(sh=>sh.g),this.lowGeo,this.upGeo,this.lowExt,this.upExt,this.lipGeo,this.lipExt,this.chevGeo,this.ringGeo,this.signGeo);
   this.city=Array.from({length:high?54:30},()=>{const m=add(new T.Mesh(this.shells[0].g,this.facades[0]));m.userData={a:null};return m;});
   this.roofSigns=Array.from({length:high?8:4},(_,i)=>{const sm=this.signs[(i*5)%this.signs.length],m=add(new T.Mesh(this.signGeo,sm.mat));m.scale.set(3.4*sm.aspect,3.4,1);return m;});
   // Clouds, two blimps, searchlights, rain, lightning and fireworks.
-  const ct=cloudTex();this.clouds=Array.from({length:high?22:12},(_,i)=>{const m=add(new T.Sprite(new T.SpriteMaterial({map:ct,transparent:true,depthWrite:false,opacity:.5+hash(21,i)*.4,fog:false})));const k=12+hash(22,i)*26;m.scale.set(k*2,k,1);m.userData={x:hash(23,i)*240,y:-6+hash(24,i)*34,z:i%5===4?10+hash(25,i)*20:-(16+hash(25,i)*110),rate:.5+hash(26,i)*.5};return m;});
+  const ct=cloudTex();this.clouds=Array.from({length:high?22:12},(_,i)=>{const m=add(new T.Sprite(new T.SpriteMaterial({map:ct,transparent:true,depthWrite:false,opacity:.5+hash(21,i)*.4,fog:false})));const k=12+hash(22,i)*26;m.scale.set(k*2,k,1);m.userData={x:hash(23,i)*240,y:-6+hash(24,i)*34,z:i%5===4?44+hash(25,i)*30:-(16+hash(25,i)*110),rate:.5+hash(26,i)*.5};return m;});
   this.blimps=[this.makeBlimp(0xff5fc8,'DAWG AIR'),this.makeBlimp(0x5ee7ff,'GOOD BOY')];this.blimps.forEach((b,i)=>{b.userData={x:60+i*90,y:i?15:12.5,z:i?16:-26};add(b);});
   this.beams=high?[0,1,2].map(i=>{const b=add(lightShaft(0xbfd8ff,{length:80,radius:5,top:.4,opacity:.22,fade:[60,260]}));b.userData={x:40+i*70,z:-30-i*18,ph:i*2.1};return b;}):[];
   const rn=high?240:120,rp=new Float32Array(rn*6);this.rainSeed=Array.from({length:rn},(_,i)=>[hash(31,i)*44-12,hash(32,i)*30,hash(33,i)*30-18,18+hash(34,i)*10]);const rg=new T.BufferGeometry();rg.setAttribute('position',new T.BufferAttribute(rp,3).setUsage(T.DynamicDrawUsage));this.rain=add(new T.LineSegments(rg,new T.LineBasicMaterial({color:0xbfd8ee,transparent:true,opacity:0,depthWrite:false})));this.rain.frustumCulled=false;
@@ -95,13 +95,13 @@ export class ThreeFlappy {
   // Gold: thick coins that spin.
   this.coinMesh=add(new T.InstancedMesh(new T.CylinderGeometry(.3,.3,.09,20).rotateX(Math.PI/2),new T.MeshStandardMaterial({color:0xffd24a,metalness:1,roughness:.22,emissive:0xffa000,emissiveIntensity:.7}),24));this.coinMesh.frustumCulled=false;
   // The ghost of the arc ahead (helmet camera): where DAWG will be if nothing is pressed.
-  this.arc=add(new T.InstancedMesh(new T.SphereGeometry(.09,8,6),new T.MeshBasicMaterial({color:hdr(0x7ff3ff,2),toneMapped:false,transparent:true,opacity:.9,depthWrite:false}),14));this.arc.frustumCulled=false;
+  this.arc=add(new T.InstancedMesh(new T.SphereGeometry(.06,8,6),new T.MeshBasicMaterial({color:hdr(0x7ff3ff,1.1),toneMapped:false,transparent:true,opacity:.9,depthWrite:false}),14));this.arc.frustumCulled=false;
   // DAWG: flying flat with a delta wing and a twin jet on the back.
   this.holder=add(new T.Group());this.pose=new T.Group();this.pose.rotation.z=-1.05;this.holder.add(this.pose);
   const wingGeo=new T.BufferGeometry();wingGeo.setAttribute('position',new T.BufferAttribute(new Float32Array([.55,0,0,-.45,0,0,-.95,0,1.75, .55,0,0,-.95,0,1.75,-.1,0,1.2]),3));wingGeo.computeVertexNormals();
   this.wingMat=new T.MeshStandardMaterial({color:0xf2f6ff,metalness:.5,roughness:.3,side:T.DoubleSide,emissive:0x66ddff,emissiveIntensity:.55});this.wingL=new T.Mesh(wingGeo,this.wingMat);this.wingR=new T.Mesh(wingGeo,this.wingMat);this.wingR.scale.z=-1;
   const tipGeo=new T.BoxGeometry(1.2,.05,.07).translate(-.5,0,0),tipMat=this.tipMat=new T.MeshBasicMaterial({color:hdr(0x5ee7ff,2.4),toneMapped:false});for(const w of [this.wingL,this.wingR]){const t=new T.Mesh(tipGeo,tipMat);t.position.set(-.22,.02,1.45);t.rotation.y=.33;w.add(t);w.position.set(-.05,.22,0);}
-  const pack=new T.Mesh(new T.CapsuleGeometry(.17,.42,4,10).rotateZ(Math.PI/2),new T.MeshStandardMaterial({color:0x2a3040,metalness:.85,roughness:.25}));pack.position.set(-.25,.36,0);
+  const pack=this.pack=new T.Mesh(new T.CapsuleGeometry(.17,.42,4,10).rotateZ(Math.PI/2),new T.MeshStandardMaterial({color:0x2a3040,metalness:.85,roughness:.25}));pack.position.set(-.25,.36,0);
   this.flame=new T.Mesh(new T.ConeGeometry(.2,1,12,1,true).rotateZ(Math.PI/2).translate(-.5,0,0),new T.MeshBasicMaterial({color:new T.Color(3,1.6,.5),transparent:true,opacity:.9,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,side:T.DoubleSide}));this.flame.position.set(-.55,.34,0);
   this.flameGlow=new T.Sprite(new T.SpriteMaterial({map:glowTex,color:new T.Color(2.6,1.3,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.flameGlow.position.set(-.75,.34,0);
   this.holder.add(this.wingL,this.wingR,pack,this.flame,this.flameGlow);this.birdLight=new T.PointLight(0xfff0d8,6,8,1.6);this.birdLight.position.set(.8,.9,2.2);this.holder.add(this.birdLight);
@@ -153,7 +153,7 @@ export class ThreeFlappy {
   for(const c of LOOK_KEYS)A[c].lerp(L[c],k);for(const n of ['dens','sunK','hemiK','win','stars'])A[n]+=(L[n]-A[n])*k;
   const u=this.sky.material.uniforms;u.uTop.value.copy(A.top);u.uHorizon.value.copy(A.horizon);u.uGlow.value.copy(A.glow).multiplyScalar(.55);this.scene.fog.color.copy(A.fog);this.scene.fog.density=A.dens;
   this.hemi.color.copy(A.hemi);this.hemi.groundColor.copy(A.ground);this.hemi.intensity=A.hemiK;this.key.color.copy(A.sun);this.key.intensity=A.sunK;this.rim.intensity=.5+A.stars*.9;
-  this.sun.material.color.copy(A.sun).multiplyScalar(.5+A.sunK*.35);this.stars.material.opacity=A.stars*.9;this.skyline.material.color.copy(A.fog).lerp(A.horizon,.35);
+  this.sun.material.color.copy(A.sun).multiplyScalar(.5+A.sunK*.35);this.hazeMat.color.copy(A.fog).multiplyScalar(.5+A.stars*.25);this.stars.material.opacity=A.stars*.9;this.skyline.material.color.copy(A.fog).lerp(A.horizon,.35);
   for(const m of this.wallMats)m.emissiveIntensity=.25+A.win*.75;for(const m of this.facades)m.emissiveIntensity=.2+A.win*.6;this.lipStill.color.copy(A.lip).multiplyScalar(1.25);this.chevStill.color.copy(A.lip);
   this.perfectR=(27+(g.career?.perfect||0))/PX;const speed=g.speed??132;if(playing)this.travel+=speed*dt/PX;
   if(!reduced){this.windTex.offset.y=-real*1.6;this.floorTex.offset.x=this.travel/3;}
@@ -165,13 +165,14 @@ export class ThreeFlappy {
   let n=0;for(const c of g.coins||[]){if(c.got||n>=24)continue;const w=fieldToWorld(c.x,c.y);this.dummy.position.set(w.x,w.y+(reduced?0:Math.sin(real*4+c.x*.02)*.06),0);this.dummy.rotation.set(0,first?Math.PI/2+Math.sin(real*3)*.6:real*3,0);this.dummy.scale.setScalar(1);this.dummy.updateMatrix();this.coinMesh.setMatrixAt(n++,this.dummy.matrix);}this.coinMesh.count=n;this.coinMesh.instanceMatrix.needsUpdate=true;
   const winds=g.winds||[];this.winds.forEach((wg,i)=>{const w=winds[i];wg.visible=!!w;if(!w)return;wg.position.set((w.x+w.w/2)/PX,SKY_LIMIT/2,0);const mat=w.f<0?this.windUp:this.windDown;wg.children[0].material=wg.children[1].material=mat;wg.rotation.z=w.f<0?Math.PI:0;wg.children[0].visible=!first;});
   // The city scrolls past at its real depth, so the far rows crawl and the near row rushes.
-  const rows=3,per=this.city.length/rows,S=9,firstSlot=Math.floor(this.travel/S)-4;for(let j=0;j<per;j++){const a=firstSlot+j,slot=((a%per)+per)%per;for(let r=0;r<rows;r++){const m=this.city[slot*rows+r];if(m.userData.a!==a){m.userData.a=a;const sh=this.shells[Math.floor(hash(g.worldSeed,a*3+r+700)*this.shells.length)];m.geometry=sh.g;m.material=this.facades[Math.floor(hash(g.worldSeed,a*3+r+701)*4)];
+  const rows=3,per=this.city.length/rows,S=9,firstSlot=Math.floor(this.travel/S)-4;for(let j=0;j<per;j++){const a=firstSlot+j,slot=((a%per)+per)%per;for(let r=0;r<rows;r++){const m=this.city[slot*rows+r];if(m.userData.a!==a){m.userData.a=a;const sh=this.shells[Math.floor(hash(g.worldSeed,a*3+r+700)*this.shells.length)];m.geometry=sh.g;m.material=r===1?this.hazeMat:this.facades[Math.floor(hash(g.worldSeed,a*3+r+701)*4)];
      // Rooftops stay below the lane close by and rise toward it far away, so the sky stays open behind the gates.
      m.userData.h=sh.h;m.userData.s=(-STREET_Y+(r===1?-6+hash(g.worldSeed,a*3+r+703)*15:-16+hash(g.worldSeed,a*3+r+703)*13))/sh.h;m.userData.z=r===0?-(15+hash(g.worldSeed,a*3+r+702)*10):r===1?-(36+hash(g.worldSeed,a*3+r+702)*24):13+hash(g.worldSeed,a*3+r+702)*9;m.scale.set(1.5,m.userData.s,1.5);}
     m.visible=r<2||first;m.position.set(a*S-this.travel+24+(r===1?4:0),STREET_Y,m.userData.z);}}
   this.roofSigns.forEach((sgn,i)=>{const m=this.city[((i*4+1)%per)*rows];sgn.position.set(m.position.x,STREET_Y+m.userData.h*m.userData.s+1.9,m.position.z+2);sgn.visible=m.position.x>p.x-20;});
   const wrapX=(x,span)=>((x-this.travel)%span+span)%span-span*.3;
-  for(const c of this.clouds){const d0=c.userData;c.position.set(p.x+wrapX(d0.x/d0.rate,240)*d0.rate,d0.y,d0.z);c.material.color.copy(A.cloud).multiplyScalar(d0.z>0?.8:1.15);c.visible=d0.z<0||first;}
+  for(const c of this.clouds){const d0=c.userData;c.position.set(p.x+wrapX(d0.x/d0.rate,240)*d0.rate,d0.y,d0.z);c.material.color.copy(A.cloud).multiplyScalar(d0.z>0?.8:1.15);// A sprite turns to face the camera, so from the helmet a wide cloud near the lane would swing across it: only the far ones show.
+   c.visible=first?Math.abs(d0.z)>c.scale.x/2+8:d0.z<0;}
   this.blimps.forEach((b,i)=>{const d0=b.userData;b.position.set(p.x+((d0.x-this.travel*.55+real*.4)%180+180)%180-50,d0.y+(reduced?0:Math.sin(real*.5+i)*.4),d0.z);b.visible=i===0||first;});
   for(const b of this.beams){const d0=b.userData;b.position.set(p.x+wrapX(d0.x,210),STREET_Y+78,d0.z);b.rotation.set(reduced?0:Math.sin(real*.4+d0.ph)*.35,0,Math.PI+(reduced?0:Math.cos(real*.3+d0.ph)*.3));b.material.uniforms.uOpacity.value=.05+A.stars*.2;}
   for(let i=0;i<this.cars.count;i++){const dir=i%2?1:-1,lane=i%4<2?-2:-28,x=wrapX(i*7.7-dir*real*(9+i%5)+(dir>0?0:this.travel*2),this.cars.count*7.7*.5);this.m4.makeTranslation(p.x+x,STREET_Y+.05,lane+dir*1.6+(i%3)*.5);this.cars.setMatrixAt(i,this.m4);}this.cars.instanceMatrix.needsUpdate=true;
@@ -182,10 +183,11 @@ export class ThreeFlappy {
   // DAWG. A burn squashes and springs back, the wings beat, a dive tucks them; a crash tumbles.
   this.flapT+=dt;if(over){this.deadT+=dt;this.fall=Math.min(p.y+12,this.fall+(4+this.deadT*26)*dt);this.spin+=dt*9;}else{this.deadT=0;this.fall=0;this.spin=0;}
   const boost=g.boost>0,beat=reduced?0:Math.exp(-this.flapT*9),sq=beat*.2;this.holder.position.set(p.x,p.y-this.fall,0);this.holder.rotation.z=reduced?0:over?tilt-this.spin:tilt*(first?.5:1);this.holder.scale.set(1+sq*.5,1-sq,1+sq*.5);
-  const dihedral=boost?.95:.5-beat*.95+(reduced?0:Math.sin(real*7)*.05);this.wingL.rotation.x=-dihedral;this.wingR.rotation.x=dihedral;this.tipMat.color.set(boost?0xffffff:0x5ee7ff).multiplyScalar(boost?3:2);
-  const burn=playing?(boost?1.9:.5+beat*1.5):.2;this.flame.visible=this.flameGlow.visible=!over;this.flame.scale.set(burn*(reduced?1:.9+Math.random()*.2),.7+burn*.35,.7+burn*.35);this.flame.material.color.setRGB(boost?1.2:3,boost?2.6:1.6,boost?4:.5);this.flameGlow.scale.setScalar(.8+burn*.9);this.flameGlow.material.color.copy(this.flame.material.color).multiplyScalar(.8);
+  const dihedral=first?(boost?.5:.1+beat*.3):boost?.95:.5-beat*.95+(reduced?0:Math.sin(real*7)*.05);this.wingL.position.y=this.wingR.position.y=first?-.5:.22;this.wingL.rotation.x=-dihedral;this.wingR.rotation.x=dihedral;this.tipMat.color.set(boost?0xffffff:0x5ee7ff).multiplyScalar(boost?3:2);
+  const burn=playing?(boost?1.9:.5+beat*1.5):.2;this.flame.visible=this.flameGlow.visible=!over&&!first;this.trail.visible=!first;this.birdLight.intensity=first?2:6;this.wingMat.emissiveIntensity=first?.15:.55;this.flame.scale.set(burn*(reduced?1:.9+Math.random()*.2),.7+burn*.35,.7+burn*.35);this.flame.material.color.setRGB(boost?1.2:3,boost?2.6:1.6,boost?4:.5);this.flameGlow.scale.setScalar(.8+burn*.9);this.flameGlow.material.color.copy(this.flame.material.color).multiplyScalar(.8);
   this.bubble.visible=!!g.shield&&!over;this.bubble.scale.setScalar(reduced?1:1+Math.sin(real*5)*.05);this.holder.visible=!(this.asset&&g.ghost>0&&!reduced)||Math.floor(real*14)%2===0;
-  if(this.asset)setDawgPose(this.asset,real,playing?'walk':'idle');
+  // From the helmet camera the body would fill the screen: only the wings stay, low in the frame.
+  this.pose.visible=this.pack.visible=!first;if(this.asset&&!first)setDawgPose(this.asset,real,playing?'walk':'idle');
   // Trail ribbon.
   if(playing||over){this.hist.unshift({t:real,y:p.y-this.fall});while(this.hist.length>this.TR)this.hist.pop();}const tp=this.trailPos,tc=this.trailCol,hot=boost?[.5,1.6,2.6]:[2.2,1,.3];for(let i=0;i<this.TR;i++){const h=this.hist[Math.min(i,this.hist.length-1)]||{t:real,y:p.y},age=real-h.t,x=p.x-.8-age*speed/PX,f=Math.max(0,1-i/(this.TR-1)),wd=(boost?.34:.2)*f+.02;tp.set([x,h.y+.34+wd,0,x,h.y+.34-wd,0],i*6);const c=f*f*(over?0:1);tc.set([hot[0]*c,hot[1]*c,hot[2]*c,hot[0]*c,hot[1]*c,hot[2]*c],i*6);}this.trail.geometry.attributes.position.needsUpdate=true;this.trail.geometry.attributes.color.needsUpdate=true;
   // Speed streaks while the dive burns, and lift sparkles inside a thermal.
@@ -195,10 +197,10 @@ export class ThreeFlappy {
   // Cameras. Side-on follows most of DAWG's height, so the character is large and the whole gap
   // still fits; the helmet camera sits behind the ears, level, aimed at DAWG's own altitude ahead.
   const cy=MID+(p.y-MID)*.62,third={pos:new T.Vector3(p.x+3.5,cy+1,17),at:new T.Vector3(p.x+3.7,cy-.1,0)};
-  const firstPose={pos:new T.Vector3(p.x-2.3,p.y+.95,0),at:new T.Vector3(p.x+9,p.y,0)};
+  const firstPose={pos:new T.Vector3(p.x-1.5,p.y+.34,0),at:new T.Vector3(p.x+9,p.y+.1,0)};
   this.rig.update(dt,third,firstPose,{follow:first?30:7,roll:0});if(!first||over)this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera;cam.fov+=(fitFov(first?66:42,cam.aspect,first?58:36)-cam.fov)*Math.min(1,dt*6);cam.near=.08;cam.updateProjectionMatrix();
-  this.sky.position.copy(cam.position);this.stars.position.copy(cam.position);this.skyline.position.set(cam.position.x,STREET_Y+34,cam.position.z);this.sun.position.set(cam.position.x+150,STREET_Y+52+A.stars*90,cam.position.z-330);this.street.position.x=this.avenue.position.x=this.floor.position.x=this.limit.position.x=cam.position.x;
+  this.sky.position.copy(cam.position);this.stars.position.copy(cam.position);this.skyline.position.set(cam.position.x,STREET_Y+34,cam.position.z);this.sun.position.set(cam.position.x+(first?330:46),7+A.stars*70,cam.position.z-(first?120:330));this.street.position.x=this.avenue.position.x=this.floor.position.x=this.limit.position.x=cam.position.x;
   this.particles.update(dt,{x:playing?-speed/PX:0,y:0,z:0},-40);this.fireworks.update(dt,{x:playing?-speed/PX*.4:0,y:0,z:0},-40);this.updateHud(g,first,playing,dt);
   this.stage.render(dt,real,{reduced,aberration:boost?.004:.0016});
  }

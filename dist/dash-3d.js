@@ -247,7 +247,7 @@ export class ThreeDash {
    this.nowLine=new T.Mesh(new T.PlaneGeometry(LANE*3,.12).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(2,2,2),transparent:true,opacity:0,depthWrite:false,toneMapped:false}));this.nowLine.position.set(0,.04,-1.1);this.scene.add(this.nowLine);}
   const mix=this.rig.mix,n={open:0,crate:0,bar:0,block:0},put=(k,lane,z)=>{const m=this.marks[k];if(n[k]>=m.instanceMatrix.count||z<1.5||z>150)return;const pt=dashPoint(lane,z);this.m4.makeTranslation(pt.x,0,pt.z);m.setMatrixAt(n[k]++,this.m4);};
   if(mix>.02&&g.status==='playing')for(const row of g.rows){for(let j=1;j<=3;j++)put('open',row.safe,row.z-j*9);for(const o of row.obstacles){put(o.type,o.lane,row.z-9);put(o.type,o.lane,row.z-22);}}
-  const pulse=this.reduced?1:.8+.2*Math.sin(real*8);for(const k of Object.keys(n)){const m=this.marks[k];m.count=n[k];m.material.opacity=mix*.9*(k==='open'?pulse:1);m.visible=mix>.02&&n[k]>0;m.instanceMatrix.needsUpdate=true;}this.nowLine.material.opacity=mix*.5;this.nowLine.visible=mix>.02;
+  const pulse=this.reduced?1:.8+.2*Math.sin(real*8);for(const k of Object.keys(n)){const m=this.marks[k];m.count=n[k];m.material.opacity=mix*.9*(k==='open'?pulse:1);m.visible=mix>.02&&n[k]>0;m.instanceMatrix.needsUpdate=true;}this.nowLine.material.opacity=mix*.2;this.nowLine.visible=mix>.02;
  }
  // Runner camera HUD: the next row as three lane tiles (what each lane needs), how close it is, and an arrow to the open lane.
  fpHud(g){const ui=this.fpUi,first=this.rig.mix>.5&&g.status==='playing';if(ui.chip.hidden===first)ui.chip.hidden=ui.next.hidden=!first;if(!first){ui.open.hidden=true;return;}

@@ -24,7 +24,7 @@ export const HOW={
  domino:['Drag a piece from the tray into the room: it clicks into the nearest spot that fits and a dotted line shows what it will do. Drag it again to move it, or back to the tray to take it out','Press GO (or G) to run the chain. Test runs are free: the golden bone has to end up in the bin','Three stars a room: bin the bone, use par pieces or fewer, and do it first try. Tap the room number to jump to any room you have reached; share codes replay a solution'],
  heist:['Each 30-second loop you play one more crew member; earlier loops replay exactly','Stand on plates to hold doors open and on switches to kill lasers; guards see what’s in front of them','Get every prize to the van. In position? END LOOP. Bad take? RETAKE, or UNDO the last crew member'],
  climb:['Hold anywhere (or ↑ / Space) to grab the nearest hook and reel in','Let go to fly; hold ← / → (or slide your thumb sideways) to pump the swing. The white ring marks the hook you’ll grab','Rusty hooks snap, slick ones slide, green springs launch you. Don’t look down'],
- chess:['Tap a piece, then tap where it goes','Every capture plays out as a battle; tap to skip, or switch battles off','Beat a rival to unlock the next one up the ladder'],
+ chess:['Tap a piece, then tap where it goes','Every capture is a fight scene: tap to skip, or set battles to quick or off','Beat a rival to unlock the next; each has its own opening','Daily puzzle: one forced mate, the same for everyone'],
  story:['Pick a verb, then tap a glowing spot','Or type commands like “use comb on mirror”','Six endings to find before sunrise']
 };
 

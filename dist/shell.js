@@ -29,7 +29,7 @@ export const BLURBS={
  domino:'Fifteen pegboard contraptions in three shops. Peg a few pieces in among the dominoes, ramps, springs, gloves and see-saws, press GO, and get the golden bone into the bin. Free test runs, three stars a room, a code for every solution.',
  heist:'Plan a heist 30 seconds at a time. Every loop adds one more of you, replaying your last loops exactly. Your past selves are your crew.',
  climb:'A 500-meter glass tower, one grappling leash and no checkpoints. Every fall is measured. Every meter is earned twice.',
- chess:'Five rival DAWGs, one crown. Every capture is a battle: pieces become warriors and fight it out on the square in slow motion.',
+ chess:'Five rival DAWGs, one crown. Every capture is a little film: the knight somersaults in, the rook runs out a cannon, the queen strikes from three sides, and each piece falls its own way. A new mate puzzle every day.',
  story:'One velvet suit, one night, ten places to make bad decisions. Win over Nova, steal the rooftop show, and find all six endings before sunrise.'
 };
 // One line that sells the game: featured slides, shelf cards and the top of the game sheet.
@@ -39,7 +39,7 @@ export const HOOKS={
  snake:'Ride the light. Grow the pack. Don’t bite your tail.',runner:'Three lanes, one night, no brakes.',turbo:'Loops, rails and the high road at full burn.',
  pinball:'Real flippers, five modes, one wizard jackpot.',kart:'Drift, draft and steal the cup on the last corner.',nemesis:'It studies how you move. Then it cheats.',
  bark:'Twenty DAWGs. One shrinking roof. Bark them off it.',paint:'Flood the city in your colour before the whistle.',domino:'Peg it. Press GO. Watch it all fall into place.',
- heist:'Your past selves are your crew.',climb:'One leash. 500 meters. No checkpoints.',chess:'Every capture is a fight on the square.',story:'One velvet suit. One night. Six endings.'
+ heist:'Your past selves are your crew.',climb:'One leash. 500 meters. No checkpoints.',chess:'36 duels. Every capture is its own fight scene.',story:'One velvet suit. One night. Six endings.'
 };
 // Genres for the library filter; the first one is the label printed on the card.
 export const GENRES={classic:['action'],rush:['action'],daily:['action'],trade:['strategy','story'],flappy:['action'],cross:['action'],snake:['action'],runner:['action','racing'],turbo:['racing','action'],

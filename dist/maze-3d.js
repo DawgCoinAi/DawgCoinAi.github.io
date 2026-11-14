@@ -382,7 +382,7 @@ export class ThreeMaze {
   // first sets the distance; the camera then follows the DAWG along the other axis.
   const zPer=2*tanV/Math.sin(PITCH)*free,xPer=2*tanV*aspect,fitZ=(rows+1.2)/zPer,fitW=(cols+1.2)/xPer,base=Math.max(Math.min(fitZ,fitW),9/xPer)*.9;
   const over=g.status==='over'||g.status==='level',goal=this.flourish>0||over?1.16:g.status==='ready'?1.08:g.frenzy?.92:1;this.zoomGoal=goal-this.punch*.1;this.zoom+=(this.zoomGoal-this.zoom)*Math.min(1,dt*(this.punch>0?9:2.4));
-  const dist=base*this.zoom,visW=dist*xPer,visZ=dist*zPer,cx=(cols-1)/2,cz=(rows-1)/2,look=STEP[this.facing]||[0,0];
+  const dist=base*this.zoom*(this.zoomScale||1),visW=dist*xPer,visZ=dist*zPer,cx=(cols-1)/2,cz=(rows-1)/2,look=STEP[this.facing]||[0,0];
   const clamp=(v,c,half,span)=>{const slack=(span+1.6)/2-half;return slack<=0?c:Math.max(c-slack,Math.min(c+slack,v));};
   const fx=clamp(this.px+look[0]*1.2,cx,visW/2,cols),fz=clamp(this.py+look[1]*1.2,cz,visZ/2,rows);
   const k=g.status==='ready'&&!this.camStarted?1:Math.min(1,dt*(this.snapPlayer?12:3.2));this.camStarted=true;this.snapPlayer=false;this.focus.x+=(fx-this.focus.x)*k;this.focus.z+=(fz-this.focus.z)*k;

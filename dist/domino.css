@@ -1,12 +1,76 @@
-/* Domino Dynasty HUD: room name, fuses, the piece tray with the next piece lit, and the opening tip. */
-.domino3d .dm-top{position:absolute;left:16px;top:var(--d3-top,14px);max-width:62%;text-shadow:0 2px 10px #000d}
-.domino3d .dm-name{display:block;font:900 clamp(20px,4.6vw,34px)/1 var(--display);color:#fff;letter-spacing:-.5px}
-.domino3d .dm-room{display:block;margin-top:6px;font:800 11px/1.3 var(--mono);letter-spacing:1.5px;color:#ffd25e}
-.domino3d .dm-fuses{position:absolute;right:14px;top:var(--d3-top,14px);font:800 13px/1.2 var(--mono);letter-spacing:1px;color:#ffd25e;text-shadow:0 0 12px #ffd25e88,0 2px 8px #000d;max-width:34%;text-align:right;word-break:break-all}
-.domino3d .dm-tray{position:absolute;right:14px;top:calc(var(--d3-top,14px) + 30px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:46%}
-.domino3d .dm-pieces{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.domino3d .dm-pieces i{font:800 11px/1 var(--mono);letter-spacing:1.5px;font-style:normal;padding:7px 10px;border-radius:9px;background:#07080fcc;border:1px solid #ffffff22;color:#cfd6ff}
-.domino3d .dm-pieces i.dm-next{border-color:#5effc1;color:#5effc1;box-shadow:0 0 14px #5effc155}
-.domino3d .dm-pieces i.dm-used{opacity:.4;text-decoration:line-through}
-.domino3d .dm-hint{font:800 10px/1.35 var(--mono);letter-spacing:1px;color:#fff;text-shadow:0 2px 8px #000d;text-align:right}
-.domino3d .dm-tip{position:absolute;left:50%;top:22%;transform:translateX(-50%);width:min(88%,460px);margin:0;padding:10px 14px;border-radius:12px;background:#07080fd9;border:1px solid #ffd25e44;font:700 13px/1.4 var(--body,system-ui);color:#fff4df;text-align:center}
+/* Domino Dynasty HUD: shop and room name, the hint line, the opening tip, slow-motion bars. */
+.domino3d .dm-top{position:absolute;left:14px;right:14px;top:var(--d3-top,14px);text-shadow:0 2px 10px #000d;pointer-events:none}
+.domino3d .dm-world{display:block;font:800 10px/1.2 var(--mono);letter-spacing:1.6px;color:#ffd25e}
+.domino3d .dm-name{display:block;margin-top:3px;font:900 clamp(20px,5vw,34px)/1 var(--display);color:#fff;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.domino3d .dm-hint{position:absolute;left:14px;right:14px;top:calc(var(--d3-top,14px) + clamp(40px,7vw,56px));font:800 10px/1.35 var(--mono);letter-spacing:1.1px;color:#dffff0;text-shadow:0 2px 8px #000d}
+.domino3d .dm-tip{position:absolute;left:50%;top:calc(var(--d3-top,14px) + clamp(64px,11vw,84px));transform:translateX(-50%);width:min(92%,460px);margin:0;padding:10px 14px;border-radius:14px;background:#fff8e8f2;border:2px solid #2a1a10;box-shadow:0 5px 0 #2a1a1066,0 10px 26px #0008;font:700 13px/1.4 var(--body,system-ui);color:#2a1a10;text-align:center}
+.domino3d .dm-bars{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 #000;transition:box-shadow .35s ease}
+.domino3d .dm-slowmo .dm-bars{box-shadow:inset 0 44px 0 0 #000c,inset 0 -44px 0 0 #000c,inset 0 0 120px 30px #0008}
+.domino3d .d3-banner{top:30%;text-shadow:0 0 22px #ffb52e,0 4px 0 #2a1a10}
+/* The tray: room picker and tries, the star rules, draggable piece chips, take-everything-back, and GO. Lives on the stage so it works over the 3D room and the flat one. */
+.dm-dock{position:absolute;left:0;right:0;bottom:0;z-index:6;display:grid;gap:6px;padding:16px 10px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(#120b0700,#120b07e6 26%);touch-action:none;user-select:none;-webkit-user-select:none}
+.dm-dock[hidden]{display:none}
+.dm-bar{display:flex;align-items:center;gap:6px;min-height:30px}
+.dm-step{flex:0 0 32px;height:30px;border-radius:10px;border:1px solid #ffffff33;background:#2a1d14;color:#ffe6b8;font:900 18px/1 var(--display)}
+.dm-step:disabled{opacity:.28}
+.dm-step[hidden]{display:none}
+.dm-roombtn{height:30px;padding:0 10px;border-radius:10px;border:1px solid #ffd25e77;background:#2a1d14;color:#fff;font:800 11px/1 var(--mono);letter-spacing:1px;white-space:nowrap}
+.dm-roombtn small{opacity:.55;font-size:10px}
+.dm-roombtn i{font-style:normal;color:#ffd25e;letter-spacing:1px;margin-left:4px}
+.dm-tries{margin-left:auto;font:800 10px/1 var(--mono);letter-spacing:1.2px;color:#ffe6b8}
+.dm-skip{height:30px;padding:0 10px;border-radius:10px;border:1px dashed #ffffff66;background:#0000;color:#fff;font:800 10px/1 var(--mono);letter-spacing:1px}
+.dm-skip[hidden]{display:none}
+.dm-rules{display:flex;flex-wrap:wrap;gap:4px 10px;font:800 9px/1.2 var(--mono);letter-spacing:.9px;color:#ffffff66}
+.dm-rules span.on{color:#ffd25e}
+.dm-rules .dm-twist{color:#7ff3ff;border:1px solid #7ff3ff88;border-radius:6px;padding:1px 5px}
+.dm-row{display:flex;align-items:stretch;gap:8px}
+.dm-dock-pieces{display:flex;gap:8px;flex:1;min-width:0}
+.dm-chip{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:1 1 0;min-width:0;max-width:92px;min-height:62px;padding:6px 4px;border-radius:14px;border:2px solid #2a1a10;background:linear-gradient(#fff3d6,#f2d9a4);color:#3a2414;cursor:grab;touch-action:none;box-shadow:0 5px 0 #6a4426,0 9px 18px #0009;transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease}
+.dm-chip svg{width:32px;height:32px;pointer-events:none}
+.dm-chip span{font:800 9px/1 var(--mono);letter-spacing:1.1px;pointer-events:none}
+.dm-chip kbd{position:absolute;right:6px;top:5px;font:700 9px/1 var(--mono);color:#3a241488;pointer-events:none}
+.dm-chip.dm-next{background:linear-gradient(#ffe98a,#ffc23d);animation:dmNudge 1.6s ease-in-out infinite}
+.dm-chip.dm-used{opacity:.5;border-style:dashed;box-shadow:none;transform:translateY(4px)}
+.dm-chip.dm-held{transform:translateY(-7px) scale(1.07);background:linear-gradient(#fff,#ffe98a);cursor:grabbing}
+.dm-dock-reset{flex:0 0 44px;border-radius:14px;border:2px solid #2a1a10;background:#4a3020;color:#ffe6b8;font:800 18px/1 var(--mono);box-shadow:0 5px 0 #20140c}
+.dm-dock-reset:disabled{opacity:.35}
+.dm-dock-go{flex:0 0 clamp(96px,27%,150px);border-radius:14px;border:2px solid #2a1a10;background:linear-gradient(#b9ff7a,#3fc24a);color:#0d2a0d;font:900 19px/1 var(--display);letter-spacing:1px;box-shadow:0 6px 0 #1c6a26,0 10px 22px #000a}
+.dm-dock-go b{font-size:14px}
+.dm-dock-go.dm-ready{animation:dmGo 1.3s ease-in-out infinite}
+.dm-dock-go:not(:disabled):active{transform:translateY(4px);box-shadow:0 2px 0 #1c6a26}
+.dm-dock-go:disabled{background:#4a3020;color:#ffe6b8;box-shadow:0 5px 0 #20140c;font:800 10px/1 var(--mono);letter-spacing:1.3px}
+@keyframes dmNudge{50%{transform:translateY(-4px)}}
+@keyframes dmGo{50%{filter:brightness(1.12)}}
+/* Room picker. */
+.dm-map{position:absolute;inset:0;z-index:8;display:grid;place-items:center;background:#120b07cc;backdrop-filter:blur(4px);padding:12px;overflow:auto}
+.dm-map[hidden],.dm-card[hidden],.dm-feat[hidden]{display:none}
+.dm-map-in{width:min(100%,520px);display:grid;gap:10px}
+.dm-map h4{margin:0 0 6px;font:900 15px/1 var(--display);color:#ffd25e;letter-spacing:.5px}
+.dm-map h4 small{display:block;margin-top:3px;font:700 9px/1 var(--mono);letter-spacing:1.2px;color:#ffffff88}
+.dm-map section>div{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.dm-map section button{display:grid;gap:3px;justify-items:center;padding:8px 2px;border-radius:12px;border:2px solid #2a1a10;background:linear-gradient(#fff3d6,#f2d9a4);color:#3a2414;box-shadow:0 4px 0 #6a4426;min-width:0}
+.dm-map section button b{font:900 18px/1 var(--display)}
+.dm-map section button span{font:700 8px/1.1 var(--mono);letter-spacing:.3px;text-align:center;overflow:hidden;max-width:100%;text-overflow:ellipsis;white-space:nowrap}
+.dm-map section button i{font-style:normal;font-size:11px;color:#c47a00;letter-spacing:1px}
+.dm-map section button:disabled{opacity:.35;box-shadow:none}
+.dm-map section button.dm-here{background:linear-gradient(#ffe98a,#ffc23d)}
+.dm-map-close{height:40px;border-radius:12px;border:1px solid #ffffff55;background:#2a1d14;color:#fff;font:800 11px/1 var(--mono);letter-spacing:1.4px}
+/* Win card and feat toast. */
+.dm-card{position:absolute;left:50%;top:36%;z-index:7;transform:translate(-50%,-50%);width:min(88%,360px);padding:14px 16px 12px;border-radius:18px;background:#fff8e8;border:3px solid #2a1a10;box-shadow:0 7px 0 #2a1a1088,0 18px 40px #000a;text-align:center;color:#2a1a10;pointer-events:none}
+.dm-card.dm-in{animation:dmCard .45s cubic-bezier(.2,1.4,.4,1) both}
+.dm-card b{display:block;font:900 20px/1.1 var(--display)}
+.dm-card p{margin:5px 0 0;font:800 10px/1.4 var(--mono);letter-spacing:.8px;color:#5a3a24}
+.dm-card .dm-code u{text-decoration:none;background:#2a1a10;color:#ffd25e;border-radius:6px;padding:1px 6px;letter-spacing:1.5px}
+.dm-card .dm-tease{color:#b3261e}
+.dm-stars{display:flex;justify-content:center;gap:6px;margin-bottom:4px}
+.dm-stars i{font-style:normal;font-size:44px;line-height:1;color:#d8c8a8;text-shadow:0 3px 0 #2a1a1033}
+.dm-stars i.on{color:#ffb300;text-shadow:0 3px 0 #a85d00,0 0 18px #ffb30088;animation:dmStar .5s cubic-bezier(.2,1.6,.4,1) var(--d) both}
+.dm-feat{position:absolute;left:50%;top:calc(var(--d3-top,14px) + 150px);z-index:7;transform:translateX(-50%);width:max-content;max-width:92%;padding:8px 14px;border-radius:999px;background:#2a1a10f2;border:2px solid #ffd25e;box-shadow:0 0 24px #ffb52e66;text-align:center;pointer-events:none}
+.dm-feat.dm-in{animation:dmToast .4s cubic-bezier(.2,1.4,.4,1) both}
+.dm-feat b{display:block;font:900 13px/1.1 var(--display);color:#ffd25e;letter-spacing:.6px}
+.dm-feat span{display:block;margin-top:2px;font:700 10px/1.2 var(--mono);color:#fff}
+@keyframes dmCard{from{opacity:0;transform:translate(-50%,-40%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes dmToast{from{opacity:0;transform:translate(-50%,-12px) scale(.9)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes dmStar{from{transform:scale(0) rotate(-40deg)}to{transform:scale(1) rotate(0)}}
+@media (max-width:400px){.dm-rules{font-size:8px;gap:3px 7px}.dm-chip{min-height:58px}.dm-dock-go{font-size:17px}}
+@media (prefers-reduced-motion:reduce){.dm-chip.dm-next,.dm-dock-go.dm-ready,.dm-card.dm-in,.dm-feat.dm-in,.dm-stars i.on{animation:none}}

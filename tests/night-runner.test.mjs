@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createQuickGame,snapshotQuick,restoreQuick} from '../dist/pack-checkpoint.js';
+import {RUNNER} from '../dist/runner-engine.js';
 import {stepPack} from '../dist/pack-engine.js';
 import {STAMPS,updatePassport,validPassport} from '../dist/passport.js';
 import {LivingTradeGame,TRADE_PERKS,validLivingTrade} from '../dist/living-trade.js';
@@ -13,21 +14,51 @@ function runner(seed=78){const g=createQuickGame('runner',seed);g.start();return
 function place(g,type,lane=g.lane){g.rows=[{id:1,z:.01,safe:(lane+1)%3,obstacles:[{lane,type}],power:null}];}
 
 test('Runner handles lane bounds, turn cooldown, mutually exclusive jumps and slides, and pause',()=>{
- const g=runner();assert.equal(g.move('left'),true);assert.equal(g.move('left'),false);g.tick(.13);assert.equal(g.move('left'),false);assert.equal(g.move('right'),true);assert.equal(g.move('up'),true);assert.equal(g.move('down'),false);g.pause();const before=snapshotQuick(g,'runner');g.tick(3);assert.deepEqual(snapshotQuick(g,'runner'),before);g.start();g.tick(.9);assert.equal(g.move('down'),true);assert.equal(g.move('up'),false);
+ const g=runner();assert.equal(g.move('left'),true);assert.equal(g.move('left'),false);g.tick(.13);assert.equal(g.move('left'),false);assert.equal(g.move('right'),true);assert.equal(g.move('up'),true);assert.equal(g.move('up'),false,'no double jump');g.pause();const before=snapshotQuick(g,'runner');g.tick(3);assert.deepEqual(snapshotQuick(g,'runner'),before);g.start();
+ // Sliding out of a jump drops straight down; jumping out of a slide pops straight up. Never both at once.
+ assert.equal(g.move('down'),true);assert.equal(g.jump,0);assert.ok(g.slide>0);assert.equal(g.move('down'),false);assert.equal(g.move('up'),true);assert.equal(g.slide,0);assert.ok(g.jump>0);
+});
+test('Presses made a moment too early are buffered and replayed; stale ones are dropped',()=>{
+ const g=runner();g.move('right');assert.equal(g.lane,2);g.tick(.05);assert.equal(g.move('left'),false,'still mid-turn');g.tick(.08);assert.equal(g.lane,1,'the buffered turn fired when the cooldown ended');
+ g.move('up');g.tick(.7);assert.equal(g.move('up'),false);g.tick(.16);assert.ok(g.jump>.8,'buffered jump on landing');
+ const h=runner();h.move('up');h.tick(.3);h.move('up');h.tick(.3);h.tick(.3);assert.equal(h.jump,0,'a press older than the buffer window is forgotten');
+});
+test('Flow: dodges, gold bones and close calls build a multiplier that drains when you play it safe',()=>{
+ const g=runner();const row=(lane,type,extra={})=>{g.rows=[{id:1,z:.01,safe:(lane+1)%3,obstacles:[{lane,type}],power:null,prize:-1,got:2,...extra}];};
+ row(g.lane,'crate');g.move('up');g.tick(.01);let e=g.events.find(e=>e.type==='dodge');assert.deepEqual([e.points,e.mult,g.streak,g.bonus],[30,1,1,30]);assert.equal(g.flow,RUNNER.flow);
+ // A gold bone over the crate: three gold and a second trick.
+ g.tick(.9);g.events=[];const coins=g.coins;row(g.lane,'crate',{prize:g.lane});g.move('up');g.tick(.01);assert.equal(g.coins,coins+RUNNER.prizeGold);assert.equal(g.prizes,1);assert.equal(g.streak,3);assert.equal(g.mult,2);assert.equal(g.events.find(e=>e.type==='prize').points,200);
+ // A late swerve out of a blocked lane is a close call; an early one is just a lane change.
+ g.tick(.9);g.events=[];g.lane=1;row(1,'block');g.move('left');g.tick(.01);assert.equal(g.nears,1);assert.equal(g.events.find(e=>e.type==='near').points,100);
+ g.tick(.2);g.lane=1;g.move('left');g.tick(.5);row(1,'block');g.tick(.01);assert.equal(g.nears,1,'swerved long ago');
+ assert.equal(g.score,Math.floor(g.distance)+g.coins*25+g.bonus);
+ // No trick for a while: the flow runs out and the multiplier resets.
+ g.rows=[{id:2,z:290,safe:0,obstacles:[{lane:1,type:'block'}],power:null,prize:-1,got:0}];g.events=[];for(let i=0;i<RUNNER.flow*60+2;i++){g.rows[0].z=290;g.tick(1/60);}assert.equal(g.streak,0);assert.equal(g.mult,1);assert.ok(g.events.some(e=>e.type==='flowbreak'));assert.equal(g.bestStreak,4);
+ // A shield hit also breaks the flow.
+ g.streak=6;g.bestStreak=6;g.flow=3;g.shield=1;g.lane=1;row(1,'block');g.tick(.01);assert.equal(g.streak,0);assert.equal(g.status,'playing');
+});
+test('A gold trail leads into every open lane and the street gets denser as it heats up',()=>{
+ const g=runner(5);const first=g.rows[0];g.lane=first.safe;const before=g.coins;while(g.rows[0]===first)g.tick(1/60);assert.equal(g.coins,before+3,'two trail coins and the one on the row');
+ const h=runner(5);h.lane=h.rows[0].obstacles[0].lane===0?(h.rows[0].safe===1?2:1):0;const r=h.rows[0];if(!r.obstacles.some(o=>o.lane===h.lane)){while(h.rows[0]===r)h.tick(1/60);assert.equal(h.coins,0,'off the trail collects nothing');}
+ const gap=d=>{const k=runner(21);k.distance=d;let sum=0;for(let i=0;i<200;i++){k.rows=[{...k.rows.at(-1),z:200}];k.tick(0);const g=k.rows[1].z-200;assert.ok(g>=36&&g<=68);sum+=g/200;}return sum;};
+ const cold=gap(0),hot=gap(2400);assert.ok(cold>56&&cold<62,'cold gap '+cold);assert.ok(hot>39&&hot<43,'hot gap '+hot);
+ const prizes=[];for(let seed=1;seed<=30;seed++){const k=runner(seed);for(let i=0;i<60*30;i++){k.lane=k.rows[0].safe;k.tick(1/60);for(const r of k.rows)if(r.prize>=0){assert.ok(r.obstacles.some(o=>o.lane===r.prize&&o.type!=='block'));assert.equal(r.power,null);prizes.push(seed+':'+r.id);}}}assert.ok(new Set(prizes).size>60);
 });
 test('Crates require a jump, arches a slide, and blocks a different lane; results fire once',()=>{
  for(const [type,action,alive] of [['crate','up',true],['crate','down',false],['bar','down',true],['bar','up',false],['block','up',false],['block','left',true]]){const g=runner();place(g,type);g.move(action);g.tick(.01);assert.equal(g.status,alive?'playing':'over',type+action);if(!alive){g.tick(1);g.end('again');assert.equal(g.events.filter(e=>e.type==='over').length,1);}}
 });
 test('Runner shield absorbs one hit, magnets collect across lanes, and pickups score once',()=>{
- const g=runner();g.shield=1;place(g,'block');g.tick(.01);assert.equal(g.status,'playing');assert.equal(g.shield,0);assert.equal(g.hits,1);g.magnet=5;place(g,'crate');g.move('up');g.tick(.01);assert.equal(g.coins,1);const coins=g.coins;g.tick(.1);assert.equal(g.coins,coins);assert.equal(g.score,Math.floor(g.distance)+g.coins*25);
+ const g=runner();g.shield=1;place(g,'block');g.tick(.01);assert.equal(g.status,'playing');assert.equal(g.shield,0);assert.equal(g.hits,1);g.magnet=5;place(g,'crate');g.move('up');g.tick(.01);assert.equal(g.coins,1);const coins=g.coins;g.tick(.1);assert.equal(g.coins,coins);assert.equal(g.score,Math.floor(g.distance)+g.coins*25+g.bonus);
  const h=runner();h.rows=[{id:7,z:.01,safe:1,obstacles:[{lane:0,type:'bar'}],power:'shield'}];h.tick(.01);assert.equal(h.shield,1);h.rows=[{id:14,z:.01,safe:1,obstacles:[{lane:0,type:'bar'}],power:'magnet'}];h.tick(.01);assert.equal(h.magnet,10);place(h,'block');h.tick(.01);assert.equal(h.status,'playing');place(h,'block');h.tick(.01);assert.equal(h.status,'over');
 });
 test('100 seeded runner worlds retain an open route and can be played for 90 seconds by lane input alone',()=>{
- const patterns=new Set();for(let seed=1;seed<=100;seed++){const g=runner(seed);patterns.add(JSON.stringify(g.rows));for(let frame=0;frame<90*60;frame++){const next=g.rows[0];if(next.z<35&&g.lane!==next.safe)g.move(next.safe<g.lane?'left':'right');stepPack(g,1/60);assert.equal(g.status,'playing','seed '+seed);for(const row of g.rows)assert.ok(!row.obstacles.some(o=>o.lane===row.safe));}assert.ok(g.distance>2500);assert.ok(g.coins>40);assert.ok(g.rows.length<=6);}assert.equal(patterns.size,100);
+ const patterns=new Set();for(let seed=1;seed<=100;seed++){const g=runner(seed);patterns.add(JSON.stringify(g.rows));for(let frame=0;frame<90*60;frame++){const next=g.rows[0];if(next.z<35&&g.lane!==next.safe)g.move(next.safe<g.lane?'left':'right');stepPack(g,1/60);assert.equal(g.status,'playing','seed '+seed);for(const row of g.rows)assert.ok(!row.obstacles.some(o=>o.lane===row.safe));}assert.ok(g.distance>2500);assert.ok(g.coins>40);assert.ok(g.rows.length<=8);}assert.equal(patterns.size,100);
 });
 test('Runner checkpoint keeps exact movement, powers, patterns and random continuation',()=>{
  const g=runner(182);g.move('left');g.move('up');g.magnet=4;g.shield=1;stepPack(g,.1);const s=snapshotQuick(g,'runner'),h=restoreQuick(clone(s));assert.ok(h);assert.equal(h.status,'paused');assert.deepEqual(snapshotQuick(h,'runner'),s);h.start();for(let i=0;i<80;i++){g.tick(1/120);h.tick(1/120);}assert.deepEqual(snapshotQuick(h,'runner'),snapshotQuick(g,'runner'));assert.equal(g.random(),h.random());
- const bad=clone(s);bad.rows[0].safe=bad.rows[0].obstacles[0].lane;assert.equal(restoreQuick(bad),null);assert.equal(restoreQuick({...s,score:s.score+1}),null);assert.equal(restoreQuick({...s,magnet:Infinity}),null);assert.equal(restoreQuick({...s,jump:.5,slide:.5}),null);
+ const bad=clone(s);bad.rows[0].safe=bad.rows[0].obstacles[0].lane;assert.equal(restoreQuick(bad),null);assert.equal(restoreQuick({...s,score:s.score+1}),null);assert.equal(restoreQuick({...s,magnet:Infinity}),null);assert.equal(restoreQuick({...s,jump:.5,slide:.5}),null);assert.equal(restoreQuick({...s,bonus:s.bonus+1}),null);assert.equal(restoreQuick({...s,buffer:{dir:'sideways',t:.1}}),null);
+ // A save from before the flow rules has none of the new fields: it is refused, never a crash.
+ const old=clone(s);for(const k of ['bonus','streak','bestStreak','flow','nears','prizes','buffer','swerveLane','swerveAge'])delete old[k];assert.equal(restoreQuick(old),null);
 });
 test('Runner speed and distance are stable across frame rates and long stalls pause',()=>{
  const states=[];for(const fps of [15,30,60,120]){const g=runner(3);for(let i=0;i<fps*2;i++)stepPack(g,1/fps);states.push(g.distance);}assert.ok(Math.max(...states)-Math.min(...states)<.002);const g=runner();stepPack(g,2);assert.equal(g.status,'paused');assert.equal(g.distance,0);

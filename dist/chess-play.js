@@ -6,6 +6,7 @@
 // checks for theirs every few seconds while it's open (they can play whenever they're online).
 import {Chess,START,sqName,sqIndex,colorOf} from './chess-engine.js';
 import {RIVALS,chessScore,rivalMove,hintMove} from './chess-ai.js';
+import {battleMode,nextBattleMode,checkers} from './chess-fights.js';
 
 const $=id=>document.getElementById(id);
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
@@ -14,38 +15,44 @@ const REASON={checkmate:'Checkmate',stalemate:'Stalemate',fifty:'Fifty-move rule
 export function validChessSave(v){return v===null||!!v&&typeof v==='object'&&v.v===1&&Number.isInteger(v.rival)&&v.rival>=0&&v.rival<RIVALS.length&&['w','b'].includes(v.color)&&Array.isArray(v.beaten)&&v.beaten.every(id=>RIVALS.some(r=>r.id===id))&&Number.isInteger(v.hints)&&v.hints>=0&&v.hints<=HINTS&&Number.isInteger(v.takebacks)&&v.takebacks>=0&&v.takebacks<=TAKEBACKS&&!!Chess.restore({start:v.start,moves:v.moves})&&(v.over===null||v.over&&['win','loss','draw'].includes(v.over.result));}
 
 // Lazy, failure-safe 3D board; null until it loads (or without WebGL).
-function boardFor(host){let state='idle',b=null;return {get(){if(state==='idle'){if(typeof WebGL2RenderingContext==='undefined'){state='failed';return null;}state='loading';
-   import('./chess-3d.js').then(({ThreeChess})=>{const s=new ThreeChess(host,{onFailure:()=>{state='failed';b=null;host.classList.remove('has-3d');}});return s.init().then(()=>{if(state==='loading'&&s.ready){b=s;state='ready';host.classList.add('has-3d');this.onReady?.(s);}else state='failed';});}).catch(()=>{state='failed';});}
+function boardFor(host,io){const debug=typeof location!=='undefined'&&new URLSearchParams(location.search).has('debug');let state='idle',b=null;return {get(){if(state==='idle'){if(typeof WebGL2RenderingContext==='undefined'){state='failed';return null;}state='loading';
+   import('./chess-3d.js').then(({ThreeChess})=>{const s=new ThreeChess(host,{debug,sound:(...a)=>io?.sound?.(...a),onFailure:()=>{state='failed';b=null;host.classList.remove('has-3d');}});return s.init().then(()=>{if(state==='loading'&&s.ready){b=s;state='ready';host.classList.add('has-3d');this.onReady?.(s);}else state='failed';});}).catch(()=>{state='failed';});}
   return state==='ready'?b:null;}};}
 
 export class ChessPlay {
  constructor(io){this.io=io;const saved=io.read('chess',null);this.s=validChessSave(saved)&&saved?saved:{v:1,rival:0,color:'w',start:START,moves:[],beaten:[],hints:HINTS,takebacks:TAKEBACKS,battles:true,view:'3d',over:null};
-  this.s.battles=this.s.battles!==false;this.chess=Chess.restore({start:this.s.start,moves:this.s.moves})||new Chess();this.sel=-1;this.busy=false;this.hint=null;this.evalScore=0;this.lastMove=this.lastFromHistory();
-  this.board3d=boardFor($('chessStage'));this.board3d.onReady=b=>{b.setRival(this.rival.name);b.setFlipped(this.s.color==='b');b.setView(this.s.view);b.setPosition(this.chess.board);this.marks();};
+  this.s.battles=battleMode(this.s.battles);this.chess=Chess.restore({start:this.s.start,moves:this.s.moves})||new Chess();this.sel=-1;this.busy=false;this.hint=null;this.evalScore=0;this.lastMove=this.lastFromHistory();
+  this.board3d=boardFor($('chessStage'),io);this.board3d.onReady=b=>{b.setRival(this.rival.name);b.setFlipped(this.s.color==='b');b.setView(this.s.view);b.setPosition(this.chess.board);this.marks();};
   this.worker=null;try{this.worker=new Worker(new URL('chess-worker.js',document.baseURI),{type:'module'});this.worker.onerror=()=>{this.worker=null;};}catch{this.worker=null;}this.jobs=new Map();this.jobId=0;if(this.worker)this.worker.onmessage=e=>{const j=this.jobs.get(e.data.id);if(j){this.jobs.delete(e.data.id);j(e.data.move||null);}};
-  this.build2d();this.wire();}
+  this.build2d();this.wire();
+  // ?debug only: lets a tester load any position and drive the scenes from the console.
+  if(typeof location!=='undefined'&&new URLSearchParams(location.search).has('debug'))globalThis.__dawgChess={play:this,load:(fen,color='w')=>{this.s.over=null;this.busy=false;this.s.color=color;this.s.start=fen;this.s.moves=[];this.chess=new Chess(fen);this.sel=-1;this.lastMove=null;const b=this.board3d.get();if(b){b.setFlipped(color==='b');b.setPosition(this.chess.board);}this.build2d();this.marks();this.render();},move:(a,b,promo)=>this.move(sqIndex(a),sqIndex(b),promo)};}
  get rival(){const o=this.online;return o?{name:o.player,title:'Match · you play '+(o.color==='w'?'white':'black'),rating:'friend',taunts:[''],win:'',lose:''}:RIVALS[this.s.rival];}
  get mine(){return this.chess.turn===this.s.color;}
  lastFromHistory(){const h=this.chess.history.at(-1);return h?[h.m.from,h.m.to]:null;}
  save(){if(this.online)return;this.s.start=this.s.start||START;this.s.moves=this.chess.save(this.s.start).moves;this.io.write('chess',this.s);}
  wire(){
   $('chessStage').addEventListener('click',e=>{if(this.busy==='anim'){this.board3d.get()?.skip();return;}const b=this.board3d.get();let sq=-1;if(b)sq=b.pick(e.clientX,e.clientY);else{const t=e.target.closest?.('[data-sq]');if(t)sq=Number(t.dataset.sq);}if(sq>=0)this.tap(sq);});
+  $('chessStage').addEventListener('pointermove',e=>{const b=this.board3d.get();if(!b||e.pointerType==='touch')return;const ok=!this.busy&&!this.s.over&&this.mine,sq=ok?b.pick(e.clientX,e.clientY):-1,p=sq>=0?this.chess.board[sq]:null;b.hover(sq>=0&&(p&&colorOf(p)===this.s.color||this.sel>=0&&this.chess.movesFrom(this.sel).some(m=>m.to===sq))?sq:-1);});$('chessStage').addEventListener('pointerleave',()=>this.board3d.get()?.hover(-1));
   $('chessLadder').onclick=e=>{const b=e.target.closest('[data-rival]');if(b&&!b.disabled)this.newGame(Number(b.dataset.rival));};
   $('chessColor').onclick=e=>{const b=e.target.closest('[data-color]');if(!b)return;const c=b.dataset.color==='r'?(Math.random()<.5?'w':'b'):b.dataset.color;this.newGame(this.s.rival,c);};
   $('chessHint').onclick=()=>this.askHint();$('chessUndo').onclick=()=>this.takeBack();$('chessResign').onclick=()=>this.io.confirm?.('Resign this game?',`${this.rival.name} takes the win.`,'RESIGN',async()=>{if(this.online){try{await this.online.rpc('chess_move',{p_id:this.online.id,p_ply:this.chess.history.length,p_move:'a1a1',p_result:'resign'});}catch(e){this.say(e.message);return;}}this.finish('loss','resign');});
   $('chessLeave').onclick=()=>this.leaveOnline();
   $('chessView').onclick=()=>{this.s.view=this.s.view==='top'?'3d':'top';this.board3d.get()?.setView(this.s.view);this.save();this.render();};
-  $('chessBattles').onclick=()=>{this.s.battles=!this.s.battles;this.save();this.render();};
+  $('chessBattles').onclick=()=>{this.s.battles=nextBattleMode(this.s.battles);this.save();this.render();};
   $('chessNext').onclick=()=>this.newGame(Math.min(RIVALS.length-1,this.s.rival+(this.s.over?.result==='win'?1:0)));$('chessRematch').onclick=()=>this.newGame(this.s.rival);
   $('chessShareBtn').onclick=()=>{const o=this.s.over;if(!o||!this.io.share)return;this.io.share('chess',o.score,{detail:`${o.result==='win'?'beat':o.result==='draw'?'drew with':'lost to'} ${this.rival.name}`,text:`I ${o.result==='win'?'beat':o.result==='draw'?'drew with':'lost to'} ${this.rival.name} (${this.rival.rating}) at DAWG Chess on the DAWG Arcade ♞ Your move.`});};
   $('chessPromo').onclick=e=>{const b=e.target.closest('[data-promo]');if(!b)return;$('chessPromo').hidden=true;const p=this.pendingPromo;this.pendingPromo=null;if(p)this.move(p.from,p.to,b.dataset.promo);};}
  newGame(rival=this.s.rival,color=this.s.color){if(this.online)this.leaveOnline();if(this.busy)return;const unlocked=rival===0||this.s.beaten.includes(RIVALS[rival-1].id);if(!unlocked)return;
   Object.assign(this.s,{rival,color,start:START,moves:[],hints:HINTS,takebacks:TAKEBACKS,over:null});this.chess=new Chess();this.sel=-1;this.hint=null;this.lastMove=null;this.evalScore=0;this.save();
-  const b=this.board3d.get();if(b){b.setRival(this.rival.name);b.setFlipped(color==='b');b.setPosition(this.chess.board);}this.say(this.rival.taunts[0]);this.render();if(!this.mine)this.rivalTurn();}
- tap(sq){if(this.busy||this.s.over||!this.mine)return;const p=this.chess.board[sq];
+  const b=this.board3d.get();if(b){b.setRival(this.rival.name);b.setFlipped(color==='b');b.setPosition(this.chess.board);b.title?.('YOU ✕ '+this.rival.name.toUpperCase(),false);}this.say(this.rival.taunts[0]);this.render();if(!this.mine)this.rivalTurn();}
+ tap(sq){if(this.busy||this.s.over||!this.mine)return;const p=this.chess.board[sq];this.board3d.get()?.hover(-1);
   if(this.sel>=0){const legal=this.chess.movesFrom(this.sel).filter(m=>m.to===sq);if(legal.length){if(legal[0].promo){this.pendingPromo={from:this.sel,to:sq};$('chessPromo').hidden=false;return;}this.move(this.sel,sq);return;}}
-  this.sel=p&&colorOf(p)===this.s.color&&this.sel!==sq?sq:-1;this.io.sound?.(this.sel>=0?520:300,.04,'triangle',.015);this.marks();}
- async move(from,to,promo){const m=this.chess.play({from,to,promo});if(!m)return;this.sel=-1;this.hint=null;this.lastMove=[from,to];this.save();
+  const own=p&&colorOf(p)===this.s.color,stuck=own&&this.sel!==sq&&!this.chess.movesFrom(sq).length;this.sel=own&&this.sel!==sq&&!stuck?sq:-1;this.io.sound?.(this.sel>=0?520:stuck?160:300,stuck?.12:.04,'triangle',.015);
+  this.note(stuck?(this.chess.inCheck()?'Your king is in check: that piece can’t stop it.':'That piece has no legal move right now.'):p&&!own&&this.sel<0?'That’s their piece. Tap one of yours first.':'');this.marks();}
+ // A short line under the board explaining a tap that did nothing.
+ note(text){this.noteText=text;clearTimeout(this.noteTimer);if(text){this.noteTimer=setTimeout(()=>{this.noteText='';this.render();},2600);this.noteTimer?.unref?.();}this.render();}
+ async move(from,to,promo){const m=this.chess.play({from,to,promo});if(!m)return;this.noteText='';this.sel=-1;this.hint=null;this.lastMove=[from,to];this.save();
   if(this.online){// Send it first: if the server says no, the move is taken back and the board resyncs.
    const st=this.chess.status(),result=st==='checkmate'?'checkmate':st==='stalemate'?'stalemate':st==='playing'?null:'draw';this.busy='send';this.render();
    try{await this.online.rpc('chess_move',{p_id:this.online.id,p_ply:this.chess.history.length-1,p_move:sqName(from)+sqName(to)+(m.promo?m.promo.toLowerCase():''),p_result:result});}
@@ -54,13 +61,17 @@ export class ChessPlay {
   await this.show(m);if(!this.afterMove())this.rivalTurn();}
  // Animates a move just played, plus check, and sounds.
  async show(m){this.busy='anim';this.marks();this.render();const b=this.board3d.get();this.io.sound?.(m.captured?180:420,m.captured?.25:.07,m.captured?'sawtooth':'triangle',m.captured?.035:.02);
-  if(b){$('chessSkip').hidden=!m.captured||!this.s.battles;await b.play(m,{battle:this.s.battles,reduced:this.io.prefs?.fx==='low'});$('chessSkip').hidden=true;const st=this.chess.status();if(st==='playing'&&this.chess.inCheck()){this.io.sound?.(880,.25,'square',.03);if(this.s.battles)await b.check(this.chess.king(this.chess.turn));}}
+  if(b){const mode=battleMode(this.s.battles),scene=mode!=='off'&&(m.captured||m.promo||m.flag==='k'||m.flag==='q');$('chessSkip').hidden=!scene;await b.play(m,{mode,reduced:this.io.prefs?.fx==='low'});const st=this.chess.status();if(st==='playing'&&this.chess.inCheck()){this.io.sound?.(880,.25,'square',.03);if(mode==='full'){$('chessSkip').hidden=false;await b.check(this.chess.king(this.chess.turn),this.checkers());}}$('chessSkip').hidden=true;
+   // The guard: whatever a scene did (or was skipped out of), the 3D board now shows the engine's position.
+   b.verify(this.chess.board);}
   else this.build2d();this.busy=false;this.marks();this.render();}
+ // The squares of the pieces attacking the king of the side to move.
+ checkers(){const c=this.chess;return checkers(c.pseudo(c.turn==='w'?'b':'w'),c.king(c.turn));}
  // Ends the game if the last move did; true when it's over.
  afterMove(){const st=this.chess.status();if(st==='playing')return false;if(st==='checkmate'){const loser=this.chess.turn;this.finish(loser===this.s.color?'loss':'win','checkmate');}else this.finish('draw',st);return true;}
  async finish(result,reason){if(this.s.over)return;const moves=Math.ceil(this.chess.history.length/2),score=this.online?chessScore(2,result,moves):chessScore(this.s.rival,result,moves),first=!this.online&&result==='win'&&!this.s.beaten.includes(this.rival.id);
   if(first)this.s.beaten.push(this.rival.id);this.s.over={result,reason,score};this.save();const b=this.board3d.get();
-  if(b&&reason==='checkmate'){this.busy='anim';await b.checkmate(this.chess.king(this.chess.turn),this.chess.turn==='w'?'b':'w');this.busy=false;}
+  if(b&&reason==='checkmate'){this.busy='anim';$('chessSkip').hidden=false;await b.checkmate(this.chess.king(this.chess.turn),this.chess.turn==='w'?'b':'w',this.checkers());$('chessSkip').hidden=true;this.busy=false;}
   if(this.online){this.say(result==='win'?`You beat ${this.online.player}!`:result==='loss'?`${this.online.player} wins this one.`:'A draw.');this.stopPoll();if(score>0)this.io.record?.('chess',score,0);this.render();this.io.matchesChanged?.();return;}
   this.say(result==='win'?this.rival.win:result==='loss'?this.rival.lose:'A draw. Fair enough.');this.io.record?.('chess',score,first?200:0);[523,659,784].forEach((f,i)=>setTimeout(()=>this.io.sound?.(result==='loss'?f/2:f,.2,'triangle',.03),i*130));this.render();}
  ask(kind){const fen=this.chess.fen(),rival=this.rival;if(this.worker)return new Promise(res=>{const id=++this.jobId;this.jobs.set(id,res);this.worker.postMessage({id,kind,fen,rival});setTimeout(()=>{if(this.jobs.has(id)){this.jobs.delete(id);res(kind==='hint'?hintMove(fen):rivalMove(fen,rival));}},rival.time+6000);});
@@ -101,8 +112,8 @@ export class ChessPlay {
   const lost={w:[],b:[]};const count=(set,p)=>set.filter(x=>x===p).length;const full='PPPPPPPPNNBBRRQ'.split('');for(const col of ['w','b']){const have=c.board.filter(p=>p&&colorOf(p)===col);for(const p of new Set(full)){const want=count(full,p),pc=col==='w'?p:p.toLowerCase();for(let i=count(have,pc);i<want;i++)lost[col].push(GLYPH[pc]);}}
   $('chessCaptured').textContent=(lost.b.join('')||'—')+'   ·   '+(lost.w.join('')||'—');
   $('chessHint').textContent=`HINT (${s.hints})`;$('chessUndo').textContent=`TAKE BACK (${s.takebacks})`;$('chessHint').disabled=!!this.busy||!!over||!this.mine||s.hints<=0;$('chessUndo').disabled=!!this.busy||!!over||!this.mine||s.takebacks<=0||c.history.length<2;$('chessResign').disabled=!!over||!!this.busy;
-  $('chessView').textContent=s.view==='top'?'VIEW: TOP':'VIEW: 3D';$('chessBattles').textContent=s.battles?'BATTLES: EPIC':'BATTLES: OFF';$('chessBattles').setAttribute('aria-pressed',String(s.battles));
-  const st=c.status();$('chessStatus').textContent=over?(over.result==='win'?'You win':over.result==='loss'?'You lose':'Draw')+' · '+REASON[over.reason]:this.busy==='send'?'Sending your move…':this.busy==='think'?`${r.name} is thinking…`:this.online&&!this.mine?`Waiting for ${r.name}. They can move whenever they’re online.`:this.mine?(c.inCheck()?'Check! Your move':'Your move'):`${r.name}'s move`;
+  $('chessView').textContent=s.view==='top'?'VIEW: TOP':'VIEW: 3D';$('chessBattles').textContent='BATTLES: '+battleMode(s.battles).toUpperCase();$('chessBattles').setAttribute('aria-pressed',String(battleMode(s.battles)!=='off'));
+  const st=c.status();$('chessStatus').textContent=this.noteText&&!over&&!this.busy?this.noteText:over?(over.result==='win'?'You win':over.result==='loss'?'You lose':'Draw')+' · '+REASON[over.reason]:this.busy==='send'?'Sending your move…':this.busy==='think'?`${r.name} is thinking…`:this.online&&!this.mine?`Waiting for ${r.name}. They can move whenever they’re online.`:this.mine?(c.inCheck()?'Check! Your move':'Your move'):`${r.name}'s move`;
   const white=Math.max(-1,Math.min(1,(c.turn==='w'?1:-1)*0+(this.s.color==='w'?this.evalScore:-this.evalScore)/800));$('chessEval').style.setProperty?.('--adv',String((white+1)/2));
   $('chessOver').hidden=!over;if(over){$('chessOverKicker').textContent=REASON[over.reason].toUpperCase();$('chessOverTitle').textContent=over.result==='win'?`You beat ${r.name}!`:over.result==='loss'?`${r.name} wins`:'A draw';$('chessOverText').textContent=this.online?(over.result==='win'?'Match won. It’s in both your Friends inboxes.':over.result==='loss'?'Match over. Ask for a rematch from your Friends inbox.':'Match drawn.'):over.result==='win'?(s.rival<RIVALS.length-1?`${RIVALS[s.rival+1].name} is waiting. ${over.score.toLocaleString('en-US')} points.`:`You beat the whole ladder. ${over.score.toLocaleString('en-US')} points.`):over.result==='draw'?`${over.score.toLocaleString('en-US')} points for holding your own.`:'Rematch, or take a step back down the ladder.';
    $('chessNext').hidden=!!this.online||over.result!=='win'||s.rival>=RIVALS.length-1;$('chessRematch').hidden=!!this.online;$('chessShareBtn').hidden=over.result==='loss';}

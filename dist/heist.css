@@ -9,3 +9,7 @@
 .heist3d .hx-clock b{position:relative;font:900 20px var(--display);color:#fff;font-variant-numeric:tabular-nums}
 .heist3d .hx-late .hx-ring{stroke:#ff3d6e}.heist3d .hx-late b{color:#ff3d6e}
 .heist3d .hx-tip{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);width:min(88%,460px);margin:0;padding:10px 14px;border-radius:12px;background:#07080fd9;border:1px solid #5ee7ff44;font:700 13px/1.4 var(--body,system-ui);color:#dff9ff;text-align:center}
+.heist3d .hx-actions{position:absolute;left:50%;bottom:calc(var(--d3-bottom,22px) + 2px);transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
+.heist3d .hx-actions button{pointer-events:auto;padding:9px 12px;border-radius:10px;border:1px solid #5ee7ff55;background:#07080fd9;color:#dff9ff;font:800 11px var(--mono);letter-spacing:1px;white-space:nowrap;cursor:pointer}
+.heist3d .hx-actions button:active{background:#5ee7ff33}
+.heist3d .hx-tip{bottom:calc(var(--d3-bottom,22px) + 54px)}

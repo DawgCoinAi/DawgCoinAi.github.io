@@ -1,6 +1,7 @@
 // Three.js presentation for Neon Snake. SnakeGame owns every rule; this module draws the
-// garden as a neon arena. First person rides the head of the light-trail with a minimap;
-// third person shows the whole arena from a tilted, north-up angle.
+// garden as a neon arena. Third person frames the whole arena from a steep, north-up angle (it is
+// portrait-shaped, so it fills a phone); first person rides the head of the trail with a minimap.
+// The trail fades from lime at the head to cyan at the tail and swallows each coin as a bulge.
 // World units: one grid cell is one meter; cell (x, y) sits at world (x, 0, y), north is -z.
 import {T,quality,fitFov,texture,radial,glowStops,skyMaterial,pbr,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {SNAKE_COLS,SNAKE_ROWS} from './snake-engine.js';
@@ -13,15 +14,15 @@ import {seededRandom} from './mobile-core.js';
 const STEP={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const HEADING={up:Math.PI,right:Math.PI/2,down:0,left:-Math.PI/2};
 const EYE=.55;
-const gridTexture=()=>texture(128,128,(c,w,h)=>{c.fillStyle='#070a16';c.fillRect(0,0,w,h);c.strokeStyle='#ffffff';c.globalAlpha=.55;c.lineWidth=3;c.strokeRect(1.5,1.5,w-3,h-3);c.globalAlpha=.12;c.lineWidth=1;c.beginPath();c.moveTo(w/2,0);c.lineTo(w/2,h);c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();},{repeat:true});
+const gridTexture=()=>texture(128,128,(c,w,h)=>{c.fillStyle='#0b1022';c.fillRect(0,0,w,h);c.fillStyle='#0f1730';c.fillRect(6,6,w-12,h-12);c.strokeStyle='#ffffff';c.globalAlpha=.7;c.lineWidth=3;c.strokeRect(1.5,1.5,w-3,h-3);c.globalAlpha=.12;c.lineWidth=1;c.beginPath();c.moveTo(w/2,0);c.lineTo(w/2,h);c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();},{repeat:true});
 const gridGlow=()=>texture(128,128,(c,w,h)=>{c.fillStyle='#000';c.fillRect(0,0,w,h);c.strokeStyle='#fff';c.lineWidth=3;c.strokeRect(1.5,1.5,w-3,h-3);},{repeat:true});
 
 export class ThreeSnake {
- constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.cameraMode='first';this.clock=performance.now();this.status='';this.statusSince=performance.now();this.yaw=HEADING.right;}
+ constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.cameraMode='third';this.clock=performance.now();this.status='';this.statusSince=performance.now();this.yaw=HEADING.right;this.gulp=9;this.deadT=0;this.col=new T.Color();this.c1=new T.Color(0x9dff5c);this.c2=new T.Color(0x35d6ff);this.cDead=new T.Color(0xff3d6e);}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d snake3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
-  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>LONG</small></div><div class="d3-gold"><i></i><b>0</b></div><canvas class="m3-map" width="150" height="180" aria-hidden="true"></canvas>');this.view.append(this.hud.root);
-  this.ui={len:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),map:this.hud.q('.m3-map')};
+  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>LONG</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-combo" hidden><b>×2</b><small>DIRECT LINES</small></div><canvas class="m3-map" width="150" height="180" aria-hidden="true"></canvas>');this.view.append(this.hud.root);
+  this.ui={len:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),map:this.hud.q('.m3-map'),streak:this.hud.q('.d3-combo'),streakN:this.hud.q('.d3-combo b')};
   this.rig=new CameraRig(this.camera);this.rig.setMode(this.cameraMode);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D ARENA · LIVE');return this;
  }
@@ -35,19 +36,22 @@ export class ThreeSnake {
    if(set.post)for(const [x,z] of [[-1.6,-1.6],[W+.6,-1.6],[-1.6,H+.6],[W+.6,H+.6]]){this.scene.add(prop(set.post,{x,z,size:5,facing:Math.atan2(cx-x,cz-z)+Math.PI}));const glow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.2,1,.8),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));glow.position.set(x+(cx-x)*.06,4.6,z+(cz-z)*.06);glow.scale.set(2.4,2.4,1);this.scene.add(glow);if(this.quality==='high'){const shaft=lightShaft(0xffe2b8,{length:5,radius:3,top:.2,opacity:.16});shaft.position.copy(glow.position);shaft.rotation.set(-(cz-z)*.025,0,(cx-x)*.025);this.scene.add(shaft);}}}).catch(()=>{});
   this.sky=new T.Mesh(new T.SphereGeometry(120,24,12),skyMaterial());s.add(this.sky);
   this.hemi=new T.HemisphereLight(0x9fb2ff,0x140c22,.7);s.add(this.hemi);this.key=new T.DirectionalLight(0xc8d4ff,1.7);this.key.position.set((W-1)/2-8,22,(H-1)/2+12);this.key.target.position.set((W-1)/2,0,(H-1)/2);s.add(this.key,this.key.target);this.stage.sunShadow(this.key,{size:Math.max(W,H)*.75+2,far:60,map:2048,radius:3});this.headLight=new T.PointLight(0xb9ff5e,5,5,1.6);s.add(this.headLight);
-  const g=gridTexture(),gl=gridGlow();g.repeat.set(W,H);gl.repeat.set(W,H);this.gridMat=pbr({map:g,emissiveMap:gl,emissive:0xffffff,emissiveIntensity:.35,metalness:.55,roughness:.32,envMapIntensity:.9,clearcoat:.7,clearcoatRoughness:.15},this.quality);
+  const g=gridTexture(),gl=gridGlow();g.repeat.set(W,H);gl.repeat.set(W,H);this.gridMat=pbr({map:g,emissiveMap:gl,emissive:0xffffff,emissiveIntensity:.6,metalness:.55,roughness:.32,envMapIntensity:.9,clearcoat:.7,clearcoatRoughness:.15},this.quality);
   const floor=new T.Mesh(new T.PlaneGeometry(W,H).rotateX(-Math.PI/2),this.gridMat);floor.position.set((W-1)/2,0,(H-1)/2);floor.receiveShadow=true;s.add(floor);
   const outer=new T.Mesh(new T.PlaneGeometry(W+80,H+80).rotateX(-Math.PI/2),new T.MeshStandardMaterial({color:0x05060c,metalness:.5,roughness:.6}));outer.position.set((W-1)/2,-.02,(H-1)/2);s.add(outer);
   // Low barrier walls around the arena with a glowing top rail.
   this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});const wallMat=new T.MeshStandardMaterial({color:0x1a2040,metalness:.6,roughness:.4});
   for(const [x,z,w,d]of [[(W-1)/2,-.75,W+1,.5],[(W-1)/2,H-.25,W+1,.5],[-.75,(H-1)/2,.5,H+1],[W-.25,(H-1)/2,.5,H+1]]){const wall=new T.Mesh(new T.BoxGeometry(w,.8,d).translate(0,.4,0),wallMat);wall.castShadow=wall.receiveShadow=true;wall.position.set(x,0,z);const rail=new T.Mesh(new T.BoxGeometry(w,.06,d).translate(0,.83,0),this.railMat);rail.position.set(x,0,z);s.add(wall,rail);}
-  this.rockMat=new T.MeshStandardMaterial({color:0x2a2244,metalness:.3,roughness:.4,emissive:0x5b2a9a,emissiveIntensity:.5,flatShading:true});this.rockGeo=new T.IcosahedronGeometry(.46,0).translate(0,.4,0);this.rocks=null;this.rockSeed=null;
-  this.bodyMat=pbr({color:0x5cff9b,emissive:0x2bff7a,emissiveIntensity:.8,metalness:.25,roughness:.28,transparent:true,opacity:.95,clearcoat:1,clearcoatRoughness:.08},this.quality);
-  this.body=new T.InstancedMesh(new T.RoundedBoxGeometry(.8,.46,.8,3,.17).translate(0,.25,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;this.body.castShadow=true;s.add(this.body);
+  // Garden walls are deadly, so they read as hot magenta crystals against the cool floor.
+  this.rockMat=new T.MeshStandardMaterial({color:0x7a2a8c,metalness:.2,roughness:.35,emissive:0xff3fb4,emissiveIntensity:.95,flatShading:true});this.rockGeo=new T.IcosahedronGeometry(.47,0).scale(1,1.25,1).translate(0,.5,0);this.rocks=null;this.rockSeed=null;
+  this.bodyMat=pbr({color:0xffffff,emissive:0x1c8a5a,emissiveIntensity:.55,metalness:.25,roughness:.26,clearcoat:1,clearcoatRoughness:.08},this.quality);
+  this.body=new T.InstancedMesh(new T.RoundedBoxGeometry(.8,.46,.8,3,.17).translate(0,.25,0),this.bodyMat,SNAKE_COLS*SNAKE_ROWS);this.body.frustumCulled=false;this.body.castShadow=true;this.body.setColorAt(0,this.c1);s.add(this.body);
   this.headMat=pbr({color:0xd8ffe9,emissive:0x7dffb0,emissiveIntensity:.7,metalness:.35,roughness:.22,clearcoat:1,clearcoatRoughness:.06},this.quality);this.head=new T.Mesh(new T.RoundedBoxGeometry(.9,.52,.9,3,.2).translate(0,.28,0),this.headMat);this.head.castShadow=true;s.add(this.head);
   const visor=new T.Mesh(new T.BoxGeometry(.6,.1,.05),new T.MeshBasicMaterial({color:new T.Color(3,.6,1.6),toneMapped:false}));visor.position.set(0,.38,.44);this.head.add(visor);
   this.goldMat=new T.MeshStandardMaterial({color:0xffc83d,metalness:1,roughness:.2,emissive:0xff8a00,emissiveIntensity:.45});this.food=new T.Mesh(new T.CylinderGeometry(.3,.3,.07,28).rotateX(Math.PI/2),this.goldMat);s.add(this.food);
-  this.glowTex=radial(glowStops);this.foodGlow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.6,1.1,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.foodGlow.scale.set(1.6,1.6,1);s.add(this.foodGlow);
+  this.glowTex=radial(glowStops);this.foodGlow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(1.6,1.1,.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.foodGlow.scale.set(1.9,1.9,1);s.add(this.foodGlow);
+  // A beacon over the gold so the next target is found at a glance from any camera.
+  this.beacon=new T.Mesh(new T.CylinderGeometry(.07,.3,5,12,1,true).translate(0,2.5,0),new T.MeshBasicMaterial({color:new T.Color(1.3,.85,.25),transparent:true,opacity:.2,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide,toneMapped:false}));s.add(this.beacon);
   this.particles=new Particles(s,this.quality==='high'?400:220,this.glowTex);this.dummy=new T.Object3D();
  }
  buildRocks(g){this.rocks?.removeFromParent();this.rocks=new T.InstancedMesh(this.rockGeo,this.rockMat,Math.max(1,g.rocks.length));g.rocks.forEach((r,i)=>{this.dummy.position.set(r.x,0,r.y);this.dummy.rotation.set(0,(r.x*7+r.y*3)%6,0);this.dummy.updateMatrix();this.rocks.setMatrixAt(i,this.dummy.matrix);});this.rocks.count=g.rocks.length;this.rocks.castShadow=this.rocks.receiveShadow=true;this.scene.add(this.rocks);this.rockSeed=g.worldSeed;this.dummy.rotation.set(0,0,0);
@@ -56,7 +60,9 @@ export class ThreeSnake {
  // Smoothly interpolated cells: each segment glides toward the one ahead of it between steps.
  segments(g){const f=g.status==='playing'?Math.min(1,g.elapsed/g.interval):0,d=STEP[g.queued||g.dir],b=g.body;return b.map((p,i)=>{const to=i===0?{x:p.x+d[0],y:p.y+d[1]}:b[i-1];return {x:p.x+(to.x-p.x)*f,y:p.y+(to.y-p.y)*f};});}
  event(e,g){if(!this.ready)return;const h=g.body[0],st=this.stage,hud=this.hud;
-  if(e.type==='coin'){this.particles.burst(h.x,.5,h.y,30,0xffc14d,{speed:4,life:.7});hud.pop('+25');st.shake(.12);}
+  if(e.type==='coin'){this.gulp=0;this.particles.burst(h.x,.5,h.y,e.quick?30+8*Math.min(e.streak,5):24,0xffc14d,{speed:4,life:.7});hud.pop(e.quick?(e.streak>1?'DIRECT ×'+e.streak+'  +':'DIRECT  +')+(25+e.bonus):'+25','gold');st.shake(.12);if(e.quick&&e.streak>=3)st.flashOnce(0xffd25e,.1,this.reduced);}
+  else if(e.type==='charge'){hud.banner('CHARGED · SMASH A CRYSTAL');st.flashOnce(0xffd25e,.2,this.reduced);this.particles.burst(h.x,.6,h.y,40,0xffd25e,{speed:3,life:.8,up:3});}
+  else if(e.type==='smash'){this.particles.burst(e.x,.6,e.y,110,0xff3fb4,{speed:8,life:1,up:3});this.particles.burst(e.x,.6,e.y,40,0xffffff,{speed:11,life:.35});hud.pop('SMASH  +50','big');st.shake(.7);st.flashOnce(0xff3fb4,.3,this.reduced);}
   else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);}
   else if(e.type==='over'){this.particles.burst(h.x,.5,h.y,90,0xff4f6a,{speed:7,life:1});st.shake(.9);st.flashOnce(0xff3355,.5,this.reduced);}}
  // The player's DAWG rides the head of the light trail.
@@ -64,23 +70,29 @@ export class ThreeSnake {
  draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.prepare(d);this.lastGame=g;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,now);
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<2500));return true;}
  render(g,now){
-  this.stage.resize();if(this.rockSeed!==g.worldSeed||!this.rocks)this.buildRocks(g);const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
+  this.stage.resize();if(this.rockSeed!==g.worldSeed||!this.rocks||this.rockCount!==g.rocks.length){this.rockCount=g.rocks.length;this.buildRocks(g);}const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;const real=now/1000,reduced=this.reduced;this.particles.reduced=this.hud.reduced=reduced;
   if(g.status!==this.status){this.status=g.status;this.statusSince=now;}
   const look=worldLook(g.worldSeed),glow=new T.Color(look.glow),accent=new T.Color(look.accent);this.railMat.color.copy(glow).multiplyScalar(1.8);this.gridMat.emissive.copy(accent).multiplyScalar(.5);
   const u=this.sky.material.uniforms;u.uTop.value.set(0x04050c);u.uHorizon.value.copy(glow).multiplyScalar(.14);u.uGlow.value.copy(accent).multiplyScalar(.2);this.scene.fog.color.copy(glow).multiplyScalar(.06);
-  const seg=this.segments(g);seg.slice(1).forEach((p,i)=>{const sc=1-Math.min(.35,i*.012);this.dummy.position.set(p.x,0,p.y);this.dummy.scale.set(sc,1,sc);this.dummy.updateMatrix();this.body.setMatrixAt(i,this.dummy.matrix);});this.body.count=seg.length-1;this.body.instanceMatrix.needsUpdate=true;this.dummy.scale.set(1,1,1);
+  // The body: lime to cyan down its length, a bulge that travels tailward after each coin, and a
+  // red collapse from the tail when the run ends.
+  const seg=this.segments(g),over=g.status==='over',n=seg.length-1;this.gulp+=dt;this.deadT=over?this.deadT+dt:0;const wave=this.gulp*26,col=this.col;
+  seg.slice(1).forEach((p,i)=>{const t=n>1?i/(n-1):0,bulge=reduced?0:Math.exp(-((i-wave)**2)/3)*.38,gone=over&&!reduced?Math.max(0,Math.min(1,this.deadT*3.2-(n-i)*.05)):0,sc=(1-Math.min(.3,i*.011)+bulge)*(1-gone*.75);this.dummy.position.set(p.x,0,p.y);this.dummy.scale.set(sc,1+bulge*.8-gone*.6,sc);this.dummy.updateMatrix();this.body.setMatrixAt(i,this.dummy.matrix);col.copy(this.c1).lerp(this.c2,t);if(over)col.lerp(this.cDead,.75);else if(bulge>.02)col.lerp(col.clone().setRGB(1,.85,.35),Math.min(1,bulge*2.2));this.body.setColorAt(i,col);});
+  this.body.count=n;this.body.instanceMatrix.needsUpdate=true;if(this.body.instanceColor)this.body.instanceColor.needsUpdate=true;this.dummy.scale.set(1,1,1);this.bodyMat.emissive.set(over?0x7a1030:0x1c8a5a);this.headMat.emissive.set(over?0xff3d6e:g.charged?0xffc83d:0x7dffb0);this.headMat.emissiveIntensity=g.charged&&!reduced?1.3+Math.sin(real*10)*.5:.7;this.headLight.color.set(g.charged?0xffc83d:0xb9ff5e);this.headLight.intensity=g.charged?11:5;
+  // While charged, the crystals pulse: they are targets now.
+  this.rockMat.emissiveIntensity=g.charged&&!reduced?1.2+Math.sin(real*8)*.6:.95;this.rockMat.emissive.set(g.charged?0xffb347:0xff3fb4);
   const head=seg[0],dir=g.queued&&g.status==='playing'?g.dir:g.dir;let diff=((HEADING[dir]-this.yaw+Math.PI*3)%(Math.PI*2))-Math.PI;this.yaw+=diff*Math.min(1,dt*(reduced?40:14));
   this.head.position.set(head.x,0,head.y);this.head.rotation.y=this.yaw;this.head.visible=this.rig.mix<.55;this.headLight.position.set(head.x,1,head.y);
-  if(g.food){this.food.visible=this.foodGlow.visible=true;this.food.position.set(g.food.x,.45+(reduced?0:Math.sin(real*3)*.08),g.food.y);this.food.rotation.y=reduced?0:real*3;this.foodGlow.position.copy(this.food.position);}else this.food.visible=this.foodGlow.visible=false;
+  if(g.food){this.food.visible=this.foodGlow.visible=true;this.food.position.set(g.food.x,.45+(reduced?0:Math.sin(real*3)*.08),g.food.y);this.food.rotation.y=reduced?0:real*3;this.foodGlow.position.copy(this.food.position);this.beacon.visible=true;this.beacon.position.set(g.food.x,0,g.food.y);this.beacon.material.opacity=reduced?.18:.16+Math.sin(real*4)*.06;}else this.food.visible=this.foodGlow.visible=this.beacon.visible=false;
   const f=[Math.sin(this.yaw),Math.cos(this.yaw)];
   const first={pos:new T.Vector3(head.x-f[0]*.3,EYE,head.y-f[1]*.3),at:new T.Vector3(head.x+f[0]*4,EYE-.2,head.y+f[1]*4)};
-  const third={pos:new T.Vector3((SNAKE_COLS-1)/2,11.5,SNAKE_ROWS+9),at:new T.Vector3((SNAKE_COLS-1)/2,0,(SNAKE_ROWS-1)/2-.5)};
+  const third={pos:new T.Vector3((SNAKE_COLS-1)/2,23,(SNAKE_ROWS-1)/2+11.5),at:new T.Vector3((SNAKE_COLS-1)/2,0,(SNAKE_ROWS-1)/2+.9)};
   this.rig.update(dt,third,first,{follow:this.rig.mix>.5?40:8});this.stage.applyShake(real,reduced);this.rig.aim();
-  const cam=this.camera;cam.fov+=(fitFov(this.rig.mix>.5?80:46,cam.aspect,this.rig.mix>.5?72:50)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
+  const cam=this.camera;cam.fov+=(fitFov(this.rig.mix>.5?80:44,cam.aspect,this.rig.mix>.5?72:41)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
   this.particles.update(dt);this.updateHud(g,seg);this.stage.render(dt,real,{reduced,aberration:.0018});
  }
  updateHud(g,seg){
-  const h=this.hud,ui=this.ui;h.set(ui.len,'l',String(g.body.length));h.set(ui.gold,'g',String(g.coins));h.live(g.status==='playing');const first=this.rig.mix>.5;ui.map.hidden=!first;if(!first||!this.mapBg)return;
+  const h=this.hud,ui=this.ui;h.set(ui.len,'l',String(g.body.length));h.set(ui.gold,'g',String(g.coins));h.live(g.status==='playing');const streak=g.streak||0;if(ui.streak.hidden===(streak>1))ui.streak.hidden=streak<2;h.set(ui.streakN,'s','×'+streak);const first=this.rig.mix>.5;ui.map.hidden=!first;if(!first||!this.mapBg)return;
   const c=ui.map.getContext('2d'),cell=this.cell,[ox,oy]=this.off;c.clearRect(0,0,ui.map.width,ui.map.height);c.drawImage(this.mapBg,0,0);
   if(g.food){c.fillStyle='#ffc83d';c.beginPath();c.arc(ox+(g.food.x+.5)*cell,oy+(g.food.y+.5)*cell,cell*.4,0,Math.PI*2);c.fill();}
   c.fillStyle='#5cff9b';for(const p of seg.slice(1))c.fillRect(ox+p.x*cell+1,oy+p.y*cell+1,cell-2,cell-2);

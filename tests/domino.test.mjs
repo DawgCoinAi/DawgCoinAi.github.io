@@ -68,3 +68,25 @@ test('Runs save mid-chain and come back exactly; bad saves are refused',()=>{
  const p=createQuickGame('domino',5);p.start();p.setPlaced(DOMINO_SOLUTIONS[0]);p.cursor={gx:4,gy:7};const ps=JSON.parse(JSON.stringify(snapshotQuick(p,'domino')));assert.equal(ps.sim,null);const pb=restoreQuick(ps);assert.deepEqual(pb.placed,DOMINO_SOLUTIONS[0]);assert.deepEqual(pb.cursor,{gx:4,gy:7});
  for(const bad of [{...snap,level:LEVELS.length},{...snap,fuses:0},{...snap,score:9},{...snap,cleared:1},{...snap,placed:[{i:0,gx:1,gy:1}]},{...snap,placed:[{i:0,gx:10,gy:9},{i:0,gx:11,gy:9}]},{...snap,sim:{...snap.sim,balls:[]}},{...snap,sim:{...snap.sim,doms:snap.sim.doms.map(d=>({...d,a:9}))}},{...snap,phase:'place'},{...snap,phase:'flying'},{...ps,sim:snap.sim},{...snap,cursor:{gx:-1,gy:0}},{...snap,codes:['D0']}])assert.equal(restoreQuick(bad),null,JSON.stringify(bad).slice(0,80));
 });
+
+test('Drag and drop: grab a piece off the tray or out of the room, carry it, release it; a bad drop goes back',()=>{
+ const g=fresh(4),sol=DOMINO_SOLUTIONS[4];assert.equal(g.lv.palette.length,3);
+ // Any tray piece can be picked first, not just the next one in line.
+ assert.ok(g.grab(1));assert.equal(g.held.i,1);assert.equal(g.nextIndex(),1);g.point(sol[1].gx,sol[1].gy);assert.equal(g.preview().kind,'place');assert.ok(g.release());assert.deepEqual(g.placed,[{i:1,gx:sol[1].gx,gy:sol[1].gy}]);assert.equal(g.held,null);
+ assert.ok(g.grab(0));g.point(sol[0].gx,sol[0].gy);assert.ok(g.release());assert.equal(g.placed.length,2);
+ // Pick a placed piece up by pointing near it, try to drop it inside a shelf, and it returns to where it was.
+ const q=resolve(g.lv,0,sol[0].gx,sol[0].gy,g.placed);assert.equal(g.pieceNear(q.x,q.y+.5),0);assert.equal(g.pieceNear(1,1),-1);
+ assert.ok(g.grab(0));assert.equal(g.placed.length,1,'lifted out of the room');g.point(1,19);assert.equal(g.preview().kind,'blocked');g.events=[];assert.equal(g.release(),false);assert.equal(g.placed.length,2);assert.deepEqual(g.placed.find(p=>p.i===0),{i:0,gx:sol[0].gx,gy:sol[0].gy});assert.equal(g.events.at(-1).type,'nope');
+ // Dropping it back on the tray takes it out; GO while carrying drops first.
+ g.grab(0);assert.equal(g.release(false),false);assert.equal(g.placed.length,1);g.grab(0);g.point(sol[0].gx,sol[0].gy);assert.ok(g.go());assert.equal(g.placed.length,2);assert.equal(chain(g)?.type,'win');
+ const c=fresh(4);c.setPlaced(sol);assert.ok(c.clearPlaced());assert.equal(c.placed.length,0);assert.equal(c.clearPlaced(),false);assert.equal(c.select(7),false);assert.ok(c.select(2));assert.equal(c.nextIndex(),2);
+ // Keys still work: the cursor ghost only shows once you use them.
+ assert.equal(c.keyed,false);c.press('left',true);c.press('left',false);assert.equal(c.keyed,true);
+});
+
+test('The first four rooms teach one piece each; a cleared room wins a burnt fuse back; a miss says why',()=>{
+ assert.deepEqual(LEVELS.slice(0,4).map(l=>l.palette),[['domino'],['rampR'],['spring'],['fanR']]);assert.ok(LEVELS.slice(4).every(l=>l.palette.length>=2));
+ const g=fresh(0);g.go();const miss=chain(g);assert.equal(miss.type,'fail');assert.match(miss.why,/stopped short/i);settle(g);assert.equal(g.fuses,DOMINO.fuses-1);
+ g.setPlaced(DOMINO_SOLUTIONS[0]);g.go();const win=chain(g);assert.equal(win.type,'win');assert.equal(win.fuse,1);assert.equal(win.first,false);assert.equal(g.fuses,DOMINO.fuses,'the fuse came back');settle(g);
+ g.setPlaced(DOMINO_SOLUTIONS[1]);g.go();const clean=chain(g);assert.equal(clean.fuse,0,'never above ten');assert.equal(clean.first,true);assert.equal(g.fuses,DOMINO.fuses);
+});

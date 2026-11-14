@@ -1,18 +1,20 @@
 // Single list of the arcade's games. Tabs, pack modes, XP disciplines, passport stamps and
 // backup records are checked against it, so a new game starts here.
 // kind: 'maze' (app.js maze loop), 'pack' (arcade-pack.js quick games), 'trade' (Street Hustle).
-// views: camera modes the game supports, the first being the default; '2d' is the classic flat
+// views: camera modes the game supports, the first being the default. First person is a signature
+// of this arcade: every game that has it must be fully playable that way, one tap from the default.
+// views: '2d' is the classic flat
 // top-down or side-scrolling board, drawn without 3D.
 export const GAMES=[
- {id:'classic',title:'Maze Munch',kind:'maze',views:['first','third','2d']},
- {id:'rush',title:'60-Second Rush',kind:'maze',views:['first','third','2d']},
- {id:'daily',title:'Daily Run',kind:'maze',views:['first','third','2d']},
+ {id:'classic',title:'Maze Munch',kind:'maze',views:['third','first','2d']},
+ {id:'rush',title:'60-Second Rush',kind:'maze',views:['third','first','2d']},
+ {id:'daily',title:'Daily Run',kind:'maze',views:['third','first','2d']},
  {id:'trade',title:'Street Hustle',kind:'trade',views:[]},
- {id:'flappy',title:'Flappy DAWG',kind:'pack',views:['first','third','2d']},
+ {id:'flappy',title:'Flappy DAWG',kind:'pack',views:['third','first','2d']},
  {id:'cross',title:'DAWG Cross',kind:'pack',views:['third','2d']},
- {id:'snake',title:'Neon Snake',kind:'pack',views:['first','third','2d']},
- {id:'runner',title:'DAWG Dash',kind:'pack',views:['first','third','2d']},
- {id:'turbo',title:'Turbo Pup',kind:'pack',views:['first','third','2d']},
+ {id:'snake',title:'Neon Snake',kind:'pack',views:['third','first','2d']},
+ {id:'runner',title:'DAWG Dash',kind:'pack',views:['third','first','2d']},
+ {id:'turbo',title:'Turbo Pup',kind:'pack',views:['third','first','2d']},
  {id:'pinball',title:'Neon Pinball',kind:'pack',views:['third','first','2d']},
  {id:'kart',title:'Drift Dawgs',kind:'pack',views:['third','first','2d']},
  {id:'story',title:'After Hours',kind:'pack',views:[]},
@@ -21,7 +23,8 @@ export const GAMES=[
  {id:'heist',title:'Echo Heist',kind:'pack',views:['third','2d']},
  {id:'domino',title:'Domino Dynasty',kind:'pack',views:['third','2d']},
  {id:'paint',title:'Paint the Town',kind:'pack',views:['third','2d']},
- {id:'bark',title:'Last Bark Standing',kind:'pack',views:['third','2d']}
+ {id:'bark',title:'Last Bark Standing',kind:'pack',views:['third','2d']},
+ {id:'nemesis',title:'IT LEARNS',kind:'pack',views:['third','2d']}
 ];
 export const GAME_IDS=GAMES.map(g=>g.id);
 export const PACK_IDS=GAMES.filter(g=>g.kind==='pack').map(g=>g.id);

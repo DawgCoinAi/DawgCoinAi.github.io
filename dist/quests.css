@@ -1,0 +1,18 @@
+/* The quest board on the Play screen. */
+.quest-strip{margin:18px 0 6px;padding:14px 16px 12px;border-radius:18px;background:linear-gradient(160deg,#171a2c,#0f1120);border:1px solid #ffffff14}
+.quest-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
+.quest-head .section-title{margin:0}
+.quest-streak{font:800 11px var(--mono);letter-spacing:1.5px;color:#ffd25e;white-space:nowrap}
+.quest-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.quest{position:relative;display:grid;grid-template-columns:22px 1fr auto auto;align-items:center;gap:10px;padding:10px 12px 12px;border-radius:12px;background:#ffffff08;overflow:hidden}
+.quest-check{width:20px;height:20px;border-radius:50%;border:2px solid #ffffff38;display:grid;place-items:center;font:900 12px var(--mono);color:#0b0a16}
+.quest.done .quest-check{background:#b9ff5e;border-color:#b9ff5e}
+.quest-text{font:600 14px/1.3 var(--body,system-ui);color:#f1eeff}.quest-text b{color:#5ee7ff;font:800 12px var(--mono);margin-left:4px}
+.quest.done .quest-text{color:#9a98b3;text-decoration:line-through}
+.quest-reward{font:800 12px var(--mono);color:#ffd25e;white-space:nowrap}
+.quest-go{padding:6px 12px;border-radius:9px;border:0;background:#b9ff5e;color:#0b0a16;font:900 11px var(--mono);letter-spacing:1px;cursor:pointer}
+.quest-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:#ffffff10}.quest-bar em{display:block;height:100%;background:linear-gradient(90deg,#5ee7ff,#b9ff5e);transform-origin:left}
+.quest-note{margin:10px 2px 0;font:500 12px/1.4 var(--body,system-ui);color:#a9a6c4}
+.quest-week{margin-top:10px}.quest-week summary{cursor:pointer;font:800 11px var(--mono);letter-spacing:1.5px;color:#c9c6e6;padding:6px 2px}.quest-week summary b{color:#5ee7ff}
+.quest-week .quest-list{margin-top:6px}
+@media (max-width:420px){.quest{grid-template-columns:22px 1fr auto;row-gap:6px}.quest-go{grid-column:2/-1;justify-self:start}}

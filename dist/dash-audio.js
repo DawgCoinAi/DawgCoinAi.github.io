@@ -43,14 +43,38 @@ export class DashAudio {
  kick(t){this.tone(150,t,.32,'sine',.55,this.music,false,.28);}
  snare(t){this.noise(t,.18,.22,'bandpass',1800,this.music);this.tone(190,t,.1,'triangle',.12,this.music);}
  hat(t,gain){this.noise(t,.04,gain,'highpass',8000,this.music);}
+ // Turbo Pup's own effects (types arrive as 'turbo:<event>').
+ turboSfx(type,t){
+  const up=(base,steps,gap=.04,wave='square',g=.055)=>steps.forEach((n,i)=>this.tone(hz(base+n),t+i*gap,.18,wave,g,this.fx,true));
+  if(type==='coin'){this.coinStep=t-(this.coinAt||0)<.35?Math.min(12,(this.coinStep||0)+1):0;this.coinAt=t;this.tone(hz(84+this.coinStep),t,.07,'square',.045,this.fx,true);}
+  else if(type==='jump'||type==='spring'){this.tone(type==='spring'?220:320,t,.22,'square',.055,this.fx,false,2.6);}
+  else if(type==='flipstart'){this.noise(t,.3,.07,'bandpass',700,this.fx,3600);}
+  else if(['flip','ring','limbo','near','overtake','wall','grind','clean'].includes(type))up(type==='ring'?81:76,type==='flip'?[0,5,12]:[0,7],.045,'triangle',.06);
+  else if(type==='perfect'||type==='loop'||type==='twist')up(72,[0,4,7,12,16,19],.04,'sawtooth',.05);
+  else if(type==='checkpoint'){up(67,[0,4,7,12,7,12,16],.07,'square',.06);this.noise(t,.6,.07,'bandpass',500,this.fx,6000);}
+  else if(type==='pad'||type==='air'){this.noise(t,.45,.12,'bandpass',500,this.fx,7000);this.tone(180,t,.35,'sawtooth',.05,this.fx,false,3);}
+  else if(type==='boost'){this.noise(t,.8,.2,'bandpass',300,this.fx,8000);this.tone(110,t,.7,'sawtooth',.09,this.fx,false,4);}
+  else if(type==='empty'){this.tone(140,t,.12,'square',.04,this.fx,false,.6);}
+  else if(type==='roll'||type==='stomp'||type==='grindstart'){this.noise(t,.3,.1,'bandpass',type==='grindstart'?5000:2400,this.fx,type==='grindstart'?2500:500);}
+  else if(type==='lane'){this.noise(t,.08,.035,'bandpass',2200,this.fx,5200);}
+  else if(type==='smash'||type==='slam'){this.noise(t,.3,.3,'lowpass',2600,this.fx,200);this.tone(100,t,.25,'sine',.4,this.fx,false,.4);up(88,[0,7],.03,'triangle',.05);}
+  else if(type==='land'){this.tone(110,t,.1,'sine',.18,this.fx,false,.5);}
+  else if(type==='hurt'||type==='stumble'||type==='fall'){this.noise(t,.4,.35,'lowpass',3000,this.fx,180);this.tone(type==='stumble'?160:90,t,.4,'sawtooth',.2,this.fx,false,.4);}
+  else if(type==='combobreak'){this.tone(330,t,.3,'triangle',.06,this.fx,false,.5);}
+  else if(type==='heat'||type==='over')this.sfx(type);
+ }
  sfx(type){
-  if(!this.ensure())return;const c=this.ctx,t=c.currentTime+.005;if(c.state==='suspended')c.resume().catch(()=>{});
+  if(!this.ensure())return;const c=this.ctx,t=c.currentTime+.005;if(c.state==='suspended')c.resume().catch(()=>{});if(type.startsWith('turbo:')){this.turboSfx(type.slice(6),t);return;}
   if(type==='coin'){this.tone(1318,t,.09,'square',.07,this.fx,true);this.tone(1976,t+.06,.16,'square',.07,this.fx,true);}
   else if(type==='power'){[0,4,7,12,16].forEach((n,i)=>this.tone(hz(72+n),t+i*.045,.2,'sawtooth',.06,this.fx,true));this.noise(t,.5,.08,'bandpass',800,this.fx,6000);}
   else if(type==='shield'){this.noise(t,.35,.35,'lowpass',3000,this.fx,200);this.tone(90,t,.4,'sine',.5,this.fx,false,.4);[0,5,9].forEach((n,i)=>this.tone(hz(96+n),t+.05+i*.03,.3,'triangle',.05,this.fx,true));}
   else if(type==='jump'){this.tone(300,t,.22,'square',.06,this.fx,false,2.6);this.noise(t,.18,.05,'bandpass',1200,this.fx,4000);}
   else if(type==='slide'){this.noise(t,.4,.12,'bandpass',3000,this.fx,500);}
   else if(type==='dodge'){this.tone(880,t,.07,'triangle',.05,this.fx,true);}
+  else if(type==='near'){this.noise(t,.22,.22,'bandpass',900,this.fx,7000);this.tone(1480,t+.04,.14,'triangle',.07,this.fx,true);}
+  else if(type==='prize'){[0,4,7,12,19].forEach((n,i)=>this.tone(hz(79+n),t+i*.04,.22,'square',.06,this.fx,true));}
+  else if(type==='flowbreak'){this.tone(330,t,.3,'triangle',.07,this.fx,false,.5);}
+  else if(type==='turn'){this.noise(t,.09,.035,'bandpass',2200,this.fx,5200);}
   else if(type==='land'){this.tone(110,t,.12,'sine',.25,this.fx,false,.5);}
   else if(type==='over'){this.noise(t,.7,.5,'lowpass',2500,this.fx,120);this.tone(120,t,.8,'sine',.7,this.fx,false,.25);this.tone(hz(45),t,.6,'sawtooth',.12,this.fx,false,.5);}
   else if(type==='heat'){[0,3,7,10,12].forEach((n,i)=>this.tone(hz(64+n),t+i*.05,.22,'square',.06,this.fx,true));this.noise(t,.6,.1,'bandpass',500,this.fx,5000);}

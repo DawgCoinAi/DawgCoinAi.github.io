@@ -17,8 +17,8 @@ test('Pack games in the registry all have quick-game checkpoints, except the sto
  for(const id of PACK_IDS)if(id!=='story'&&id!=='chess')assert.ok(QUICK_MODES.includes(id),id);
 });
 test('Camera choices fall back to each game’s default and only switch where supported',()=>{
- assert.equal(viewFor('runner',{}),'first','first person is the default');assert.equal(viewFor('runner',{runner:'third'}),'third');assert.equal(viewFor('runner',{runner:'sideways'}),'first');
- assert.equal(viewFor('flappy',{}),'first');assert.equal(viewFor('cross',{cross:'first'}),'third');assert.equal(canSwitchView('runner'),true);assert.equal(canSwitchView('trade'),false);
+ assert.equal(viewFor('runner',{}),'third','third person is the default everywhere');assert.equal(viewFor('runner',{runner:'first'}),'first','first person stays a choice');assert.equal(viewFor('runner',{runner:'sideways'}),'third');for(const g of GAMES)if(g.views.length)assert.equal(g.views[0],'third',g.id);
+ assert.equal(viewFor('flappy',{}),'third');assert.equal(viewFor('flappy',{flappy:'first'}),'first');assert.equal(viewFor('snake',{}),'third');assert.equal(viewFor('classic',{}),'third');assert.equal(viewFor('rush',{rush:'first'}),'first');assert.equal(viewFor('cross',{cross:'first'}),'third');assert.equal(canSwitchView('runner'),true);assert.equal(canSwitchView('trade'),false);
 });
 test('Backups accept saved camera choices and reject unknown ones',()=>{
  const ok={format:'dawg-arcade-backup',version:1,saves:{settings:{controls:'stick',cameras:{runner:'first'}}}};assert.ok(parseBackup(JSON.stringify(ok)));
@@ -29,9 +29,9 @@ test('First-person grid controls turn relative to the way the player faces',asyn
  assert.equal(relativeTurn('up','left'),'left');assert.equal(relativeTurn('up','right'),'right');assert.equal(relativeTurn('right','left'),'up');assert.equal(relativeTurn('right','right'),'down');
  assert.equal(relativeTurn('down','left'),'right');assert.equal(relativeTurn('left','right'),'up');assert.equal(relativeTurn('left','up'),'left','up keeps going forward');assert.equal(relativeTurn('down','down'),'up','down turns around');
  for(const f of ['up','down','left','right']){let d=f;for(let i=0;i<4;i++)d=relativeTurn(d,'left');assert.equal(d,f,'four left turns come full circle');}
- const {viewFor}=await import('../dist/games.js');for(const id of ['classic','rush','daily'])assert.equal(viewFor(id,{}),'first');
+ const {viewFor}=await import('../dist/games.js');for(const id of ['classic','rush','daily']){assert.equal(viewFor(id,{}),'third','the district diorama is the default');assert.equal(viewFor(id,{[id]:'first'}),'first','street level is one tap away');}
 });
-test('The view button cycles through each game’s cameras, ending in 2D',()=>{
- assert.equal(nextView('runner',{}),'third');assert.equal(nextView('runner',{runner:'third'}),'2d');assert.equal(nextView('runner',{runner:'2d'}),'first');
+test('The view button cycles through each game’s cameras: first person is one tap from the default',()=>{
+ assert.equal(nextView('runner',{}),'first');assert.equal(nextView('runner',{runner:'first'}),'2d');assert.equal(nextView('runner',{runner:'2d'}),'third');for(const g of GAMES)if(g.views.includes('first'))assert.equal(g.views[1],'first',g.id);
  assert.equal(nextView('cross',{}),'2d');assert.equal(nextView('cross',{cross:'2d'}),'third');assert.equal(viewFor('kart',{kart:'2d'}),'2d');
 });

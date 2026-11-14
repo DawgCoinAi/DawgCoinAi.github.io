@@ -16,6 +16,15 @@ export const SET={width:14,depth:9,back:-4.2};
 // Framed art for the walls: a few lines of neon-ish text on a dark card, picked per location.
 const ART=[['DOGS PLAYING','POKER','#ffd36b'],['LIVE','TONIGHT','#ff5fc8'],['NO','CATS','#5ee7ff'],['GOOD','BOY','#b9ff5e'],['FETCH','CLUB','#ff8a3d'],['HOWL','AT THE MOON','#c78bff'],['TAIL','WAGGERS','#ffe45e'],['BARK','LESS','#5ee7ff']];
 const artTexture=([a,b,col])=>texture(256,320,(c,w,h)=>{c.fillStyle='#120d1c';c.fillRect(0,0,w,h);c.strokeStyle='#c9a76a';c.lineWidth=14;c.strokeRect(7,7,w-14,h-14);c.fillStyle=col;c.shadowColor=col;c.shadowBlur=16;c.textAlign='center';c.font='900 46px Impact, "Arial Narrow", sans-serif';c.fillText(a,w/2,h*.42,w-40);c.font='900 34px Impact, "Arial Narrow", sans-serif';c.fillText(b,w/2,h*.62,w-40);});
+const shade=(hex,k)=>'#'+new T.Color(hex).multiplyScalar(k).getHexString();
+const wallTexture=(color,bright)=>texture(512,256,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,shade(color,bright?.86:.5));g.addColorStop(.45,shade(color,1));g.addColorStop(1,shade(color,bright?.95:.8));c.fillStyle=g;c.fillRect(0,0,w,h);
+ const rail=h*.66;c.fillStyle=shade(color,bright?.82:.6);c.fillRect(0,rail,w,h-rail);c.fillStyle=shade(color,bright?1.12:1.5);c.fillRect(0,rail-3,w,5);c.fillStyle=shade(color,bright?.7:.4);c.fillRect(0,h-10,w,10);
+ c.strokeStyle=shade(color,bright?.72:.45);c.lineWidth=2;for(let x=16;x<w;x+=64)c.strokeRect(x,rail+12,48,h-rail-30);
+ c.globalAlpha=bright?.05:.09;c.fillStyle='#fff';for(let x=0;x<w;x+=128)c.fillRect(x,0,2,rail-3);c.globalAlpha=1;
+ const v=c.createRadialGradient(w/2,h*.4,h*.2,w/2,h*.4,w*.62);v.addColorStop(0,'#0000');v.addColorStop(1,bright?'#0003':'#0008');c.fillStyle=v;c.fillRect(0,0,w,h);});
+const floorTexture=(color,bright)=>texture(512,512,(c,w,h)=>{c.fillStyle=shade(color,1);c.fillRect(0,0,w,h);let seed=5;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ if(bright){for(let y=0;y<8;y++)for(let x=0;x<8;x++){c.fillStyle=shade(color,(x+y)%2?.9:1.04);c.fillRect(x*64,y*64,64,64);}c.strokeStyle=shade(color,.72);c.lineWidth=2;for(let i=0;i<=8;i++){c.beginPath();c.moveTo(i*64,0);c.lineTo(i*64,h);c.moveTo(0,i*64);c.lineTo(w,i*64);c.stroke();}}
+ else for(let y=0;y<8;y++){let x=-rnd()*120;while(x<w){const len=110+rnd()*120;c.fillStyle=shade(color,.8+rnd()*.5);c.fillRect(x,y*64,len-2,62);x+=len;}}},{repeat:true});
 export function fallbackAnchor([x,z]){return {x:50+x/7*44,y:58+(z+1)/4.5*30};}
 
 export class ThreeAfterHours {
@@ -25,18 +34,19 @@ export class ThreeAfterHours {
   const s=this.scene;this.stage.neonEnvironment(.55);this.stage.hdrEnvironment(undefined,.35);s.fog=new T.FogExp2(0x07060f,.022);
   this.sky=new T.Mesh(new T.SphereGeometry(200,24,12),skyMaterial());s.add(this.sky);
   this.hemi=new T.HemisphereLight(0xb6b0ff,0x1a1020,.9);s.add(this.hemi);this.keyLight=new T.DirectionalLight(0xfff2e2,1.1);this.keyLight.position.set(-4,10,8);s.add(this.keyLight,this.keyLight.target);this.stage.sunShadow(this.keyLight,{size:11,far:40,map:2048,radius:4});
-  this.neonLight=new T.PointLight(0xff5fc8,18,16,1.6);this.neonLight.position.set(0,4.2,-3);s.add(this.neonLight);this.fill=new T.PointLight(0xffd6a0,10,14,1.6);this.fill.position.set(3,3.2,3);s.add(this.fill);
+  this.neonLight=new T.PointLight(0xff5fc8,18,16,1.6);this.neonLight.position.set(0,4.2,-3);s.add(this.neonLight);this.fill=new T.PointLight(0xffd6a0,10,18,1.5);this.fill.position.set(2.4,5.2,6);s.add(this.fill);
+  this.rim=new T.DirectionalLight(0x6fd6ff,1.2);this.rim.position.set(6,5,-7);s.add(this.rim,this.rim.target);
   this.glowTex=radial(glowStops);this.particles=new Particles(s,this.quality==='high'?300:150,this.glowTex);
-  this.player=new T.Group();this.player.position.set(-1.2,0,2.6);this.player.rotation.y=Math.PI*.82;s.add(this.player);
+  this.player=new T.Group();this.player.position.set(-1.2,0,2.6);this.player.rotation.y=Math.PI*.82;s.add(this.player);const mine=new T.Mesh(new T.PlaneGeometry(3.4,3.4).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:this.glowTex,color:new T.Color(.75,.9,1.2),transparent:true,opacity:.32,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));mine.position.y=.03;this.player.add(mine);
   this.buildings=await loadBuildings().catch(()=>[]);if(this.dead)return this;this.ready=true;return this;}
  clear(){for(const o of this.items)o.removeFromParent();this.items=[];this.lasers=[];this.crowd=[];for(const n of this.cast)n.group.removeFromParent();this.cast=[];}
  add(o){this.scene.add(o);this.items.push(o);return o;}
  // Builds a location's set. Models stream in; the room is usable before they arrive.
  build(loc,l){this.clear();const set=l.set,rnd=seededRandom(loc.length*977+set.props.length),neon=new T.Color(set.neonColor||'#ff5fc8'),token=this.token={};
-  this.neonLight.color.copy(neon);this.neonLight.intensity=set.bright?8:20;this.hemi.intensity=set.bright?1.6:.75;this.keyLight.intensity=set.bright?1.5:.8;this.fill.intensity=set.bright?6:10;this.scene.fog.density=set.outdoor?.018:.012;
-  const floorMat=pbr({color:new T.Color(set.floor||'#221a26'),roughness:set.bright?.6:.3,metalness:set.bright?.05:.35,envMapIntensity:1.1,clearcoat:set.bright?.15:.7,clearcoatRoughness:set.bright?.4:.1},this.quality);
+  this.neonLight.color.copy(neon);this.neonLight.intensity=set.bright?5:10;this.hemi.intensity=set.bright?1.35:.6;this.keyLight.intensity=set.bright?1.7:1.5;this.fill.intensity=set.bright?5:14;this.rim.intensity=set.bright?.5:1.5;this.rim.color.set(set.bright?0xbfe6ff:0x6fd6ff);this.scene.fog.density=set.outdoor?.018:.012;
+  const floorTex=floorTexture(set.floor||'#221a26',!!set.bright);floorTex.repeat.set(set.roof?8:4,set.roof?4:2.6);const floorMat=pbr({map:floorTex,color:new T.Color(set.bright||set.outdoor?1:1.5,set.bright||set.outdoor?1:1.5,set.bright||set.outdoor?1:1.5),roughness:set.bright?.6:.46,metalness:set.bright?.05:.2,envMapIntensity:.9,clearcoat:set.bright?.15:.3,clearcoatRoughness:set.bright?.4:.3},this.quality);
   const floor=this.add(new T.Mesh(new T.PlaneGeometry(set.roof?40:SET.width+4,set.roof?18:SET.depth+2).rotateX(-Math.PI/2),floorMat));floor.position.z=set.roof?2:.4;floor.receiveShadow=true;
-  if(!set.outdoor){const wallMat=new T.MeshStandardMaterial({color:new T.Color(set.wall||'#2a2030'),roughness:.85});
+  if(!set.outdoor){const wallMat=new T.MeshStandardMaterial({map:wallTexture(set.wall||'#2a2030',!!set.bright),color:set.bright?0xffffff:0xd8d0e0,roughness:.85});
    const back=this.add(new T.Mesh(new T.PlaneGeometry(SET.width+4,7),wallMat));back.position.set(0,3.5,SET.back-.4);
    for(const side of [-1,1]){const w=this.add(new T.Mesh(new T.PlaneGeometry(SET.depth+2,7),wallMat));w.position.set(side*(SET.width/2+1.6),3.5,.2);w.rotation.y=-side*Math.PI/2*.82;}
    const strip=this.add(new T.Mesh(new T.BoxGeometry(SET.width+4,.06,.06),new T.MeshBasicMaterial({color:neon.clone().multiplyScalar(1.6),toneMapped:false})));strip.position.set(0,.05,SET.back-.35);
@@ -54,7 +64,8 @@ export class ThreeAfterHours {
   // Furniture and the hotspots that are things.
   // Each set gets its own copies of the materials, dimmed for the dark interiors.
   const place=([path,[x,z],ry,size])=>loadModel(path).then(m=>{if(this.token!==token||this.dead)return;const o=fitModel(cloneModel(m,{ownMaterials:true}),size),h=new T.Group();h.add(o);h.position.set(x,0,z);h.rotation.y=ry||0;
-   if(!set.bright)o.traverse(n=>{if(n.isMesh)for(const mat of [].concat(n.material)){mat.color?.multiplyScalar(set.outdoor?.45:.62);if('roughness' in mat)mat.roughness=Math.min(1,mat.roughness*.8);}});castShadows(h,this.quality);this.add(h);}).catch(()=>{});
+   if(/kitchenBar/.test(path)){const b=new T.Box3().setFromObject(o),tall=b.max.y-b.min.y;if(tall>1.2){o.scale.y*=1.15/tall;o.position.y-=new T.Box3().setFromObject(o).min.y;}}
+   if(!set.bright)o.traverse(n=>{if(n.isMesh)for(const mat of [].concat(n.material)){mat.color?.multiplyScalar(set.outdoor?.6:.86);if('roughness' in mat)mat.roughness=Math.min(1,mat.roughness*.8);}});castShadows(h,this.quality);this.add(h);}).catch(()=>{});
   for(const p of set.props)place(p);for(const h of Object.values(l.hotspots))if(h.prop)place([h.prop,h.at,0,h.size||1.4]);
   this.decor(set,rnd,neon);this.rebuildCast=true;}
  // Procedural dressing that the furniture packs don't cover: bottles, slots, lamps, lasers, a crowd.
@@ -73,10 +84,10 @@ export class ThreeAfterHours {
    if(kind==='crowd'){const mat=new T.MeshStandardMaterial({color:0x0c0a14,roughness:.9}),geo=new T.CapsuleGeometry(.28,.7,4,8),head=new T.SphereGeometry(.24,10,8);this.crowd=[];for(let i=0;i<16;i++){const g=new T.Group(),b=new T.Mesh(geo,mat),h=new T.Mesh(head,mat);b.position.y=.65;h.position.y=1.35;g.add(b,h);
      if(i%3===0){const stick=new T.Mesh(new T.CylinderGeometry(.03,.03,.5,4),glow([0xb9ff5e,0xff5fc8,0x5ee7ff][i%3===0?(i/3)%3:0],2));stick.position.set(.3,1.5,0);stick.rotation.z=-.5;g.add(stick);}
      g.position.set(-5.5+(i%8)*1.5+rnd()*.4,0,(set.crowdZ??-1.6)-Math.floor(i/8)*1.1-rnd()*.3);g.rotation.y=Math.PI+(rnd()-.5)*.4;this.add(g);this.crowd.push({g,phase:rnd()*6});}}}}
- npc(seed){if(!this.npcs.has(seed)){try{const a=createDawgAsset(npcDawg(seed)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.6/h);castShadows(a.root,this.quality,false);const group=new T.Group();group.add(a.root);this.npcs.set(seed,{asset:a,group});}catch{this.npcs.set(seed,null);}}return this.npcs.get(seed);}
+ npc(seed){if(!this.npcs.has(seed)){try{const a=createDawgAsset(npcDawg(seed)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.6/h);castShadows(a.root,this.quality,false);const group=new T.Group();group.add(a.root);const pool=new T.Mesh(new T.PlaneGeometry(3,3).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:this.glowTex,color:new T.Color(1,.82,.55),transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));pool.position.y=.03;group.add(pool);this.npcs.set(seed,{asset:a,group,pool});}catch{this.npcs.set(seed,null);}}return this.npcs.get(seed);}
  // Characters present right now (some come and go with the story).
  castFor(hotspots){for(const n of this.cast)n.group.removeFromParent();this.cast=[];for(const h of hotspots)if(h.npc){const n=this.npc(h.npc.seed);if(!n)continue;const g=n.group,[x,z]=h.at;g.position.set(x,h.npc.pose==='sit'?.1:0,z);g.scale.setScalar(h.npc.scale||1);g.rotation.set(0,Math.atan2(-x*.25,4),0);
-   if(h.npc.pose==='sleep'){g.rotation.set(0,0,Math.PI/2);g.position.y=.95;}this.scene.add(g);this.cast.push({id:h.id,name:h.name,group:g,asset:n.asset,pose:h.npc.pose});}}
+   n.pool.visible=h.npc.pose!=='sleep'&&h.npc.pose!=='sit';if(h.npc.pose==='sleep'){g.rotation.set(0,0,Math.PI/2);g.position.y=.95;}this.scene.add(g);this.cast.push({id:h.id,name:h.name,group:g,asset:n.asset,pose:h.npc.pose});}}
  prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.75/h);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;castShadows(next.root,this.quality,false);this.player.add(next.root);}catch{}}
  // view: {loc, location, hotspots, speaker, dawg, reduced, mood ('death'|'ending'|null)}
  draw(v){if(!this.ready||this.dead)return false;if(v.loc!==this.key){this.key=v.loc;this.build(v.loc,v.location);}

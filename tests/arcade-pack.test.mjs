@@ -10,13 +10,13 @@ test('Flappy starts on input, freezes on pause, and scores each gate exactly onc
  const g=new FlappyGame(()=>.5);assert.equal(g.flap(),false);g.start();assert.equal(g.flap(),true);g.pause();const y=g.y;stepPack(g,.2);assert.equal(g.y,y);g.start();g.vy=0;g.y=250;g.obstacles=[{x:20,width:66,center:250,gap:200,passed:false}];g.tick(.001);assert.equal(g.gates,1);assert.equal(g.score,15);assert.equal(g.perfect,1);g.tick(.001);assert.equal(g.score,15);
 });
 test('Flappy obstacles, floor, and ceiling end a run without giving repeated results',()=>{
- for(const type of ['tower','floor','ceiling']){const g=new FlappyGame(()=>.5);g.start();g.vy=0;g.y=type==='floor'?515:type==='ceiling'?10:80;if(type==='tower')g.obstacles=[{x:100,width:66,center:250,gap:180,passed:false}];g.tick(.01);assert.equal(g.status,'over',type);const events=g.events.length;g.tick(1);g.flap();assert.equal(g.events.length,events);}
+ for(const type of ['tower','floor']){const g=new FlappyGame(()=>.5);g.start();g.vy=0;g.y=type==='floor'?515:80;if(type==='tower')g.obstacles=[{x:100,width:66,center:250,gap:180,passed:false}];g.tick(.01);assert.equal(g.status,'over',type);const events=g.events.length;g.tick(1);g.flap();assert.equal(g.events.length,events);}
 });
 test('A rhythm-playing Flappy bot can clear successive gates without teleporting',()=>{
  const g=new FlappyGame(()=>.5);g.start();for(let i=0;i<60*45&&g.status==='playing';i++){const next=g.obstacles.find(o=>o.x+o.width>g.x-14),target=next?.center||270;if(g.y>target+8&&g.vy>0)g.flap();stepPack(g,1/60);}assert.equal(g.status,'playing');assert.ok(g.gates>=20);assert.ok(g.score>=200);assert.ok(g.obstacles.length<5);
 });
 test('Cross movement is bounded, hop-limited, and only new rows earn points',()=>{
- const g=new CrossGame();assert.equal(g.move('up'),false);g.start();assert.equal(g.move('up'),true);assert.equal(g.score,10);assert.equal(g.move('up'),false);g.hop=0;assert.equal(g.move('down'),true);g.hop=0;assert.equal(g.move('up'),true);assert.equal(g.score,10);g.hop=0;g.x=0;assert.equal(g.move('left'),false);assert.equal(g.move('bogus'),false);
+ const g=new CrossGame();assert.equal(g.move('up'),false);g.start();assert.equal(g.move('up'),true);assert.equal(g.score,10);assert.equal(g.move('up'),true);assert.equal(g.row,1,'a press mid-hop waits for the landing');g.buffer=null;g.hop=0;assert.equal(g.move('down'),true);g.hop=0;assert.equal(g.move('up'),true);assert.equal(g.score,10);g.hop=0;g.x=0;assert.equal(g.move('left'),false);assert.equal(g.move('bogus'),false);
 });
 test('Cross roads collide, floating decks carry the player, water misses fail',()=>{
  const road=new CrossGame();road.start();road.row=1;const lane=crossLane(1),o=laneObjects(lane,.001).find(o=>o.x>=0&&o.x<7);road.x=o.x+.5;road.tick(.001);assert.equal(road.status,'over');
@@ -56,4 +56,36 @@ test('Trading sequences never overspend or duplicate money, inventory or final s
 test('All new game controls have unique DOM targets and complete shipped assets',()=>{
  const html=readFileSync(new URL('../dist/index.html',import.meta.url),'utf8'),ids=[...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);for(const file of ['arcade-pack.js','app.js','mobile.js']){const code=readFileSync(new URL('../dist/'+file,import.meta.url),'utf8');for(const [,id]of code.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.includes(id),file+': '+id);}for(const f of ['pack-engine.js','pack-renderer.js','story-engine.js','arcade-pack.js','arcade-pack.css'])assert.ok(existsSync(new URL('../dist/'+f,import.meta.url)));assert.equal([...html.matchAll(/data-mode="/g)].length,GAME_IDS.length);for(const v of ['viewPlay','viewRankings','viewFriends','viewMe'])assert.ok(ids.includes(v),v);assert.equal(html.match(/<nav class="app-nav"[^]*?<\/nav>/)[0].match(/data-view="/g).length,4);
  for(const m of html.matchAll(/--poster:url\(([^)]+)\)/g))assert.ok(existsSync(new URL('../dist/'+m[1],import.meta.url)),m[1]);
+});
+
+test('Flappy: the sky is a soft ceiling, hitboxes forgive a graze, perfect streaks pay more',()=>{
+ const sky=new FlappyGame(()=>.5);sky.start();sky.obstacles=[{x:900,width:66,center:250,gap:200,passed:false}];sky.y=12;sky.vy=-300;sky.tick(.01);assert.equal(sky.status,'playing');assert.equal(sky.y,24);assert.equal(sky.vy>=0,true);
+ const graze=new FlappyGame(()=>.5);graze.start();graze.vy=0;graze.y=250-100+13;graze.obstacles=[{x:100,width:66,center:250,gap:200,passed:false}];graze.tick(.001);assert.equal(graze.status,'playing','a 1px graze of the drawn body is forgiven');graze.y=250-100+11;graze.vy=0;graze.tick(.001);assert.equal(graze.status,'over');
+ const g=new FlappyGame(()=>.5);g.start();const gate=()=>{g.vy=0;g.y=250;g.obstacles=[{x:20,width:66,center:250,gap:200,passed:false}];g.tick(.001);};
+ gate();assert.equal(g.score,15);gate();assert.equal(g.score,15+20);gate();assert.equal(g.score,35+25);assert.equal(g.streak,3);for(let i=0;i<4;i++)gate();assert.equal(g.score,60+30+35+35+35,'the streak bonus tops out at +25');
+ g.vy=0;g.y=250;g.obstacles=[{x:20,width:66,center:300,gap:200,passed:false}];g.tick(.001);assert.equal(g.streak,0);assert.equal(g.bestStreak,7);assert.equal(g.events.at(-1).bonus,0);
+});
+test('Cross: buffered hops, deck exits snap to a cell, close calls and the idle warning',()=>{
+ const g=new CrossGame();g.start();g.move('up');g.move('left');assert.equal(g.buffer,'left');
+ // Land on row 1 away from traffic, then the buffered hop plays by itself.
+ const safe=r=>{const objs=laneObjects(crossLane(r),g.time+.13);for(let x=0;x<=8;x++)if(!objs.some(o=>x+.24>o.x-1.2&&x-.24<o.x+o.width+1.2))return x;return null;};
+ const sx=safe(1);if(sx!==null){g.x=sx;stepPack(g,.14);assert.equal(g.status,'playing');assert.equal(g.buffer,null);assert.equal(g.hop>0,true);assert.equal(g.x,sx-1>=0?sx-1:sx);}
+ const deck=new CrossGame();deck.start();deck.row=8;deck.furthest=8;assert.equal(crossLane(8).type,'river');assert.equal(crossLane(9).type,'road');deck.x=3.37;deck.move('up');assert.equal(deck.x,3);assert.equal(deck.from.x,3.37);
+ const side=new CrossGame();side.start();side.row=7;side.furthest=7;side.x=3.37;side.move('up');assert.equal(side.x,3.37,'deck to deck keeps its place');
+ const close=new CrossGame();close.start();close.row=0;const lane=crossLane(1),car=laneObjects(lane,.13).find(o=>o.x>1&&o.x<7);close.x=car.x-.5;close.move('up');close.x=car.x-.5;stepPack(close,.135);
+ if(close.status==='playing'){assert.equal(close.close,1);assert.equal(close.score,15);assert.ok(close.events.some(e=>e.type==='close'));}
+ const idle=new CrossGame();idle.start();for(let i=0;i<10.5*60;i++)stepPack(idle,1/60);assert.equal(idle.events.filter(e=>e.type==='hurry').length,1);assert.equal(idle.status,'playing');for(let i=0;i<5*60;i++)stepPack(idle,1/60);assert.equal(idle.status,'over');assert.equal(idle.cause,'idle');
+ const hit=new CrossGame();hit.start();hit.row=1;const o=laneObjects(crossLane(1),.001).find(o=>o.x>=0&&o.x<7);hit.x=o.x+.5;hit.tick(.001);assert.equal(hit.cause,'car');
+});
+
+test('Flappy: three perfect rings earn a shield that breaks on a tower instead of ending the run',()=>{
+ const g=new FlappyGame(()=>.5);g.start();const gate=()=>{g.vy=0;g.y=250;g.obstacles=[{x:20,width:66,center:250,gap:200,passed:false}];g.tick(.001);};
+ gate();gate();assert.equal(g.shield,false);gate();assert.equal(g.shield,true);assert.ok(g.events.some(e=>e.type==='shield'&&e.got));
+ g.vy=0;g.y=80;g.obstacles=[{x:100,width:66,center:250,gap:180,passed:false}];g.tick(.001);assert.equal(g.status,'playing');assert.equal(g.shield,false);assert.equal(g.streak,0);assert.ok(g.ghost>.8);
+ g.vy=0;g.y=80;g.tick(.001);assert.equal(g.status,'playing','phasing through the tower that broke the shield');g.ghost=0;g.vy=0;g.y=80;g.obstacles=[{x:100,width:66,center:250,gap:180,passed:false}];g.tick(.001);assert.equal(g.status,'over');
+});
+test('Cross: the blackout waits for the first hop, climbs with the heat and never trails by more than four rows',()=>{
+ const g=new CrossGame();g.start();for(let i=0;i<120;i++)g.tick(1/60);assert.equal(g.sweep,-6,'it does not move before you do');
+ g.row=20;g.furthest=20;g.x=4;g.idle=0;g.tick(1/60);assert.equal(g.sweep,16);
+ const c=new CrossGame();c.start();c.row=5;c.furthest=5;c.x=8;c.sweep=4.99;c.collected.add(5);c.tick(.05);assert.equal(c.status,'over');assert.equal(c.cause,'sweep');
 });

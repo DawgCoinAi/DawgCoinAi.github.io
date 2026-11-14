@@ -26,6 +26,12 @@ test('Off the roof is out, knock-offs are credited, and the last one standing wi
  const l=new BarkGame(seededRandom(4),4);l.start();l.you.x=BARK.radius+1;run(l,2);assert.equal(l.status,'over');assert.equal(l.place,BARK.count);assert.match(l.reason,/20th of 20/);assert.equal(ordinalSuffix(2),'nd');assert.equal(ordinalSuffix(12),'th');
 });
 
+test('The golden bone drops on a timer and loads an instant MEGA bark for whoever takes it',()=>{
+ const g=new BarkGame(seededRandom(6),6);g.start();for(const d of g.dawgs)if(d.k){d.think=1e9;d.tx=d.ty=0;d.want=false;}let seen=null;for(let t=0;t<BARK.boneFirst+1&&!seen;t+=1/60){g.tick(1/60);seen=g.events.find(e=>e.type==='bone')||null;g.events=[];}
+ assert.ok(seen&&g.bone,'a bone drops');assert.ok(Math.hypot(g.bone.x,g.bone.y)<roofRadius(g.time));g.you.x=g.bone.x;g.you.y=g.bone.y;g.tick(1/60);assert.equal(g.bone,null);assert.equal(g.you.mega,true);assert.equal(g.bones,1);assert.ok(g.events.some(e=>e.type==='gotbone'&&e.k===0));
+ g.events=[];g.input.bark=true;g.tick(1/60);assert.equal(g.you.charge,1,'loaded: full charge at once');g.input.bark=false;g.tick(1/60);assert.ok(g.events.find(e=>e.type==='bark').mega);assert.equal(g.you.mega,false);
+});
+
 test('Matches are deterministic for a seed and end by the clock at the latest',()=>{
  const a=new BarkGame(seededRandom(9),9),b=new BarkGame(seededRandom(9),9);for(const g of [a,b]){g.start();while(g.status==='playing'&&g.time<20){bot(g);g.tick(1/60);}}
  assert.deepEqual(a.dawgs.map(d=>[d.x,d.y,d.alive]),b.dawgs.map(d=>[d.x,d.y,d.alive]));assert.equal(a.score,b.score);

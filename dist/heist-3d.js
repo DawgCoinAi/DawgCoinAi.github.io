@@ -12,7 +12,7 @@ export class ThreeHeist {
  constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.clock=performance.now();this.status='';this.statusSince=performance.now();this.level=-1;this.crew=[];this.crewKey='';this.marks=[];this.facing=[];}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d heist3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
-  this.hud=new Hud('<div class="hx-top"><b class="hx-name"></b><span class="hx-crew"></span></div><div class="hx-clock"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19"/><circle class="hx-ring" cx="22" cy="22" r="19" pathLength="100"/></svg><b class="hx-time">30</b></div><p class="hx-tip" hidden></p>');this.view.append(this.hud.root);
+  this.hud=new Hud('<div class="hx-top"><b class="hx-name"></b><span class="hx-crew"></span></div><div class="hx-clock"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19"/><circle class="hx-ring" cx="22" cy="22" r="19" pathLength="100"/></svg><b class="hx-time">30</b></div><p class="hx-tip" hidden></p><div class="hx-actions"><button type="button" data-heist="skipLoop" title="End this loop (F)">⏩ END LOOP</button><button type="button" data-heist="retake" title="Retake this loop (R)">↺ RETAKE</button><button type="button" data-heist="undo" title="Undo the last crew member (U)">⌫ UNDO</button></div>');this.view.append(this.hud.root);
   this.ui={name:this.hud.q('.hx-name'),crew:this.hud.q('.hx-crew'),ring:this.hud.q('.hx-ring'),time:this.hud.q('.hx-time'),tip:this.hud.q('.hx-tip'),clock:this.hud.q('.hx-clock')};
   this.rig=new CameraRig(this.camera);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
   const s=this.scene,high=this.quality==='high';this.stage.studioEnvironment(.5);this.stage.hdrEnvironment(undefined,.45);s.background=new T.Color(0x05060c);s.fog=new T.Fog(0x05060c,26,60);
@@ -57,13 +57,16 @@ export class ThreeHeist {
   const last=g.recs.map(()=>null);for(let f=0;f<LOOP_FRAMES&&sim.status==='playing'&&sim.frame===f;f+=1){sim.step();if(sim.frame!==f+1)break;if(f%8)continue;sim.members.slice(0,-1).forEach((p,k)=>{const q=[p.x,.05,p.y];if(last[k])pts.push(...last[k],...q);last[k]=q;});}
   if(!pts.length)return;const geo=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(pts,3));this.ghostLines=new T.LineSegments(geo,new T.LineDashedMaterial({color:CYAN,dashSize:.12,gapSize:.1,transparent:true,opacity:.55}));this.ghostLines.computeLineDistances();this.set.add(this.ghostLines);}
  prepare(d){this.dawg=d;}
- event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
+ event(e,g){if(!this.ready)return;if(e.type==='feat'){this.hud.pop('FEAT · '+String(e.name).toUpperCase(),'gold');return;}const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
   if(e.type==='loot'){P.burst(e.x,.6,e.y,30,0xffd25e,{speed:3,life:.6,gravity:-4});hud.pop('PRIZE','gold');}
   else if(e.type==='deliver'){P.burst(e.x,.5,e.y,40,0x5effc1,{speed:4,life:.7});hud.pop('IN THE VAN','dodge');}
   else if(e.type==='alarm'){st.shake(.6);st.flashOnce(0xff2244,.45,rd);hud.banner(e.line.toUpperCase());this.alarmAt={x:e.x,y:e.y,until:performance.now()+1800};P.burst(e.x,.4,e.y,50,0xff2d55,{speed:5,life:.8});}
   else if(e.type==='loop'){hud.banner(`LOOP ${e.crew+1} · CREW MEMBER ${e.crew+1}`);st.flashOnce(CYAN,.2,rd);this.crewKey='';}
   else if(e.type==='planfail'){hud.banner(e.lives?`THE PLAN FELL APART · ${e.lives} LEFT`:'THE PLAN FELL APART');st.shake(.8);st.flashOnce(0xff2244,.5,rd);this.crewKey='';}
   else if(e.type==='clear'){hud.banner(`${e.name.toUpperCase()} · +${e.points.toLocaleString()}`);st.flashOnce(0xffd25e,.4,rd);for(let i=0;i<4;i++)P.burst(g.members.at(-1)?.x??3,.8+i*.3,g.members.at(-1)?.y??3,50,[0xffd25e,0x5ee7ff,0xff4fd8,0x5effc1][i],{speed:7,life:1.2});}
+  else if(e.type==='skip'){hud.pop('HOLDING POSITION','dodge');}
+  else if(e.type==='retake'){hud.banner('RETAKE');this.crewKey='';}
+  else if(e.type==='undo'){hud.banner('CREW MEMBER '+e.crew+' · AGAIN');st.flashOnce(CYAN,.2,rd);this.crewKey='';}
   else if(e.type==='over'){st.shake(.5);}}
  draw(g,d,reduced=false){if(!this.ready||this.failed)return false;this.lastGame=g;this.lastDawg=d;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);this.render(g,d,now);
   if(g.status!=='playing')this.ambient.start(t=>!this.dead&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:t-this.statusSince<2500));return true;}

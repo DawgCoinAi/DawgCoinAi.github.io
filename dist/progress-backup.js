@@ -6,10 +6,12 @@ import {restoreMaze} from './checkpoint.js';
 import {restoreQuick,QUICK_MODES} from './pack-checkpoint.js';
 import {validEndings,validAfterHours} from './after-hours-play.js';
 import {validChessSave} from './chess-play.js';
+import {validProfile} from './nemesis-engine.js';
+import {validQuests} from './quests.js';
 import {GAME_IDS,VIEWS,canSwitchView} from './games.js';
 import {validArcade} from './unlocks.js';
 export const SAVE_PREFIX='dawg-v1-';
-export const SAVE_KEYS=['records','profile','settings','sound','daily','trade','mazeRun','packRuns','story','storyEndings','afterHours','chess','passport','kennel','arcade'];
+export const SAVE_KEYS=['records','profile','settings','sound','daily','trade','mazeRun','packRuns','story','storyEndings','afterHours','chess','nemesis','quests','passport','kennel','arcade'];
 const object=o=>o!==null&&typeof o==='object'&&!Array.isArray(o);
 const count=(n,max=1e12)=>Number.isSafeInteger(n)&&n>=0&&n<=max;
 function validValue(key,v){
@@ -28,6 +30,8 @@ function validValue(key,v){
  if(key==='storyEndings')return validEndings(v);
  if(key==='afterHours')return validAfterHours(v);
  if(key==='chess')return validChessSave(v);
+ if(key==='nemesis')return validProfile(v);
+ if(key==='quests')return validQuests(v);
  return false;
 }
 export function parseBackup(text){

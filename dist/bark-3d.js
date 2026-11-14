@@ -12,8 +12,8 @@ export class ThreeBark {
  constructor(target,onFailure,{quality:q=quality()}={}){Object.assign(this,{target,onFailure,quality:q});this.ready=false;this.failed=false;this.dead=false;this.clock=performance.now();this.status='';this.statusSince=performance.now();this.cast=[];this.castSeed=-1;this.asset=null;this.assetKey='';this.waves=[];}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d bark3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;
-  this.hud=new Hud('<div class="bk-left"><b class="bk-alive">20</b><small>ON THE ROOF</small><span class="bk-kos">0 KNOCKED OFF</span></div><div class="bk-clock"><b>90</b></div><div class="bk-charge" hidden><i></i><span>BARK</span></div><div class="bk-shrink" hidden>THE ROOF IS SHRINKING</div>');this.view.append(this.hud.root);
-  this.ui={alive:this.hud.q('.bk-alive'),kos:this.hud.q('.bk-kos'),clock:this.hud.q('.bk-clock b'),charge:this.hud.q('.bk-charge'),chargeFill:this.hud.q('.bk-charge i'),chargeText:this.hud.q('.bk-charge span'),shrink:this.hud.q('.bk-shrink')};
+  this.hud=new Hud('<div class="bk-left"><b class="bk-alive">20</b><small>ON THE ROOF</small><span class="bk-kos">0 KNOCKED OFF</span></div><div class="bk-clock"><b>90</b></div><div class="bk-charge" hidden><i></i><span>BARK</span></div><div class="bk-shrink" hidden>THE ROOF IS SHRINKING</div><div class="bk-edge" hidden>EDGE!</div>');this.view.append(this.hud.root);
+  this.ui={alive:this.hud.q('.bk-alive'),kos:this.hud.q('.bk-kos'),clock:this.hud.q('.bk-clock b'),charge:this.hud.q('.bk-charge'),chargeFill:this.hud.q('.bk-charge i'),chargeText:this.hud.q('.bk-charge span'),shrink:this.hud.q('.bk-shrink'),edge:this.hud.q('.bk-edge')};
   this.rig=new CameraRig(this.camera);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D ROOFTOP · LIVE');return this;}
  setCamera(){}
@@ -42,6 +42,10 @@ export class ThreeBark {
   this.wall=new T.Mesh(new T.CylinderGeometry(R,R,3,96,1,true),new T.MeshBasicMaterial({color:new T.Color(.3,1.8,1.2),transparent:true,opacity:.12,side:T.DoubleSide,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending}));this.wall.position.y=1.5;s.add(this.wall);
   this.glowTex=radial(glowStops);this.particles=new Particles(s,high?600:260,this.glowTex);
   this.waveGeo=new T.RingGeometry(.6,1,48,1,-Math.PI/2,Math.PI).rotateX(-Math.PI/2);this.holder=new T.Group();s.add(this.holder);this.shadow=contactShadow(.9);s.add(this.shadow);
+  this.aim=new T.Mesh(new T.CircleGeometry(1,40,-BARK.cone*Math.PI/360,BARK.cone*Math.PI/180).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(1.6,.5,1.8),transparent:true,opacity:.28,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending,side:T.DoubleSide}));this.aim.position.y=.05;this.aim.visible=false;s.add(this.aim);
+  // The golden bone: a spinning prize under a beam of light.
+  this.bone=new T.Group();const boneMat=pbr({color:0xffd25e,emissive:0xffa630,emissiveIntensity:.9,roughness:.2,metalness:1},this.quality),shaft=new T.Mesh(new T.CylinderGeometry(.07,.07,.5,8).rotateZ(Math.PI/2),boneMat);this.bone.add(shaft);for(const sx of [-1,1])for(const sz of [-1,1]){const k=new T.Mesh(new T.SphereGeometry(.12,10,8),boneMat);k.position.set(sx*.27,0,sz*.08);this.bone.add(k);}
+  const bglow=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(2.4,1.7,.5),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));bglow.scale.set(1.8,1.8,1);this.bone.add(bglow);this.bone.add(lightShaft(0xffd25e,{length:9,radius:.9,top:.1,opacity:.3,apex:[0,9,0]}));this.bone.visible=false;s.add(this.bone);
   this.capsule=new T.CapsuleGeometry(.22,.4,4,10).translate(0,.45,0);this.capMats={};for(const [k,c] of Object.entries(STYLE_COLOR))this.capMats[k]=new T.MeshStandardMaterial({color:c,roughness:.5,metalness:.2,emissive:c,emissiveIntensity:.15});}
  prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;const next=createDawgAsset(d);next.root.scale.setScalar(.72);castShadows(next.root,this.quality);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.holder.add(next.root);}
  // Rivals: full DAWG models on high, coloured capsules with ears on low.
@@ -49,10 +53,14 @@ export class ThreeBark {
   for(const d of g.dawgs){if(!d.k)continue;const holder=new T.Group();let asset=null;if(this.quality==='high'){asset=createDawgAsset(npcDawg(d.name+' '+g.worldSeed));asset.root.scale.setScalar(.72);castShadows(asset.root,this.quality);holder.add(asset.root);}
    else{const m=new T.Mesh(this.capsule,this.capMats[d.style]);holder.add(m);}
    const tag=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(STYLE_COLOR[d.style]).multiplyScalar(1.2),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));tag.scale.set(.5,.5,1);tag.position.y=1.5;holder.add(tag);
-   this.scene.add(holder);this.cast.push({k:d.k,holder,asset,tag});}}
- event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
+   const c=document.createElement('canvas');c.width=192;c.height=40;const x=c.getContext('2d');x.font='800 24px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.lineWidth=5;x.strokeStyle='#05060cdd';x.strokeText(d.name.toUpperCase(),96,21);x.fillStyle='#'+STYLE_COLOR[d.style].toString(16).padStart(6,'0');x.fillText(d.name.toUpperCase(),96,21);
+   const name=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),transparent:true,depthWrite:false,toneMapped:false}));name.scale.set(1.5,.31,1);name.position.y=1.85;holder.add(name);
+   this.scene.add(holder);this.cast.push({k:d.k,holder,asset,tag,name});}}
+ event(e,g){if(!this.ready)return;if(e.type==='feat'){this.hud.pop('FEAT · '+String(e.name).toUpperCase(),'gold');return;}const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
   if(e.type==='bark'){this.waves.push({x:e.x,y:e.y,a:e.face,r:e.range,t:0,mega:e.mega,you:!e.k});P.burst(e.x+Math.cos(e.face)*.6,.6,e.y+Math.sin(e.face)*.6,e.mega?60:16+e.charge*20,e.mega?0xffd25e:!e.k?0xffffff:0xff9ad8,{speed:3+e.charge*6,life:.4});if(!e.k){st.shake(e.mega?.5:.12+e.charge*.2);if(e.mega)hud.pop('MEGA BARK','big');else if(e.hits)hud.pop(e.hits>1?e.hits+' HIT':'HIT','dodge');}}
   else if(e.type==='hit'&&!e.k){st.shake(.35);st.flashOnce(0xff3355,.25,rd);}
+  else if(e.type==='bone'){hud.banner('GOLDEN BONE ON THE ROOF');P.burst(e.x,2,e.y,40,0xffd25e,{speed:4,life:.9,gravity:-5});}
+  else if(e.type==='gotbone'){P.burst(e.x,.6,e.y,50,0xffd25e,{speed:6,life:.7});if(!e.k){hud.pop('MEGA BARK LOADED','big');st.flashOnce(0xffd25e,.25,rd);}else hud.pop(e.name.toUpperCase()+' HAS THE BONE','gold');}
   else if(e.type==='fall'){P.burst(e.x,.3,e.y,24,0xffffff,{speed:3,life:.6,gravity:-6});}
   else if(e.type==='out'){if(e.byYou){hud.pop(e.name.toUpperCase()+' OFF THE ROOF','gold');st.flashOnce(0xffd25e,.15,rd);}if(e.left<=3&&e.k)hud.banner(e.left===1?'LAST BARK STANDING':`FINAL ${e.left}`);}
   else if(e.type==='shrink'){hud.banner(e.t===BARK.grace?'THE ROOF IS SHRINKING':e.t>=80?'LAST STAND':'KEEP TO THE MIDDLE');this.shrinkUntil=performance.now()+2200;}
@@ -68,20 +76,24 @@ export class ThreeBark {
   // Everyone on the roof: yours from the asset, rivals from the cast; falling DAWGs drop and spin.
   const place=(holder,p,asset,moving)=>{holder.position.set(p.x,p.fall?-Math.pow(p.fall*3.4,2):0,p.y);holder.rotation.set(0,-p.face+Math.PI/2,0);if(p.fall&&!reduced){holder.rotation.x=p.fall*5;holder.rotation.z=p.fall*3;}holder.visible=p.alive;if(asset)setDawgPose(asset,real,p.charge>0?'arm':moving?'run':'idle');};
   place(this.holder,you,this.asset,Math.hypot(you.vx,you.vy)>.6);this.shadow.position.set(you.x,.015,you.y);this.shadow.visible=you.alive&&!you.fall;
-  for(const c of this.cast){const p=g.dawgs[c.k];place(c.holder,p,c.asset,Math.hypot(p.vx,p.vy)>.6);c.tag.material.opacity=p.charge>0?.6+.4*Math.sin(real*20):.35;c.tag.scale.setScalar(.4+p.charge*.6);}
+  for(const c of this.cast){const p=g.dawgs[c.k];place(c.holder,p,c.asset,Math.hypot(p.vx,p.vy)>.6);c.tag.material.opacity=p.charge>0||p.mega?.6+.4*Math.sin(real*20):.35;c.tag.scale.setScalar(p.mega?1.2:.4+p.charge*.6);c.tag.material.color.setHex(p.mega?0xffd25e:STYLE_COLOR[p.style]);c.name.visible=!p.fall;}
+  const ch=you.charge,aiming=ch>0&&you.alive&&!you.fall;this.aim.visible=aiming;if(aiming){const mega=ch>=.98,r=BARK.range+(BARK.rangeMax-BARK.range)*ch;this.aim.position.set(you.x,.05,you.y);this.aim.rotation.y=-you.face;this.aim.scale.set(r,1,r);this.aim.material.color.setRGB(mega?2.6:1.6,mega?1.9:.5,mega?.5:1.8);this.aim.material.opacity=.2+ch*.2+(mega&&!reduced?.1*Math.sin(real*24):0);}
+  this.bone.visible=!!g.bone;if(g.bone){this.bone.position.set(g.bone.x,.55+Math.sin(real*3)*.08,g.bone.y);this.bone.rotation.y=real*2;}
   // Bark shockwaves: a half ring that expands along the bark's direction and fades.
   for(const w of this.waves){w.t+=dt;if(!w.mesh){w.mesh=new T.Mesh(this.waveGeo,new T.MeshBasicMaterial({color:new T.Color(w.mega?0xffd25e:w.you?0xffffff:0xff9ad8).multiplyScalar(2),transparent:true,opacity:.8,toneMapped:false,depthWrite:false,blending:T.AdditiveBlending,side:T.DoubleSide}));w.mesh.position.set(w.x,.1,w.y);w.mesh.rotation.y=-w.a;this.scene.add(w.mesh);}
    const k=Math.min(1,w.t/.3);w.mesh.scale.setScalar(.3+w.r*k);w.mesh.material.opacity=.8*(1-k);}
   this.waves=this.waves.filter(w=>{if(w.t<.3)return true;w.mesh?.removeFromParent();w.mesh?.material.dispose();return false;});
-  // Camera: behind and above you, pulled back as the crowd thins; a slow orbit while you wait.
-  const idle=g.status==='ready',ang=idle?real*.25:you.face,back=9.5-danger*2.5,pos=new T.Vector3(you.x-Math.cos(ang)*back,8.5-danger*2,you.y-Math.sin(ang)*back),at=new T.Vector3(you.x+Math.cos(ang)*2.5,.4,you.y+Math.sin(ang)*2.5);
-  if(you.fall||!you.alive){pos.set(you.x*.5,9,you.y*.5+10);at.set(0,0,0);}
+  // Camera: fixed heading (screen-up is always up on the stick), leaning toward you and tightening
+  // as the roof shrinks; a slow orbit while you wait to start.
+  const idle=g.status==='ready',lean=.7,back=11-danger*3,high=11.5-danger*3,pos=new T.Vector3(you.x*lean,high,you.y*lean+back),at=new T.Vector3(you.x*.85,0,you.y*.85-1.2);
+  if(idle){pos.set(Math.cos(real*.2)*15,10,Math.sin(real*.2)*15);at.set(0,0,0);}
+  if(you.fall||!you.alive){pos.set(0,13,13);at.set(0,0,0);}
   this.rig.update(dt,{pos,at},null,{follow:you.fall?3:7});this.stage.applyShake(real,reduced);this.rig.aim();const cam=this.camera;cam.fov+=(fitFov(54,cam.aspect,76)-cam.fov)*Math.min(1,dt*5);cam.near=.1;cam.far=600;cam.updateProjectionMatrix();this.stage.followSun?.(this.key,you.x,0,you.y);
   this.sky.position.copy(cam.position);this.skyline.position.set(cam.position.x,-30,cam.position.z);
   // HUD.
-  this.hud.set(this.ui.alive,'a',String(g.alive));this.hud.set(this.ui.kos,'k',g.kos+' KNOCKED OFF');this.hud.set(this.ui.clock,'c',String(Math.max(0,Math.ceil(BARK.length-g.time))));
+  this.hud.set(this.ui.alive,'a',String(g.alive));this.hud.set(this.ui.kos,'k',g.kos+' KNOCKED OFF'+(you.mega?' · MEGA LOADED':''));this.hud.set(this.ui.clock,'c',String(Math.max(0,Math.ceil(BARK.length-g.time))));
   const charging=you.charge>0&&you.alive;this.ui.charge.hidden=!charging;if(charging){this.ui.chargeFill.style.transform=`scaleX(${you.charge.toFixed(3)})`;this.ui.charge.classList.toggle('bk-mega',you.charge>=.98);this.hud.set(this.ui.chargeText,'ct',you.charge>=.98?'MEGA':'BARK');}
-  this.ui.shrink.hidden=!(this.shrinkUntil&&now<this.shrinkUntil);
+  this.ui.shrink.hidden=!(this.shrinkUntil&&now<this.shrinkUntil);const nearEdge=you.alive&&!you.fall&&g.status==='playing'&&R-Math.hypot(you.x,you.y)<1.3;this.ui.edge.hidden=!nearEdge;this.hud.root.classList.toggle('bk-danger',nearEdge);
   this.particles.update(dt,{x:0,y:0,z:0});this.hud.live(g.status==='playing');this.stage.render(dt,real,{reduced,aberration:.0015+danger*.002});
  }
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}

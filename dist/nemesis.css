@@ -1,0 +1,24 @@
+/* IT LEARNS HUD: hearts and multiplier, the "reading you" meter, the beat bar, stamps and warnings. */
+.nemesis3d .nm-top{position:absolute;left:16px;top:var(--d3-top,14px);display:flex;align-items:center;gap:12px;text-shadow:0 2px 10px #000d}
+.nemesis3d .nm-hearts{font:900 26px/1 var(--display);color:#ff4f7a;letter-spacing:3px}
+.nemesis3d .nm-mult{font:900 clamp(22px,5vw,34px)/1 var(--display);color:#fff}
+.nemesis3d .nm-mult.nm-hot{color:#ffd25e;text-shadow:0 0 18px #ffb347}
+.nemesis3d .nm-read{position:absolute;right:14px;top:var(--d3-top,14px);width:min(46%,230px);display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center}
+.nemesis3d .nm-read span{grid-column:1/-1;font:800 10px var(--mono);letter-spacing:2px;color:#9fdcff;text-align:right}
+.nemesis3d .nm-read i{height:8px;border-radius:6px;background:#07080fd0;border:1px solid #ffffff22;overflow:hidden;display:block}
+.nemesis3d .nm-read em{display:block;height:100%;background:linear-gradient(90deg,#3fd0ff,#ffd25e 60%,#ff3d6e);transform-origin:left;transform:scaleX(0);transition:transform .2s}
+.nemesis3d .nm-read b{font:900 14px var(--mono);color:#fff;min-width:3.2ch;text-align:right}
+.nemesis3d .nm-read.nm-armed-on span{color:#ff3d6e}.nemesis3d .nm-read.nm-armed-on i{box-shadow:0 0 14px #ff2255}
+.nemesis3d .nm-beat{position:absolute;left:50%;bottom:calc(var(--d3-bottom,22px) + 6px);transform:translateX(-50%);width:min(70%,360px);height:6px;border-radius:6px;background:#07080fd0;overflow:hidden}
+.nemesis3d .nm-beat i{display:block;height:100%;background:#fff;transform-origin:left}
+.nemesis3d .nm-armed{position:absolute;left:50%;bottom:calc(var(--d3-bottom,22px) + 22px);transform:translateX(-50%);margin:0;white-space:nowrap;font:900 clamp(10px,2.6vw,13px) var(--mono);letter-spacing:2px;color:#ff3d6e;text-shadow:0 0 12px #ff2255,0 2px 0 #000;animation:nmBlink .4s steps(2) infinite}
+.nemesis3d .nm-phase{position:absolute;left:50%;top:21%;transform:translateX(-50%);font:900 clamp(18px,5vw,34px) var(--display);letter-spacing:6px;color:#9fdcff;text-shadow:0 0 22px #3fd0ff,0 3px 0 #000b}
+.nemesis3d .nm-stamp{position:absolute;left:0;right:0;top:32%;text-align:center;pointer-events:none}
+.nemesis3d .nm-stamp b{display:inline-block;padding:4px 18px;font:900 clamp(40px,12vw,110px)/.95 var(--display);letter-spacing:-1px;transform:rotate(-5deg)}
+.nemesis3d .nm-stamp small{display:block;margin:14px auto 0;max-width:26ch;font:800 clamp(13px,3.4vw,19px)/1.3 var(--display);color:#fff;text-shadow:0 2px 10px #000}
+.nemesis3d .nm-stamp.nm-bad b{color:#ff2d55;border:6px solid #ff2d55;border-radius:10px;text-shadow:0 0 30px #ff2255aa;background:#12020880}
+.nemesis3d .nm-stamp.nm-good b{color:#ffd25e;text-shadow:0 0 30px #ffb347,0 5px 0 #000b}
+.nemesis3d .nm-stamp.nm-show b{animation:nmStamp .28s cubic-bezier(.2,1.6,.4,1)}
+@keyframes nmStamp{from{transform:rotate(-5deg) scale(2.4);opacity:0}}
+@keyframes nmBlink{to{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.nemesis3d .nm-stamp.nm-show b,.nemesis3d .nm-armed{animation:none}}

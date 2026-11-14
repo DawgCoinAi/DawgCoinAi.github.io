@@ -31,6 +31,7 @@ export class ArcadeRenderer {
   if(e.type==='pellet')this.burst(x,y,'#ffd980',3,25);
   if(e.type==='power'){this.burst(x,y,'#dbff74',30,100);this.rings.push({x,y,r:12,life:1,color:'#dcff75'});this.flash=.12;}
   if(e.type==='dash'){this.burst(x,y,'#63f6ff',20,100);this.rings.push({x,y,r:6,life:.55,color:'#63f6ff'});}
+  if(e.type==='tackle'){this.burst(x,y,'#63f6ff',34,130);this.rings.push({x,y,r:8,life:.6,color:'#63f6ff'});this.labels.push({x,y,text:`+${e.bonus}`,life:1.4,color:'#9af6ff'});this.shake=4;}
   if(e.type==='eat'||e.type==='loot'){this.burst(x,y,e.type==='loot'?'#ffdd74':'#b9ff6c',30,100);this.labels.push({x,y,text:`+${e.bonus}`,life:1.4,color:e.type==='loot'?'#ffe78b':'#d9ff91'});this.shake=3;}
   if(e.type==='hit'){this.burst(x,y,'#ff658f',32,120);this.rings.push({x,y,r:10,life:.7,color:'#ff6085'});this.shake=7;this.flash=.22;this.trail=[];}
   if(e.type==='level'){for(let i=0;i<9;i++)this.burst(45+i*52,200+Math.sin(i)*70,['#c9fa6b','#bb8fff','#62e8ff'][i%3],20,130);this.flash=.25;}

@@ -55,12 +55,17 @@ export class ThreeClimb {
   // The leash, the peak line, and the DAWG.
   this.leash=new T.Mesh(new T.CylinderGeometry(.045,.045,1,6,1,true).translate(0,.5,0),new T.MeshBasicMaterial({color:new T.Color(2.4,2,1.2),toneMapped:false}));s.add(this.leash);
   this.peakLine=new T.Mesh(new T.PlaneGeometry(W,.07),new T.MeshBasicMaterial({color:new T.Color(3,.4,.6),transparent:true,opacity:.85,toneMapped:false,depthWrite:false}));this.peakLine.position.z=.6;s.add(this.peakLine);
+  this.bestLine=new T.Mesh(new T.PlaneGeometry(W,.05),new T.MeshBasicMaterial({color:new T.Color(2.4,1.8,.5),transparent:true,opacity:.7,toneMapped:false,depthWrite:false}));this.bestLine.position.z=.58;this.bestLine.visible=false;s.add(this.bestLine);
+  this.bestTag=new T.Mesh(new T.PlaneGeometry(3.2,.6),new T.MeshBasicMaterial({map:signTex('YOUR RECORD','#ffd25e'),transparent:true,toneMapped:false,depthWrite:false}));this.bestTag.position.set(-CLIMB.half+1.9,0,.6);this.bestTag.visible=false;s.add(this.bestTag);
+  // What you'd grab right now: a white ring on that hook, and a faint circle of your reach.
+  this.reticle=new T.Mesh(new T.TorusGeometry(.62,.035,8,36),new T.MeshBasicMaterial({color:new T.Color(2.6,2.6,2.6),toneMapped:false,transparent:true,opacity:.9}));this.reticle.visible=false;s.add(this.reticle);
+  this.reach=new T.Mesh(new T.RingGeometry(CLIMB.reach-.04,CLIMB.reach,96),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.09,toneMapped:false,depthWrite:false,side:T.DoubleSide}));this.reach.position.z=.3;s.add(this.reach);
   this.peakTag=new T.Mesh(new T.PlaneGeometry(3.2,.6),new T.MeshBasicMaterial({map:signTex('YOUR PEAK','#ff5d8f'),transparent:true,toneMapped:false,depthWrite:false}));this.peakTag.position.set(CLIMB.half-1.8,0,.62);s.add(this.peakTag);
   this.holder=new T.Group();s.add(this.holder);this.particles=new Particles(s,high?500:240,this.glowTex);this.v=new T.Vector3();this.up=new T.Vector3(0,1,0);
   this.rain=high?new T.LineSegments(new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(Array.from({length:600*6},(_,i)=>{const n=Math.floor(i/6),k=i%6;const x=((n*37)%40)-20,y=((n*53)%60),z=((n*17)%12)-2;return k===0||k===3?x:k===1?y:k===4?y-.8:z;}),3)),new T.LineBasicMaterial({color:0x8fa8ff,transparent:true,opacity:.35})):null;if(this.rain)s.add(this.rain);
  }
  prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;const next=createDawgAsset(d);next.root.scale.setScalar(1.05);next.root.position.y=-1.1;if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.holder.add(next.root);}
- event(e,g){if(!this.ready)return;const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
+ event(e,g){if(!this.ready)return;if(e.type==='feat'){this.hud.pop('FEAT · '+String(e.name).toUpperCase(),'gold');return;}const st=this.stage,hud=this.hud,P=this.particles,rd=this.reduced;
   if(e.type==='grab'){P.burst(e.x,e.y,.2,10,HOOK_COLOR[e.kind]||0xffd25e,{speed:3,life:.35});}
   else if(e.type==='snap'){P.burst(this.hooks[e.hook].position.x,this.hooks[e.hook].position.y,.2,40,0xc8642a,{speed:6,life:.8,gravity:-12});hud.pop('SNAP!','big');st.shake(.45);}
   else if(e.type==='slip'){P.burst(e.x,e.y+1,.2,24,0x6fe8ff,{speed:3,life:.6,gravity:-10});hud.pop('SLIPPED','big');st.shake(.2);}
@@ -94,6 +99,9 @@ export class ThreeClimb {
   if(g.hook>=0){const p=hookPos(t.hooks[g.hook],g.time),a=new T.Vector3(g.x,g.y+.35,.15),b=new T.Vector3(p.x,p.y,0);this.v.subVectors(b,a);const len=this.v.length();this.leash.visible=true;this.leash.position.copy(a);this.leash.scale.set(1,len,1);this.leash.quaternion.setFromUnitVectors(this.up,this.v.normalize());
    this.lamp.color.setHex(HOOK_COLOR[t.hooks[g.hook].type]);}else{this.leash.visible=false;this.lamp.color.setHex(0xffc27a);}
   this.lamp.position.set(g.x,g.y+1.2,2.5);
+  const rec=Math.floor((g.record||0)/10),showRec=rec>12&&Math.abs(rec-g.y)<26&&g.maxY<rec;this.bestLine.visible=this.bestTag.visible=showRec;if(showRec){this.bestLine.position.y=rec;this.bestTag.position.y=rec+.4;}
+  const tg=g.status==='playing'&&g.hook<0?g.target().hook:null;this.reticle.visible=!!tg;if(tg){const p=hookPos(tg,g.time);this.reticle.position.set(p.x,p.y,.05);this.reticle.rotation.z=real*2;this.reticle.scale.setScalar(reduced?1:1+.12*Math.sin(real*9));}
+  this.reach.visible=g.hook<0&&g.status==='playing';this.reach.position.x=g.x;this.reach.position.y=g.y;
   this.peakLine.position.y=this.peakTag.position.y=g.maxY;this.peakLine.visible=this.peakTag.visible=g.maxY-g.y>3;this.peakTag.position.y=g.maxY+.4;
   // Camera: a steady side view that pulls back and tilts when you're falling hard.
   const dropping=g.hook<0&&!g.grounded&&g.vy<-16,pull=dropping?Math.min(1,(-g.vy-16)/20):0;this.pull=(this.pull||0)+(pull-(this.pull||0))*Math.min(1,dt*3);

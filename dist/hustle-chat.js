@@ -38,7 +38,7 @@ export class HustleChat {
   $('hustleContactText').textContent=c.status==='done'?`Pleasure doing business. I'll have something new for you tomorrow night.`:c.status==='expired'?`You missed the drop. No hard feelings… new lead tomorrow.`:
    trade.district===c.destination?(have>=c.quantity?`You made it. ${c.quantity} ${good}, right? Hand it over: ${money(c.reward)} is yours.`:`I'm here in ${dest}. Still need ${c.quantity} ${good}; you've got ${have}.`):`Need ${c.quantity} ${good} in ${dest} by night ${c.deadline}. Pays ${money(c.reward)}. You've got ${have}.`;
   $('hustleDeliver').hidden=c.status!=='open'||trade.district!==c.destination;$('hustleDeliver').disabled=$('deliverOrder').disabled;
-  $('hustleContact').hidden=!!enc&&encounterSpeaker(trade)===who;
+  $('hustleContact').hidden=!!enc;$('hustleWire').hidden=!!enc;
   // Who stopped you: the encounter card itself becomes their bubble.
   $('tradeEncounter').dataset.speaker=enc?encounterSpeaker(trade):'';$('encounterWho').textContent=enc?encounterSpeaker(trade):'';
   // What just happened tonight, briefly.
@@ -48,5 +48,5 @@ export class HustleChat {
  place(anchors){this.anchors=anchors;const at=(id,fx,fy)=>anchors?.[id]||{x:fx,y:fy},put=(el,a,minTop=10)=>{const box=el.parentElement?.clientWidth,half=el.offsetWidth&&box?Math.min(48,el.offsetWidth/box*50+1.5):22,x=Math.max(half,Math.min(100-half,a.x)),below=a.y<minTop+22;el.classList.toggle('below',below);el.style.left=x.toFixed(1)+'%';el.style.top=(below?a.y+6:a.y-4).toFixed(1)+'%';el.style.setProperty?.('--tail',(a.x-x).toFixed(1)+'%');};
   if(!$('hustleContact').hidden)put($('hustleContact'),at('contact',26,46));
   // Whoever stopped you talks from a sheet along the bottom, its tail pointing up at them.
-  const enc=$('tradeEncounter');if(!enc.hidden){const speaker=enc.dataset.speaker,slot=speaker&&speaker===$('hustleContactName').textContent?'contact':'crew',a=at(slot,58,44),x=Math.max(30,Math.min(70,a.x));enc.style.left=x.toFixed(1)+'%';enc.style.setProperty?.('--tail',(a.x-x).toFixed(1)+'%');$('hustleCaption').hidden=true;}}
+  const enc=$('tradeEncounter');if(!enc.hidden){const speaker=enc.dataset.speaker,slot=speaker&&speaker===$('hustleContactName').textContent?'contact':'crew',a=at(slot,58,44),x=a.x>=50?26:74;enc.style.left=x+'%';enc.style.setProperty?.('--tail',Math.max(-40,Math.min(40,a.x-x)).toFixed(1)+'%');$('hustleCaption').hidden=true;}}
 }

@@ -4,7 +4,7 @@
 // closed doors block. What you do now can change the world your past selves move through.
 // Everything runs on a fixed 60 Hz step, so the same inputs always give the same heist.
 // Map units: one tile is one meter, x right, y down; a tile (c, r) is centered at (c + .5, r + .5).
-export const HEIST={fps:60,loop:30,speed:3.6,radius:.25,lives:3,fast:5};
+export const HEIST={fps:60,loop:30,speed:3.6,radius:.25,lives:3,fast:5,skip:14};
 export const LOOP_FRAMES=HEIST.fps*HEIST.loop;
 const DIRS=['up','down','left','right'],BIT={up:1,down:2,left:4,right:8};
 // '#' wall · S start · V van · $ loot · A–C doors held open by plates a–c · 1/2 switches that kill
@@ -48,8 +48,39 @@ export const HEISTS=[
   '#.....###~###...#',
   '#V..1.#.....#...#',
   '#.....#..$..#...#',
-  '#################']}];
+  '#################']},
+ {name:'Double Shift',crew:3,tip:'Two guards, two prizes. Each one only watches his own corridor.',guards:[{path:[[8,1],[13,1]],speed:1.6,range:2.6,cone:70},{path:[[13,5],[8,5]],speed:1.6,range:2.6,cone:70}],map:[
+  '###############',
+  '#S....#.......#',
+  '#.....A...$...#',
+  '#..a..#.......#',
+  '#V....#...$...#',
+  '#.....#.......#',
+  '###############']},
+ {name:'Twin Lasers',crew:3,tip:'The second switch is behind the first laser. Work inward, one of you at a time.',map:[
+  '###############',
+  '#S....#...#..$#',
+  '#.....~...=...#',
+  '#.....#...#...#',
+  '#V.1..#.2.#...#',
+  '###############']},
+ {name:'The Mint',crew:5,tip:'Door, laser, door, guard. Four jobs before anyone touches a prize.',guards:[{path:[[14,1],[17,1],[17,4],[14,4]],speed:1.6,range:2.4,cone:70}],map:[
+  '###################',
+  '#S...#...#...#....#',
+  '#....A...~...B..$.#',
+  '#.a..#.1.#.b.#....#',
+  '#V...#...#...#..$.#',
+  '###################']}];
 
+export const FEATS=[
+ {id:'heist.first',name:'Inside Job',text:'Pull off your first heist'},
+ {id:'heist.three',name:'Repeat Offender',text:'Pull off 3 heists in one run'},
+ {id:'heist.five',name:'Crew Chief',text:'Pull off 5 heists in one run'},
+ {id:'heist.all',name:'The Mint Condition',text:'Pull off all eight heists in one run'},
+ {id:'heist.onetake',name:'One Take',text:'Clear a heist without throwing away a single take'},
+ {id:'heist.spare',name:'Skeleton Crew',text:'Clear a heist with a crew member to spare'},
+ {id:'heist.fast',name:'In And Out',text:'Clear a heist with 15 seconds left on the loop'},
+ {id:'heist.paradox',name:'Paradox',text:'Get your own past self caught'}];
 // A heist's map, parsed once.
 const PARSED=new Map();
 export function heistMap(i){if(PARSED.has(i))return PARSED.get(i);const h=HEISTS[i],rows=h.map,H=rows.length,W=rows[0].length,doors=[],plates=[],switches=[],lasers=[],loot=[],van=[];let start=null;
@@ -68,7 +99,9 @@ export const decode=rle=>{const out=[];for(const [b,n] of rle)for(let i=0;i<n;i+
 
 export class HeistGame {
  constructor(random=Math.random,worldSeed=0){this.random=random;this.worldSeed=worldSeed;this.status='ready';this.time=0;this.score=0;this.reason='';this.events=[];this.input={up:false,down:false,left:false,right:false};
-  this.level=0;this.lives=HEIST.lives;this.takes=0;this.totalTakes=0;this.cleared=0;this.recs=[];this.cur=[];this.acc=0;this.setup();}
+  this.level=0;this.lives=HEIST.lives;this.takes=0;this.totalTakes=0;this.cleared=0;this.recs=[];this.cur=[];this.acc=0;this.feats=[];this.setup();}
+ // A feat is earned once per run; the arcade's quest board remembers it for good.
+ feat(id){const full='heist.'+id;if(this.feats.includes(full))return;const f=FEATS.find(f=>f.id===full);if(!f)return;this.feats.push(full);this.events.push({type:'feat',id:full,name:f.name});}
  get map(){return heistMap(this.level);}
  get frame(){return this.cur.length;}
  get loopTime(){return this.cur.length/HEIST.fps;}
@@ -78,8 +111,14 @@ export class HeistGame {
  end(reason){if(this.status!=='playing')return;this.status='over';this.reason=reason;this.events.push({type:'over'});}
  press(dir,down){if(!DIRS.includes(dir))return false;this.input[dir]=!!down;return true;}
  move(dir){return this.press(dir,true);}
+ // In position? Wait out the rest of this loop at high speed (you stand still until it ends).
+ skipLoop(){if(this.status!=='playing'||this.skipping)return false;this.skipping=true;this.events.push({type:'skip'});return true;}
+ // Throw this take away and play the same crew member again.
+ retake(){if(this.status!=='playing'||!this.cur.length)return false;this.takes++;this.totalTakes++;this.events.push({type:'retake'});this.setup();return true;}
+ // Take back the last finished loop: that crew member is gone and you play them again.
+ undo(){if(this.status!=='playing'||!this.recs.length)return false;this.recs.pop();this.takes++;this.totalTakes++;this.events.push({type:'undo',crew:this.recs.length+1});this.setup();return true;}
  // Fresh loop: everyone back at the start, the world reset, ghosts ready to replay.
- setup(){const m=this.map;this.cur=[];this.acc=0;this.members=[...this.recs.map(r=>({bits:decode(r)})),{bits:null}].map((x,k)=>({...x,k,x:m.start.x+(k%3-1)*.14,y:m.start.y+Math.floor(k/3)*.14,carry:[],home:false,caught:false}));
+ setup(){const m=this.map;this.cur=[];this.acc=0;this.skipping=false;this.members=[...this.recs.map(r=>({bits:decode(r)})),{bits:null}].map((x,k)=>({...x,k,x:m.start.x+(k%3-1)*.14,y:m.start.y+Math.floor(k/3)*.14,carry:[],home:false,caught:false}));
   this.taken=[];this.delivered=[];this.alarm=null;this.updateWorld();}
  // Doors open while their plate is occupied; lasers are off while their switch is.
  updateWorld(){const m=this.map,on=(c,r)=>this.members.some(p=>Math.floor(p.x)===c&&Math.floor(p.y)===r);
@@ -89,9 +128,9 @@ export class HeistGame {
  // Clear line of sight between two points (walls and closed doors block it).
  sees(ax,ay,bx,by){const d=Math.hypot(bx-ax,by-ay),n=Math.ceil(d/.12);for(let i=1;i<n;i++){const x=ax+(bx-ax)*i/n,y=ay+(by-ay)*i/n;if(this.solid(Math.floor(x),Math.floor(y)))return false;}return true;}
  bits(){let b=0;for(const d of DIRS)if(this.input[d])b|=BIT[d];return b;}
- tick(dt){if(this.status!=='playing')return;const you=this.members[this.members.length-1],fast=you.home&&!you.carry.length&&you.idle>=HEIST.fps&&!this.bits()?HEIST.fast:1;this.acc+=dt*fast;
+ tick(dt){if(this.status!=='playing')return;const you=this.members[this.members.length-1],fast=this.skipping?HEIST.skip:you.home&&!you.carry.length&&you.idle>=HEIST.fps&&!this.bits()?HEIST.fast:1;this.acc+=dt*fast;
   while(this.acc>=1/HEIST.fps&&this.status==='playing'){this.acc-=1/HEIST.fps;this.step();}}
- step(){const f=this.cur.length,m=this.map,you=this.members[this.members.length-1];this.time+=1/HEIST.fps;const mine=this.bits();this.cur.push(mine);you.idle=mine?0:(you.idle||0)+1;
+ step(){const f=this.cur.length,m=this.map,you=this.members[this.members.length-1];this.time+=1/HEIST.fps;const mine=this.skipping?0:this.bits();this.cur.push(mine);you.idle=mine?0:(you.idle||0)+1;
   for(const p of this.members){const b=p.bits?p.bits[f]||0:this.cur[f];let vx=(b&8?1:0)-(b&4?1:0),vy=(b&2?1:0)-(b&1?1:0);if(!vx&&!vy)continue;const n=Math.hypot(vx,vy),s=HEIST.speed/HEIST.fps/n;
    const nx=p.x+vx*s;if(!this.blocked(nx,p.y))p.x=nx;const ny=p.y+vy*s;if(!this.blocked(p.x,ny))p.y=ny;}
   this.updateWorld();const t=(f+1)/HEIST.fps;
@@ -104,23 +143,23 @@ export class HeistGame {
   if(this.delivered.length===m.loot.length)return this.clear();
   if(this.cur.length>=LOOP_FRAMES)this.loopEnd();}
  // Caught: this take is thrown away and the same crew member tries again.
- trip(p,how){const ghost=p.k<this.members.length-1;this.alarm={k:p.k,how,ghost,x:p.x,y:p.y};this.takes++;this.totalTakes++;
+ trip(p,how){const ghost=p.k<this.members.length-1;if(ghost)this.feat('paradox');this.alarm={k:p.k,how,ghost,x:p.x,y:p.y};this.takes++;this.totalTakes++;
   this.events.push({type:'alarm',k:p.k,how,ghost,x:p.x,y:p.y,line:ghost?PARADOX[this.totalTakes%PARADOX.length]:how==='laser'?'Lasers: still lasers.':'Spotted. Smooth.'});this.setup();}
  loopEnd(){const m=this.map;this.recs.push(encode(this.cur));this.events.push({type:'loop',crew:this.recs.length});
   if(this.recs.length>=m.crew){this.lives--;this.recs=[];this.events.push({type:'planfail',lives:this.lives});if(this.lives<=0){this.setup();return this.end(`The plan fell apart on ${m.name}. ${this.cleared} heist${this.cleared===1?'':'s'} pulled off. Your past selves are disappointed in you.`);}}
   this.setup();}
  clear(){const m=this.map,left=Math.max(0,HEIST.loop-this.loopTime),spare=m.crew-this.recs.length-1,pts=Math.max(150,1000*(this.level+1)+m.loot.length*250+Math.floor(left)*20+spare*300-this.takes*25);
-  this.score+=pts;this.cleared++;this.events.push({type:'clear',name:m.name,points:pts,crew:this.recs.length+1});this.takes=0;this.recs=[];
+  this.score+=pts;this.cleared++;this.feat('first');if(this.cleared>=3)this.feat('three');if(this.cleared>=5)this.feat('five');if(this.cleared>=HEISTS.length)this.feat('all');if(!this.takes)this.feat('onetake');if(spare>0)this.feat('spare');if(left>=15)this.feat('fast');this.events.push({type:'clear',name:m.name,points:pts,crew:this.recs.length+1});this.takes=0;this.recs=[];
   if(this.level>=HEISTS.length-1){this.setup();return this.end(`Every heist pulled off. ${this.totalTakes} take${this.totalTakes===1?'':'s'} thrown away getting there. Legendary crew.`);}
   this.level++;this.setup();this.events.push({type:'heist',name:this.map.name,tip:this.map.tip,crew:this.map.crew});}
 }
 // What the game says when your present self ruins your past self's take.
 const PARADOX=['You got your own past self caught. Iconic.','Paradox. Your earlier take was fine until you showed up.','Past you did everything right. Present you did not.','You closed the door on yourself. Literally.'];
 
-export const HEIST_FIELDS=['level','lives','takes','totalTakes','cleared','recs','cur','input'];
+export const HEIST_FIELDS=['level','lives','takes','totalTakes','cleared','recs','cur','input','feats'];
 const int=(n,a,b)=>Number.isInteger(n)&&n>=a&&n<=b,rle=(r,max)=>Array.isArray(r)&&r.every(x=>Array.isArray(x)&&x.length===2&&int(x[0],0,15)&&int(x[1],1,LOOP_FRAMES))&&r.reduce((s,x)=>s+x[1],0)<=max;
 export function validHeistSnapshot(s){if(!int(s.level,0,HEISTS.length-1)||!int(s.lives,1,HEIST.lives)||!int(s.takes,0,1e6)||!int(s.totalTakes,s.takes,1e7)||!int(s.cleared,0,HEISTS.length)||!int(s.score,0,1e8))return false;
- return Array.isArray(s.recs)&&s.recs.length<heistMap(s.level).crew&&s.recs.every(r=>rle(r,LOOP_FRAMES)&&r.reduce((a,x)=>a+x[1],0)===LOOP_FRAMES)&&Array.isArray(s.cur)&&s.cur.length<LOOP_FRAMES&&s.cur.every(b=>int(b,0,15))&&s.input&&DIRS.every(d=>typeof s.input[d]==='boolean');}
+ return Array.isArray(s.recs)&&s.recs.length<heistMap(s.level).crew&&s.recs.every(r=>rle(r,LOOP_FRAMES)&&r.reduce((a,x)=>a+x[1],0)===LOOP_FRAMES)&&Array.isArray(s.cur)&&s.cur.length<LOOP_FRAMES&&s.cur.every(b=>int(b,0,15))&&s.input&&DIRS.every(d=>typeof s.input[d]==='boolean')&&Array.isArray(s.feats)&&s.feats.length<=FEATS.length&&s.feats.every(id=>FEATS.some(f=>f.id===id))&&new Set(s.feats).size===s.feats.length;}
 // After a restore: rebuild the loop in progress by replaying it to the saved frame.
 export function resumeHeist(g){const cur=g.cur,input={...g.input},status=g.status;g.setup();g.status='playing';for(const b of cur){for(const d of DIRS)g.input[d]=!!(b&BIT[d]);g.step();if(g.cur.length===0)break;}g.input=input;g.status=status;g.events=[];return g;}
 // Plans that pull off every heist (tests prove it; the attract demo plays them): per crew member,
@@ -138,5 +177,14 @@ export const HEIST_PLANS=[
   [['down',.24],['right',3.37],['up',.28],['down',.28],['left',1.94],['down',1.11],['right',.28],['left',.28],['up',1.11],['left',1.39],['down',.56]]],
  [[['right',.64],['down',.56]],
   [['down',1.11],['right',.83]],
-  [['down',.28],['wait',6.3],['right',2.74],['left',.56],['down',1.11],['up',1.11],['left',2.22],['down',.83]]]];
+  [['down',.28],['wait',6.3],['right',2.74],['left',.56],['down',1.11],['up',1.11],['left',2.22],['down',.83]]],
+ [[['right',.61],['down',.56]],
+  [['down',.28],['wait',5],['right',2.5],['wait',.4],['down',.56],['up',.56],['left',2.5],['down',.56]]],
+ [[['down',.84],['right',.6]],
+  [['down',.28],['right',1.95],['down',.56]],
+  [['wait',.7],['down',.28],['right',3.33],['up',.28],['down',.28],['left',3.33],['down',.56]]],
+ [[['down',.56],['right',.25]],
+  [['down',.28],['right',1.6],['down',.28]],
+  [['down',.28],['right',2.75],['down',.28]],
+  [['down',.28],['wait',8],['right',4.17],['wait',2],['down',.56],['up',.56],['left',4.17],['down',.56]]]];
 export const planFrames=script=>{const out=[];for(const [d,sec] of script){const b=d==='wait'?0:d.split('+').reduce((a,x)=>a|BIT[x],0);for(let i=0;i<Math.round(sec*60);i++)out.push(b);}return out;};

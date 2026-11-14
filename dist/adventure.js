@@ -59,6 +59,10 @@ export class Adventure {
  describe(){const l=this.location;this.say(typeof l.description==='function'?l.description(this):l.description,'›');for(const h of this.hotspots())if(h.mention){const m=typeof h.mention==='function'?h.mention(this):h.mention;if(m)this.say(m);}}
  hotspots(){const l=this.location;return Object.entries(l.hotspots).map(([id,h])=>({id,...h})).filter(h=>!h.when||h.when(this));}
  items(){return this.state.inv.map(id=>({id,...this.c.items[id]}));}
+ // What a tap can do, so the screen only offers verbs that have an answer written for them.
+ // Looking always works; "use" counts when the thing reacts to being used with nothing in hand.
+ verbsFor(id){const h=this.hotspots().find(x=>x.id===id);if(!h)return [];const ok=v=>typeof h[v]==='function'||typeof h[v]==='string'||v==='use'&&typeof h.use?.['*']==='function';return ['look',...VERBS.filter(v=>v!=='look'&&v!=='go'&&v!=='give'&&ok(v))];}
+ itemVerbs(id){const it=this.has(id)&&this.c.items[id];return it?['look',...VERBS.filter(v=>v!=='look'&&v!=='go'&&v!=='give'&&v!=='take'&&typeof it[v]==='function')]:[];}
  // Match a typed noun to a hotspot here or an item in your pockets.
  // Exact names beat whole words inside the noun, which beat partial words; on a tie, things in
  // your pockets win when preferItems is set ("drink whiskey"), otherwise things in the room do.

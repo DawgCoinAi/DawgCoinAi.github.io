@@ -15,8 +15,8 @@ test('The tower is the same for everyone, 500 m tall, inside the shaft, getting 
 });
 
 test('Holding grabs the nearest hook above and reels in; letting go keeps your swing',()=>{
- const g=new ClimbGame(seededRandom(3),3);g.start();assert.equal(g.grounded,true);g.press('up',true);assert.equal(g.hook,0,'first hook is in reach from the street');
- const r0=g.rope;run(g,.5,{up:true});assert.ok(g.rope<r0,'holding reels in');assert.equal(g.hook,0,'still holding: grabbing from the street lifts you');assert.ok(g.y>.5);run(g,1.2,{up:true,right:true});const vx=g.vx;g.press('up',false);assert.equal(g.hook,-1);assert.ok(Math.abs(g.vx-vx)<1e-9,'release keeps momentum');
+ const g=new ClimbGame(seededRandom(3),3);g.start();assert.equal(g.grounded,true);g.press('up',true);const inReach=tower().hooks.filter(h=>Math.hypot(h.x-g.x,h.y)<=CLIMB.reach);assert.ok(g.hook>=0);assert.equal(tower().hooks[g.hook].y,Math.max(...inReach.map(h=>h.y)),'a grab takes the highest hook in reach');const first=g.hook;
+ const r0=g.rope;run(g,.5,{up:true});assert.ok(g.rope<r0,'holding reels in');assert.equal(g.hook,first,'still holding: grabbing from the street lifts you');assert.ok(g.y>.5);run(g,1.2,{up:true,right:true});const vx=g.vx;g.press('up',false);assert.equal(g.hook,-1);assert.ok(Math.abs(g.vx-vx)<1e-9,'release keeps momentum');
 });
 
 test('Every ordinary hook can reach a higher one with a pumped swing',()=>{

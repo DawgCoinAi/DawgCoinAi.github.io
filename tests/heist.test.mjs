@@ -13,10 +13,10 @@ test('Every heist parses: one start, a van, loot, and a plate for every door and
   for(const d of m.doors)assert.ok(m.plates.some(p=>p.id===d.id),m.name+' door has a plate');for(const l of m.lasers)assert.ok(m.switches.some(s=>s.id===l.id),m.name+' laser has a switch');assert.ok(m.crew>=2&&m.crew<=5);}
 });
 
-test('A scripted crew pulls off all five heists in one run, each in its crew limit',()=>{
+test('A scripted crew pulls off every heist in one run, each in its crew limit',()=>{
  const g=new HeistGame(()=>.5,1);g.start();
  for(let L=0;L<HEISTS.length;L++){const sol=SOLUTIONS[L];assert.ok(sol.length<=HEISTS[L].crew);let last=null;for(const s of sol){last=playMember(g,s);assert.notEqual(last?.type,'alarm',HEISTS[L].name+' '+JSON.stringify(last));if(last?.type==='clear')break;}assert.equal(last?.type,'clear',HEISTS[L].name);}
- assert.equal(g.status,'over');assert.equal(g.cleared,5);assert.match(g.reason,/Every heist/);assert.ok(g.score>10000);
+ assert.equal(g.status,'over');assert.equal(g.cleared,HEISTS.length);assert.equal(HEISTS.length,8);assert.match(g.reason,/Every heist/);assert.ok(g.score>10000);
 });
 
 test('Past loops replay their inputs exactly, and the world they act on is shared',()=>{
@@ -35,6 +35,13 @@ test('Getting caught throws the take away; ruining a past self’s take is a par
 
 test('Running out of crew costs a life; three failed plans end the run',()=>{
  const g=new HeistGame(()=>.5,1);g.start();for(let i=0;i<HEIST.lives*HEISTS[0].crew;i++)playMember(g,[['wait',1]]);assert.equal(g.status,'over');assert.equal(g.lives,0);assert.match(g.reason,/fell apart/);
+});
+
+test('End the loop early, retake a take, undo a crew member',()=>{
+ const g=new HeistGame(()=>.5,1);g.start();for(let f=0;f<80;f++){setInput(g,8);g.step();}assert.ok(g.skipLoop());setInput(g,8);g.tick(1);assert.ok(g.frame>80+60*5,'skipping runs the loop fast');const x=g.members[0].x;g.tick(.2);assert.equal(g.members[0].x,x,'and you stand still');
+ while(g.recs.length===0&&g.status==='playing')g.tick(.5);assert.equal(g.recs.length,1);assert.equal(decode(g.recs[0]).length,LOOP_FRAMES);assert.equal(g.skipping,false);
+ for(let f=0;f<30;f++){setInput(g,2);g.step();}assert.ok(g.retake());assert.equal(g.frame,0);assert.equal(g.recs.length,1);assert.equal(g.takes,1);assert.equal(g.retake(),false,'nothing to retake at frame 0');
+ assert.ok(g.undo());assert.equal(g.recs.length,0);assert.equal(g.members.length,1);assert.equal(g.undo(),false);
 });
 
 test('Guards walk their loop and look the way they walk',()=>{const gd=heistMap(2).guards[0],a=guardAt(gd,0),b=guardAt(gd,gd.total/gd.speed);assert.ok(Math.abs(a.x-b.x)<1e-9&&Math.abs(a.y-b.y)<1e-9);assert.equal(a.a,0,'starts facing right');assert.ok(Math.abs(guardAt(gd,3).a-Math.PI/2)<1e-9,'then down the right side');});

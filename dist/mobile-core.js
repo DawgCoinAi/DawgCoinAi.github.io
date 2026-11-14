@@ -23,10 +23,14 @@ export function localDay(date=new Date()){return `${date.getFullYear()}-${String
 export function seededRandom(seed){let a=seed>>>0;const next=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};next.getState=()=>a;next.setState=n=>{a=n>>>0;};return next;}
 export function dailyChallenge(day=localDay()){
  let seed=2166136261;for(const c of 'DAWG-V3-'+day)seed=Math.imul(seed^c.charCodeAt(0),16777619)>>>0;
- const variants=[{name:'Gold Rush',description:'Gold bags pay 50% more. Follow the money.',lootMultiplier:1.5,dashRecharge:6,rivalSpeed:1},
-  {name:'Street Rocket',description:'Dash recharges in 4 seconds. Keep moving.',lootMultiplier:1,dashRecharge:4,rivalSpeed:1},
-  {name:'Hot Pursuit',description:'Rivals move 12% faster. Outrun the heat.',lootMultiplier:1,dashRecharge:6,rivalSpeed:1.12}];
- return{...variants[seed%3],day,seed,startLevel:1+(Math.floor(seed/3)%3),targets:[800,1600,2800]};
+ // One twist a day, the same for everyone. `twist` is read by MazeGame; the rest tune the run around it.
+ const base={lootMultiplier:1,dashRecharge:6,rivalSpeed:1,tackleBonus:100},variants=[
+  {...base,name:'Harbour Fog',twist:'fog',description:'The lights are out. Your torch shows the way, and rivals lose you in the dark.'},
+  {...base,name:'Mirror Mile',twist:'mirror',description:'For twelve seconds mid-run, left and right swap. You get a warning.'},
+  {...base,name:'Double Trouble',twist:'double',description:'Six rivals instead of four, a touch slower. Tackles pay double.',rivalSpeed:.9,tackleBonus:200},
+  {...base,name:'Treasure Hunt',twist:'treasure',description:'Five chests are hidden in the maze. Find all five for a jackpot.',lootMultiplier:1.5},
+  {...base,name:'Street Rocket',twist:'rocket',description:'Dash recharges in three seconds and tackles pay triple.',dashRecharge:3,tackleBonus:300}];
+ return{...variants[seed%variants.length],day,seed,startLevel:1+(Math.floor(seed/3)%3),targets:[1200,2200,3400]};
 }
 export function medalFor(score,targets=[800,1600,2800]){return score>=targets[2]?3:score>=targets[1]?2:score>=targets[0]?1:0;}
 export function dailyResult(previous,score,targets){

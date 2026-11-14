@@ -100,3 +100,10 @@ test('Story content is well formed and its 3D sets point at real CC0 models',()=
  assert.equal(Object.keys(LOCATIONS).length,10);assert.ok(Object.keys(CONTENT.items).length>=18);assert.ok(Object.keys(DEATHS).length>=6);assert.ok(Object.keys(ENDINGS).length>=6);
  const flagsUsed=[...fs.readFileSync(new URL('../dist/after-hours.js',import.meta.url),'utf8').matchAll(/flag\('([a-zA-Z]+)'/g)].map(m=>m[1]);for(const f of new Set(flagsUsed))assert.ok(CONTENT.flags.includes(f),f);
 });
+test('The tap menu only offers verbs a thing answers to, and every offered verb gets its own reply',()=>{
+ const g=fresh();assert.deepEqual(g.verbsFor('mugsy'),['look','talk','buy']);assert.deepEqual(g.verbsFor('jukebox'),['look','take','use']);assert.deepEqual(g.verbsFor('nope'),[]);
+ assert.deepEqual(g.itemVerbs('comb'),['look','use']);assert.deepEqual(g.itemVerbs('whiskey'),[],'nothing for an item you are not holding');
+ for(const loc of Object.keys(CONTENT.locations)){const s=fresh(3);s.state.loc=loc;for(const h of s.hotspots()){const verbs=s.verbsFor(h.id);assert.equal(verbs[0],'look');assert.ok(!verbs.includes('go')&&!verbs.includes('give'));
+   for(const v of verbs){if(v==='look'&&h.look===undefined)continue;const t=fresh(3);t.state.loc=loc;const lines=t.act(v,h.id),dull=CONTENT.cantDo(t,v,h.name);assert.ok(lines.length||t.state.choice||t.state.loc!==loc,`${loc}/${h.id} ${v}`);assert.notEqual(lines[0]?.text,dull,`${loc}/${h.id} offers ${v} but has nothing to say`);}}}
+ for(const id of Object.keys(CONTENT.items)){const s=fresh(4);s.state.inv=[id];for(const v of s.itemVerbs(id))assert.ok(s.act(v,'item:'+id).length,`${id} ${v}`);}
+});

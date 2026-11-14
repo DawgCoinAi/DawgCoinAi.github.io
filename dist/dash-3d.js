@@ -5,6 +5,7 @@ import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {T,smooth,quality,fitFov,merge,texture,radial,glowStops,skylineTexture,buildingShells,facadeMaterials,signMaterials,skyMaterial,auraMaterial,pbr,lightShaft,Stage,Particles,CameraRig,Hud,AmbientLoop} from './three-kit.js';
 import {worldLook,hash} from './world.js';
 import {heatLabel} from './difficulty.js';
+import {RUNNER} from './runner-engine.js';
 
 export {fitFov};
 export const dashQuality=quality;
@@ -35,8 +36,8 @@ export class ThreeDash {
  constructor(target,onFailure,{quality:q=quality()}={}){this.target=target;this.onFailure=onFailure;this.quality=q;this.ready=false;this.failed=false;this.dead=false;this.live=new Map();this.free={};this.frame=0;this.combo=0;this.asset=null;this.assetKey='';this.lastGame=null;this.statusSince=performance.now();this.status='';this.district=-1;this.clock=performance.now();this.cameraMode='third';}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.r=this.stage.r;
-  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-power" hidden><span></span><em><s></s></em></div>');this.view.append(this.hud.root);
-  this.ui={dist:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),zone:this.hud.q('.d3-zone'),power:this.hud.q('.d3-power'),powerLabel:this.hud.q('.d3-power span'),powerBar:this.hud.q('.d3-power s')};
+  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-combo d3-flow" hidden><b>×2</b><small>FLOW</small><em><s></s></em></div><div class="d3-power" hidden><span></span><em><s></s></em></div>');this.view.append(this.hud.root);
+  this.ui={flow:this.hud.q('.d3-flow'),flowN:this.hud.q('.d3-flow b'),flowBar:this.hud.q('.d3-flow s'),dist:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),zone:this.hud.q('.d3-zone'),power:this.hud.q('.d3-power'),powerLabel:this.hud.q('.d3-power span'),powerBar:this.hud.q('.d3-power s')};
   this.rig=new CameraRig(this.camera);this.rig.setMode(this.cameraMode);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D CITY · LIVE');return this;
  }
@@ -109,6 +110,7 @@ export class ThreeDash {
   else if(type==='bar'){for(const x of [-1.08,1.08]){const p=new T.Mesh(new T.BoxGeometry(.16,2.2,.16).translate(0,1.1,0),this.metalMat);p.position.x=x;p.castShadow=true;g.add(p);}const tube=new T.Mesh(new T.CylinderGeometry(.08,.08,2.3,12).rotateZ(Math.PI/2),this.barMat);tube.position.y=1.42;const tube2=tube.clone();tube2.position.y=2.12;g.add(tube,tube2);const glow=new T.Sprite(this.additive(0x48e6ff));glow.scale.set(3.4,1.1,1);glow.position.y=1.42;g.add(glow);shadow.scale.set(2.8,1,.8);}
   else if(type==='block'){const wall=new T.Mesh(new T.BoxGeometry(2.1,2.5,.5).translate(0,1.25,0),this.hazardMat);wall.castShadow=true;g.add(wall);g.userData.beacons=[-.75,.75].map(x=>{const b=new T.Mesh(new T.SphereGeometry(.13,12,8),this.beaconMat.clone());b.position.set(x,2.62,0);g.add(b);return b;});shadow.scale.set(2.8,1,1.4);}
   else if(type==='coin'){const coin=new T.Group(),disc=new T.Mesh(this.coinGeo,this.goldMat),rim=new T.Mesh(this.coinRim,this.goldMat);coin.add(disc,rim);coin.position.y=1.05;g.add(coin);const glow=new T.Sprite(this.glowMats.gold);glow.scale.set(3,3,1);glow.position.y=1.05;g.add(glow);g.userData.spin=coin;shadow.scale.set(.9,1,.9);}
+  else if(type==='prize'){const bone=new T.Group(),shaft=new T.Mesh(new T.CylinderGeometry(.13,.13,.8,12).rotateZ(Math.PI/2),this.goldMat);bone.add(shaft);for(const x of [-.42,.42])for(const y of [-.13,.13]){const k=new T.Mesh(new T.SphereGeometry(.2,14,10),this.goldMat);k.position.set(x,y,0);bone.add(k);}const glow=new T.Sprite(this.glowMats.gold);glow.scale.set(4.2,4.2,1);const halo=new T.Mesh(new T.TorusGeometry(.78,.035,8,40),this.haloMat??=new T.MeshBasicMaterial({color:new T.Color(3,2.1,.6),toneMapped:false}));g.add(bone,glow,halo);g.userData.spin=bone;g.userData.halo=halo;g.userData.glow=glow;shadow.visible=false;}
   else if(type==='shield'){const gem=new T.Mesh(new T.OctahedronGeometry(.45,0),this.shieldMat);gem.position.y=1.45;const glow=new T.Sprite(this.glowMats.shield);glow.scale.set(2.8,2.8,1);glow.position.y=1.45;g.add(gem,glow);g.userData.spin=gem;shadow.scale.set(1.1,1,1.1);}
   else if(type==='magnet'){const m=new T.Group(),arc=new T.Mesh(new T.TorusGeometry(.34,.11,12,24,Math.PI),this.magnetMat);m.add(arc);for(const x of [-.34,.34]){const leg=new T.Mesh(new T.CylinderGeometry(.11,.11,.32,12).translate(0,-.16,0),this.magnetMat);leg.position.x=x;const tip=new T.Mesh(new T.CylinderGeometry(.115,.115,.14,12).translate(0,-.39,0),this.tipMat);tip.position.x=x;m.add(leg,tip);}m.position.y=1.5;const glow=new T.Sprite(this.glowMats.magnet);glow.scale.set(2.8,2.8,1);glow.position.y=1.4;g.add(m,glow);g.userData.spin=m;shadow.scale.set(1.1,1,1.1);}
   return g;
@@ -125,15 +127,21 @@ export class ThreeDash {
  fxZ(z){return this.rig?.first?z-2.4:z;}
  event(e,g){
   if(!this.ready)return;const p=dashPoint(g.visualLane,0),lift=jumpLift(g.jump),st=this.stage,hud=this.hud;
-  if(e.type==='coin'){this.burst(p.x,1.2+lift,this.fxZ(-.6),26,0xffc14d,{speed:6,up:2.5});hud.pop('+25');}
+  if(e.type==='coin'){this.burst(p.x,1.2+lift,this.fxZ(-.6),14,0xffc14d,{speed:5,up:2.5});}
+  else if(e.type==='near'){const side=Math.sign(g.swerveLane-g.lane)||1;this.burst(p.x+side*1.1,1,this.fxZ(-.3),46,0xffffff,{speed:9,life:.45,gravity:-2,up:1});this.burst(p.x+side*1.1,.6,this.fxZ(-.3),24,0xff8a3d,{speed:6,life:.5});hud.pop('CLOSE CALL +'+e.points,'shield');st.shake(.35);st.flashOnce(0xffffff,.12,this.reduced);this.flowUp(e);}
+  else if(e.type==='prize'){this.burst(p.x,1.3+lift,this.fxZ(-.6),80,0xffc83d,{speed:10,life:.9,gravity:-3,up:3});hud.pop('GOLD BONE +'+e.points,'big');st.shake(.3);st.flashOnce(0xffc83d,.2,this.reduced);this.flowUp(e);}
+  else if(e.type==='flowbreak'){hud.pop('FLOW LOST','dodge');}
+  else if(e.type==='turn'){if(!this.reduced)this.burst(p.x,.5,this.fxZ(.2),8,0xc8d4ff,{speed:3,life:.25,gravity:0,up:.2,stick:1});}
   else if(e.type==='power'){const shield=e.power==='shield';this.burst(p.x,1.2+lift,this.fxZ(-.4),60,shield?0x48e6ff:0xff4f8a,{speed:9,life:.9,gravity:-2});hud.pop(shield?'SHIELD UP':'MAGNET',shield?'shield':'magnet');st.shake(.25);st.flashOnce(shield?0x48e6ff:0xff4f8a,.18,this.reduced);}
-  else if(e.type==='shield'){this.burst(p.x,1.1+lift,this.fxZ(-.8),90,0xb8fbff,{speed:12,life:.9,gravity:-3});hud.pop('SHIELD SAVED YOU','big');st.shake(.75);st.flashOnce(0xffffff,.45,this.reduced);this.combo=0;}
-  else if(e.type==='dodge'){this.combo++;hud.pop(this.combo>1?'CLEAN ×'+this.combo:'CLEAN!','dodge');if(this.combo%5===0){this.burst(p.x,1.2+lift,this.fxZ(-.4),40,0xb9ff5e,{speed:8});st.flashOnce(0xb9ff5e,.12,this.reduced);}}
+  else if(e.type==='shield'){this.burst(p.x,1.1+lift,this.fxZ(-.8),90,0xb8fbff,{speed:12,life:.9,gravity:-3});hud.pop('SHIELD SAVED YOU','big');st.shake(.75);st.flashOnce(0xffffff,.45,this.reduced);this.lastMult=1;}
+  else if(e.type==='dodge'){hud.pop((g.jump>0?'OVER! +':'UNDER! +')+e.points,'dodge');this.burst(p.x,.9+lift,this.fxZ(-.4),18,0xb9ff5e,{speed:6,life:.4});this.flowUp(e);}
   else if(e.type==='jump'){this.burst(p.x,.15,.1,14,0x9aa3c7,{speed:2.5,life:.5,gravity:-1,up:.6,stick:1});}
   else if(e.type==='slide'){this.burst(p.x,.15,.1,18,0xffa04d,{speed:3,life:.4,gravity:-4,up:.8,stick:1});}
   else if(e.type==='heat'){hud.banner(heatLabel(e.tier));st.flashOnce(0xff7a3d,.2,this.reduced);st.shake(.2);}
-  else if(e.type==='over'){this.burst(p.x,1.1,this.fxZ(-.6),120,0xff4f6a,{speed:13,life:1.1,gravity:-5});st.shake(1);st.flashOnce(0xff3355,.55,this.reduced);this.combo=0;}
+  else if(e.type==='over'){this.burst(p.x,1.1,this.fxZ(-.6),120,0xff4f6a,{speed:13,life:1.1,gravity:-5});st.shake(1);st.flashOnce(0xff3355,.55,this.reduced);this.lastMult=1;}
  }
+ // The multiplier stepping up is the moment to celebrate.
+ flowUp(e){if(e.mult>(this.lastMult||1)){this.hud.banner('FLOW ×'+e.mult);this.stage.flashOnce(0xff5fc8,.16,this.reduced);}this.lastMult=e.mult;}
  draw(g,d,reduced=false){
   if(!this.ready||this.failed)return false;this.lastGame=g;this.lastDawg=d;this.reduced=reduced;const now=performance.now();this.ambient.drew(now);
   this.render(g,d,now);if(g.status!=='playing')this.ambient.start(t=>!this.dead&&this.lastGame&&!this.view.hidden&&!document.hidden&&(this.lastGame.status==='ready'?t-this.ambient.lastDraw<30000:this.lastGame.status==='over'&&t-this.statusSince<3200));return true;
@@ -166,6 +174,8 @@ export class ThreeDash {
    for(const o of row.obstacles){const obj=this.claim('o'+row.id+':'+o.lane,o.type),pt=dashPoint(o.lane,row.z);obj.position.set(pt.x,0,pt.z);if(obj.userData.beacons){const on=Math.sin(real*9+row.id)>0;obj.userData.beacons.forEach((b,i)=>b.material.color.setRGB(on===!!i?4:.5,on===!!i?.3:.05,on===!!i?.5:.08));}}
    const cp=dashPoint(row.safe,row.z),coin=this.claim('c'+row.id,'coin');let cx=cp.x,cy=0;
    if(g.magnet>0&&row.z<38){const pull=smooth(1-row.z/38);cx+=(p.x-cx)*pull;cy=lift*pull;}coin.position.set(cx,cy+(reduced?0:Math.sin(real*3+row.id)*.12),cp.z);coin.userData.spin.rotation.y=reduced?0:real*3.4+row.id;
+   for(let j=1;j<=2;j++){if((row.got??2)>=3-j)continue;const tz=row.z-RUNNER.trail*j;if(tz<=0)continue;const tp=dashPoint(row.safe,tz),tc=this.claim('t'+row.id+':'+j,'coin');let tx=tp.x,ty=0;if(g.magnet>0&&tz<38){const pull=smooth(1-tz/38);tx+=(p.x-tx)*pull;ty=lift*pull;}tc.position.set(tx,ty+(reduced?0:Math.sin(real*3+row.id+j)*.12),tp.z);tc.userData.spin.rotation.y=reduced?0:real*3.4+row.id+j*.9;}
+   if(row.prize>=0){const ob=row.obstacles.find(o=>o.lane===row.prize),pp=dashPoint(row.prize,row.z),pz=this.claim('z'+row.id,'prize'),py=ob?.type==='bar'?.62:2.3;pz.position.set(pp.x,0,pp.z);pz.userData.spin.position.y=pz.userData.glow.position.y=pz.userData.halo.position.y=py+(reduced?0:Math.sin(real*4+row.id)*.08);pz.userData.spin.rotation.set(0,reduced?.5:real*2.6,.35);pz.userData.halo.rotation.set(0,reduced?0:real*1.3,0);}
    if(row.power){const pw=this.claim('p'+row.id,row.power);pw.position.set(cp.x,reduced?0:Math.sin(real*2.4)*.15,cp.z-2.2);pw.userData.spin.rotation.y=real*2;}}
   this.sweep();
   this.placePlayer(g,p,lift,since,real);
@@ -174,7 +184,7 @@ export class ThreeDash {
   this.updateLines(g,speed,travelled);this.updateRain(look,real);
   this.placeCamera(g,p,lift,dt,since,speed,real);
   this.updateHud(g,look);
-  this.stage.render(dt,real,{reduced,aberration:.0025+Math.max(0,(speed-30)/10)*.003+(g.magnet>0?.003:0)});
+  this.stage.render(dt,real,{reduced,aberration:.0025+Math.max(0,(speed-30)/10)*.003+((g.mult||1)-1)*.0006+(g.magnet>0?.003:0)});
  }
  placeBuildings(travelled,seed){
   for(let side=0;side<2;side++){const list=this.buildings[side],sign=side?1:-1;for(let k=0;k<list.length;k++){const a=firstSlot(this.BUILD_SPACING,travelled,5)+k,o=list[((a%list.length)+list.length)%list.length],u=o.userData;
@@ -208,7 +218,7 @@ export class ThreeDash {
  }
  placeCamera(g,p,lift,dt,since,speed,real){
   const cam=this.camera,ready=g.status==='ready',over=g.status==='over',lean=g.lane-g.visualLane,slide=slideAmount(g.slide);
-  let third={pos:new T.Vector3(p.x*.78,2.55+lift*.35,5.1),at:new T.Vector3(p.x*.9,1.45+lift*.25,-9)};
+  let third={pos:new T.Vector3(p.x*.72,3.25+lift*.3,5.7),at:new T.Vector3(p.x*.9,1.05+lift*.2,-12)};
   // First person: eye height of the DAWG, rising with jumps, dropping on slides, bobbing with the stride.
   const bob=this.reduced||g.status!=='playing'||lift>0||slide>0?0:Math.abs(Math.sin(g.time*13))*.07;
   let first={pos:new T.Vector3(p.x,1.6+lift*.95-slide*.95+bob,-.15),at:new T.Vector3(p.x+lean*.6,1.35+lift*.4-slide*.6,-14)};
@@ -221,11 +231,11 @@ export class ThreeDash {
    first={pos:first.pos.clone().lerp(new T.Vector3(p.x,.45,.6),k),at:first.at.clone().lerp(new T.Vector3(p.x+side*4,.2,-6),k)};}
   const firstRoll=this.rig.mix>0?(over?smooth(Math.min(1,since/1.4))*.9:-lean*.12):0,roll=this.reduced?0:(-lean*.05)*(1-this.rig.mix)+firstRoll*this.rig.mix;
   this.rig.update(dt,third,first,{follow:ready||over?60:9,snap:ready&&!first,roll});this.stage.applyShake(real,this.reduced);this.rig.aim();
-  const base=this.reduced?60:58+Math.max(0,speed-25)/15*9+(g.magnet>0?3:0)+this.stage.trauma*4,fov=ready?50:base+this.rig.mix*8;cam.fov+=(fitFov(fov,cam.aspect)-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();
+  const base=this.reduced?60:60+Math.max(0,speed-25)/15*10+((g.mult||1)-1)*1.2+(g.magnet>0?3:0)+this.stage.trauma*4,fov=ready?50:base+this.rig.mix*8;cam.fov+=(fitFov(fov,cam.aspect)-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();
   this.sky.position.copy(cam.position);this.stars.position.copy(cam.position);this.skyline.position.set(cam.position.x,-8,cam.position.z);this.skyline.rotation.y=(g.distance*.00002)%1;this.moon.position.set(cam.position.x+150,170,cam.position.z-330);
  }
  updateLines(g,speed,travelled){
-  const playing=g.status==='playing'&&!this.reduced,amount=playing?Math.min(1,Math.max(0,(speed-27)/10)+(g.magnet>0?.45:0)+this.stage.trauma*.3+this.rig.mix*.25):0;this.lines.material.opacity=amount*.55;this.lines.visible=amount>.01;if(!this.lines.visible)return;
+  const playing=g.status==='playing'&&!this.reduced,amount=playing?Math.min(1,.22+Math.max(0,(speed-25)/12)+((g.mult||1)-1)*.14+(g.magnet>0?.45:0)+this.stage.trauma*.3+this.rig.mix*.25):0;this.lines.material.opacity=amount*.55;this.lines.visible=amount>.01;if(!this.lines.visible)return;
   const cam=this.camera.position;for(let i=0;i<this.lineSeeds.length;i++){const s=this.lineSeeds[i],side=s.x<.5?-1:1;this.m4.makeTranslation(cam.x+side*(1.6+s.y*4.5),Math.max(.3,cam.y-2.6+s.z*5.5),cam.z-2-(40-((s.y*40+travelled*2.2)%40)));this.lines.setMatrixAt(i,this.m4);}this.lines.instanceMatrix.needsUpdate=true;
  }
  updateRain(look,real){
@@ -237,6 +247,7 @@ export class ThreeDash {
   const h=this.hud,ui=this.ui;h.set(ui.dist,'d',String(Math.floor(g.distance)));h.set(ui.gold,'g',String(g.coins));h.set(ui.zone,'z',look.label.toUpperCase());
   const label=g.magnet>0?'MAGNET':g.shield?'SHIELD':'';if(h.cache.p!==label){h.cache.p=label;ui.power.hidden=!label;ui.power.dataset.kind=label.toLowerCase();ui.powerLabel.textContent=label;}
   if(label)ui.powerBar.style.transform=`scaleX(${g.magnet>0?Math.min(1,g.magnet/(10+(g.career?.magnet||0))).toFixed(3):1})`;
+  const mult=g.mult||1,flowing=g.streak>0&&g.status==='playing';ui.flow.hidden=!flowing;if(flowing){h.set(ui.flowN,'f',mult>1?'×'+mult:g.streak+'/'+RUNNER.perMult);ui.flowBar.style.transform=`scaleX(${Math.max(0,g.flow/RUNNER.flow).toFixed(3)})`;ui.flow.dataset.hot=mult>=RUNNER.maxMult?'1':'';}else this.lastMult=g.streak?this.lastMult:1;
   h.live(g.status==='playing');
  }
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}

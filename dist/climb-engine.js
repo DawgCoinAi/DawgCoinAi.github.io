@@ -15,6 +15,16 @@ export const TAUNTS=[
  [160,['A tragedy in one act.','The penthouse just unfollowed you.','Your DAWG would like a word.']],
  [1e9,['Legendary. Legendarily bad.','Whole floors. Plural. Gone.','Speedrunning the way down.']]];
 export function taunt(meters,i=0){const set=TAUNTS.find(([m])=>meters<m)[1];return set[Math.abs(i)%set.length];}
+export const FEATS=[
+ {id:'climb.ledge',name:'First Ledge',text:'Reach the first rest ledge at 50 m'},
+ {id:'climb.hundred',name:'Triple Digits',text:'Climb past 100 m'},
+ {id:'climb.halfway',name:'Halfway There',text:'Climb past 250 m'},
+ {id:'climb.summit',name:'The Penthouse',text:'Reach the top'},
+ {id:'climb.clean',name:'Clean Hundred',text:'Reach 100 m without a single fall'},
+ {id:'climb.bones',name:'Bone Collector',text:'Grab 3 gold bones in one run'},
+ {id:'climb.boing',name:'Boing',text:'Ride a spring hook'},
+ {id:'climb.rusty',name:'Borrowed Time',text:'Let go of a rusty hook before it snaps'},
+ {id:'climb.survivor',name:'That Had To Hurt',text:'Fall 50 m or more and keep climbing'}];
 const OVER=['Back on the street.','The pavement remembers you.','Ground floor. Again.','The street was waiting.'];
 
 // The one tower. Hooks zigzag up the shaft, getting further apart and nastier with height; each
@@ -40,29 +50,33 @@ export function windAt(seed,y,time){const w=tower().winds.find(w=>y>=w.y0&&y<w.y
 
 export class ClimbGame {
  constructor(random=Math.random,worldSeed=0){this.random=random;this.worldSeed=worldSeed;this.status='ready';this.time=0;this.score=0;this.reason='';this.events=[];
-  this.x=0;this.y=0;this.vx=0;this.vy=0;this.hook=-1;this.rope=0;this.grip=0;this.grounded=true;this.ledge=0;this.peak=0;this.maxY=0;this.bonus=0;this.bones=[];this.broken=[];this.falls=0;this.fallen=0;this.cooldown=0;this.input={up:false,left:false,right:false};this.grabs=0;this.floor=0;this.last=-1;}
+  this.x=0;this.y=0;this.vx=0;this.vy=0;this.hook=-1;this.rope=0;this.grip=0;this.grounded=true;this.ledge=0;this.peak=0;this.maxY=0;this.bonus=0;this.bones=[];this.broken=[];this.falls=0;this.fallen=0;this.cooldown=0;this.input={up:false,left:false,right:false};this.grabs=0;this.floor=0;this.last=-1;this.feats=[];}
+ // A feat is earned once per run; the arcade's quest board remembers it for good.
+ feat(id){const full='climb.'+id;if(this.feats.includes(full))return;const f=FEATS.find(f=>f.id===full);if(!f)return;this.feats.push(full);this.events.push({type:'feat',id:full,name:f.name});}
  get height(){return Math.max(0,this.y);}
  start(){if(this.status==='ready'||this.status==='paused')this.status='playing';}
  pause(){if(this.status==='playing')this.status='paused';}
  end(reason){if(this.status!=='playing')return;this.status='over';this.reason=reason;this.events.push({type:'over'});}
  // Held controls: up grabs and reels (release lets go), left/right pump.
  press(dir,down){if(!['up','left','right'].includes(dir))return false;this.input[dir]=!!down;if(this.status!=='playing')return false;
-  if(dir==='up'){if(down)this.grab();else if(this.hook>=0)this.letGo();}return true;}
- // The best hook in reach: close, and above you if possible; never the one you just let go of
- // while another is in reach, so reel, release, grab climbs.
+  // A grab pressed during the short re-grab pause is remembered and fires as soon as it can.
+  if(dir==='up'){if(down){if(this.hook<0&&this.cooldown>0)this.pending=true;else this.grab();}else{this.pending=false;if(this.hook>=0)this.letGo();}}return true;}
+ // The hook a grab takes: the highest one in reach. The one you just let go of counts as 2.5 m
+ // lower, so reel, release, grab climbs to the next hook, but you never drop to a lower one
+ // while the hook you left is still in reach.
  target(){const t=tower();let best=null,bestScore=Infinity,nearMiss=null,nearD=Infinity;
   for(const h of t.hooks){if(Math.abs(h.y-this.y)>CLIMB.reach+CLIMB.near+3)continue;if(this.broken.includes(h.id))continue;const p=hookPos(h,this.time),dx=p.x-this.x,dy=p.y-this.y,d=Math.hypot(dx,dy);
-   if(d<=CLIMB.reach&&dy>-2){const s=d-Math.max(0,dy)*.6+(h.id===this.last?100:0);if(s<bestScore){bestScore=s;best=h;}}else if(d<=CLIMB.reach+CLIMB.near&&dy>0&&d<nearD){nearD=d;nearMiss=h;}}
+   if(d<=CLIMB.reach&&dy>-2){const s=-p.y+d*.15+(h.id===this.last?2.5:0);if(s<bestScore){bestScore=s;best=h;}}else if(d<=CLIMB.reach+CLIMB.near&&dy>0&&d<nearD){nearD=d;nearMiss=h;}}
   return {hook:best,near:nearMiss};}
  grab(){if(this.hook>=0||this.cooldown>0)return false;const {hook,near}=this.target();
   if(!hook){if(this.grounded){this.vy=CLIMB.jump;this.grounded=false;this.ledge=-1;this.events.push({type:'jump'});return true;}this.cooldown=CLIMB.cooldown;this.events.push({type:'whiff',near:!!near,x:near?hookPos(near,this.time).x:this.x,y:near?near.y:this.y+CLIMB.reach});return false;}
   const p=hookPos(hook,this.time),fromFeet=this.grounded;this.grabs++;this.grounded=false;this.ledge=-1;if(fromFeet)this.y+=.08;
   if(hook.type==='spring'){// Springs fling you straight up past the hook and don't hold on.
-   this.vy=Math.max(this.vy,CLIMB.spring);this.vx*=.4;this.cooldown=CLIMB.regrab;this.events.push({type:'spring',x:p.x,y:p.y});return true;}
+   this.vy=Math.max(this.vy,CLIMB.spring);this.vx*=.4;this.cooldown=CLIMB.regrab;this.events.push({type:'spring',x:p.x,y:p.y});this.feat('boing');return true;}
   // Off your feet, the leash starts a little short so it lifts you instead of dragging you back down.
   this.hook=hook.id;this.rope=Math.max(CLIMB.minRope,Math.hypot(p.x-this.x,p.y-this.y)-(fromFeet?.35:0));this.grip=0;this.events.push({type:'grab',hook:hook.id,kind:hook.type,x:p.x,y:p.y});return true;}
- letGo(reason){if(this.hook<0)return;const id=this.hook;this.hook=-1;this.last=id;this.cooldown=CLIMB.regrab;this.events.push({type:reason||'release',hook:id,x:this.x,y:this.y});}
- tick(dt){if(this.status!=='playing')return;this.time+=dt;this.cooldown=Math.max(0,this.cooldown-dt);const t=tower(),I=this.input,lr=(I.right?1:0)-(I.left?1:0);
+ letGo(reason){if(this.hook<0)return;const id=this.hook;if(!reason&&tower().hooks[id].type==='rusty')this.feat('rusty');this.hook=-1;this.last=id;this.cooldown=CLIMB.regrab;this.events.push({type:reason||'release',hook:id,x:this.x,y:this.y});}
+ tick(dt){if(this.status!=='playing')return;this.time+=dt;this.cooldown=Math.max(0,this.cooldown-dt);if(this.pending&&this.cooldown<=0){this.pending=false;if(this.input.up&&this.hook<0)this.grab();}const t=tower(),I=this.input,lr=(I.right?1:0)-(I.left?1:0);
   let ax=windAt(this.worldSeed,this.y,this.time),ay=-CLIMB.gravity;
   if(this.hook>=0){const h=t.hooks[this.hook],p=hookPos(h,this.time);this.grip+=dt;
    if(h.type==='rusty'&&this.grip>=CLIMB.rusty){this.broken.push(h.id);this.letGo('snap');}
@@ -85,17 +99,18 @@ export class ClimbGame {
   if(this.hook<0&&!this.grounded&&this.y>this.peak)this.peak=this.y;
   if(this.y>this.maxY){this.maxY=this.y;const f=floorOf(this.maxY);if(f>this.floor){this.floor=f;this.events.push({type:'floor',floor:f,name:FLOORS[f]});}}
   if(this.hook>=0||this.grounded)this.peak=this.y;
-  for(const b of t.bones)if(!this.bones.includes(b.id)&&Math.abs(b.y-this.y)<1&&Math.abs(b.x-this.x)<1){this.bones.push(b.id);this.bonus+=50;this.events.push({type:'bone',x:b.x,y:b.y});}
+  for(const b of t.bones)if(!this.bones.includes(b.id)&&Math.abs(b.y-this.y)<1&&Math.abs(b.x-this.x)<1){this.bones.push(b.id);this.bonus+=50;this.events.push({type:'bone',x:b.x,y:b.y});if(this.bones.length>=3)this.feat('bones');}
+  if(this.maxY>=50)this.feat('ledge');if(this.maxY>=100){this.feat('hundred');if(!this.falls)this.feat('clean');}if(this.maxY>=250)this.feat('halfway');
   this.score=Math.floor(this.maxY)*10+this.bonus;
-  if(this.y>=CLIMB.top){this.bonus+=5000;this.score=Math.floor(this.maxY)*10+this.bonus;this.events.push({type:'summit'});this.end('You reached the Penthouse. Nobody believed you could. Including us.');}}
+  if(this.y>=CLIMB.top){this.feat('summit');this.bonus+=5000;this.score=Math.floor(this.maxY)*10+this.bonus;this.events.push({type:'summit'});this.end('You reached the Penthouse. Nobody believed you could. Including us.');}}
  land(l){const drop=this.peak-l.y;this.last=-1;this.y=l.y;this.vy=0;this.vx*=.2;this.grounded=true;this.ledge=l.id;this.hook=-1;
   if(drop>=8){this.falls++;this.fallen+=Math.floor(drop);this.events.push({type:'fall',meters:Math.floor(drop),line:taunt(drop,this.falls),x:this.x,y:this.y,ground:l.id===0});}else this.events.push({type:'land',x:this.x,y:this.y});
-  this.peak=l.y;
+  this.peak=l.y;if(drop>=50&&l.id!==0)this.feat('survivor');
   if(l.id===0&&this.maxY>=12)this.end(`${OVER[this.falls%OVER.length]} You were ${Math.floor(this.maxY)} m up${drop>=8?' and fell '+Math.floor(drop)+' m':''}. ${taunt(drop,this.falls+1)}`);}
 }
-export const CLIMB_FIELDS=['x','y','vx','vy','hook','rope','grip','grounded','ledge','peak','maxY','bonus','bones','broken','falls','fallen','cooldown','input','grabs','floor','last'];
+export const CLIMB_FIELDS=['x','y','vx','vy','hook','rope','grip','grounded','ledge','peak','maxY','bonus','bones','broken','falls','fallen','cooldown','input','grabs','floor','last','feats'];
 const num=(n,a,b)=>Number.isFinite(n)&&n>=a&&n<=b,int=(n,a,b)=>Number.isInteger(n)&&num(n,a,b),ids=(a,max)=>Array.isArray(a)&&a.length<=max&&a.every(i=>int(i,0,max))&&new Set(a).size===a.length;
 export function validClimbSnapshot(s){const t=tower();
  return num(s.x,-CLIMB.half,CLIMB.half)&&num(s.y,-1,CLIMB.top+5)&&num(s.vx,-80,80)&&num(s.vy,-CLIMB.maxFall,60)&&int(s.hook,-1,t.hooks.length-1)&&num(s.rope,0,CLIMB.reach+.01)&&num(s.grip,0,1e6)&&typeof s.grounded==='boolean'&&int(s.ledge,-1,t.ledges.length-1)
   &&num(s.peak,-1,CLIMB.top+60)&&num(s.maxY,0,CLIMB.top+60)&&int(s.bonus,0,1e7)&&ids(s.bones,t.bones.length)&&s.bones.every(i=>i<t.bones.length)&&ids(s.broken,t.hooks.length)&&int(s.falls,0,1e6)&&int(s.fallen,0,1e8)&&num(s.cooldown,0,1)
-  &&s.input&&['up','left','right'].every(k=>typeof s.input[k]==='boolean')&&int(s.grabs,0,1e7)&&int(s.floor,0,FLOORS.length-1)&&int(s.last,-1,t.hooks.length-1)&&s.score===Math.floor(s.maxY)*10+s.bonus;}
+  &&s.input&&['up','left','right'].every(k=>typeof s.input[k]==='boolean')&&int(s.grabs,0,1e7)&&int(s.floor,0,FLOORS.length-1)&&int(s.last,-1,t.hooks.length-1)&&Array.isArray(s.feats)&&s.feats.length<=FEATS.length&&s.feats.every(id=>FEATS.some(f=>f.id===id))&&new Set(s.feats).size===s.feats.length&&s.score===Math.floor(s.maxY)*10+s.bonus;}

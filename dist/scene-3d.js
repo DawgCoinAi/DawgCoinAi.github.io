@@ -5,6 +5,10 @@
 // bubbles follow them via screen anchors. It draws over the 2D city canvas, which stays as the
 // fallback. Scenes only read state; the trade engine owns everything else.
 import {T,quality,fitFov,skyMaterial,Stage,Particles,loadModel} from './three-kit.js';
+// A patrol cap and badge for whoever pulled you over, sized for a 1.7 m DAWG.
+function patrolCap(){const g=new T.Group(),navy=new T.MeshStandardMaterial({color:0x1b2a55,roughness:.55}),gold=new T.MeshStandardMaterial({color:0xffd25e,metalness:.9,roughness:.25,emissive:0x6a4a00});
+ const band=new T.Mesh(new T.CylinderGeometry(.3,.32,.14,16),navy);band.position.y=.07;const top=new T.Mesh(new T.CylinderGeometry(.4,.31,.1,16),navy);top.position.y=.19;const brim=new T.Mesh(new T.CylinderGeometry(.34,.34,.03,16,1,false,-Math.PI/2.6,Math.PI/1.3),new T.MeshStandardMaterial({color:0x0b0f1f,roughness:.3}));brim.position.set(0,.02,.12);
+ const badge=new T.Mesh(new T.SphereGeometry(.06,10,8),gold);badge.position.set(0,.13,.31);badge.scale.z=.4;g.add(band,top,brim,badge);return g;}
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
 import {loadBuildings,loadSet,STREET,TRAFFIC,prop,styledBuildings,SKIES,STORE_SIGNS,roadTexture,palmGrove,storeSign,skylineBand,glowTexture,fitBuilding} from './city-art.js';
 import {seededRandom} from './mobile-core.js';
@@ -15,6 +19,9 @@ const SPOTS=[[8.1,.3,3,.15],[10.3,.3,1.3,-.45]];
 const WALKERS=['Biscuit','Pepper','Waffles','Juno','Rocco','Mochi'];
 // Camera framings the street drifts between: [position, look-at].
 const SHOTS=[[[7,2.5,14.5],[6.6,1.9,-6]],[[7.4,1.4,10.4],[9.4,1.9,2.4]],[[-4,6.2,15.5],[6,1.2,-10]],[[12.6,1.75,10.5],[6,2,-1]]];
+
+// The framing while someone has you stopped on the corner: you, them, and the kerb.
+const ENCOUNTER_SHOT=[[7.4,1.5,10.6],[9.4,1.8,2.4]];
 
 export class ThreeStreetScene {
  constructor(canvas,{onFailure,quality:q=quality()}={}){this.canvas=canvas;this.onFailure=onFailure;this.quality=q;this.ready=false;this.dead=false;this.key='';this.clock=performance.now();this.items=[];this.cars=[];this.walkers=[];this.npcs=new Map();this.anchors={};this.camPos=new T.Vector3(7,2.5,14.5);this.camAt=new T.Vector3(6.6,1.9,-6);}
@@ -36,6 +43,10 @@ export class ThreeStreetScene {
   this.glitter=new T.Mesh(new T.PlaneGeometry(30,420),new T.MeshBasicMaterial({map:this.glowTex,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,fog:false}));this.glitter.rotation.x=-Math.PI/2;s.add(this.glitter);
   this.sign=storeSign('THE BLOCK','#b9ff5e',6);this.sign.position.set(4.2,5,-9);this.sign.rotation.y=-.35;s.add(this.sign);
   this.player=new T.Group();this.player.position.set(10.4,.3,5.4);this.player.rotation.y=-.95;s.add(this.player);
+  // The patrol cruiser that pulls up when you're stopped: hidden until then, lights on the roof.
+  this.cruiser=new T.Group();this.cruiser.position.set(11.5,.25,-.2);this.cruiser.rotation.y=.25;this.cruiser.visible=false;s.add(this.cruiser);this.beacons=[[0xff2030,-.38],[0x2f6bff,.38]].map(([c,x])=>{const b=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(c).multiplyScalar(2.4),transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,fog:false}));b.position.set(x,1.72,0);b.scale.set(2.6,2.6,1);this.cruiser.add(b);return b;});
+  this.beaconLight=new T.PointLight(0xff2030,0,16,1.6);this.beaconLight.position.set(0,2.2,0);this.cruiser.add(this.beaconLight);
+  loadModel('cars/police.glb').then(m=>{if(m&&!this.dead)this.cruiser.add(prop(m,{x:0,z:0,size:4.4,facing:Math.PI}));}).catch(()=>{});
   // Moving lights: car head and tail lights in one points cloud.
   this.lightN=64;this.lightPos=new Float32Array(this.lightN*3);this.lightCol=new Float32Array(this.lightN*3);const lg=new T.BufferGeometry();lg.setAttribute('position',new T.BufferAttribute(this.lightPos,3).setUsage(T.DynamicDrawUsage));lg.setAttribute('color',new T.BufferAttribute(this.lightCol,3).setUsage(T.DynamicDrawUsage));
   this.lights=new T.Points(lg,new T.PointsMaterial({map:this.glowTex,size:.8,vertexColors:true,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.lights.frustumCulled=false;s.add(this.lights);
@@ -69,7 +80,7 @@ export class ThreeStreetScene {
  prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;try{const next=createDawgAsset(d),b=new T.Box3().setFromObject(next.root),h=b.getSize(new T.Vector3()).y||1;next.root.scale.setScalar(1.7/h);if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.player.add(next.root);}catch{}}
  // Characters by name, built once and reused; each faces the camera from its corner spot.
  castFor(cast=[]){const key=cast.map(c=>c.name).join('|');if(key===this.castKey)return;this.castKey=key;for(const n of this.npcs.values())n.group.visible=false;
-  cast.slice(0,SPOTS.length).forEach((c,i)=>{let n=this.npcs.get(c.name);if(!n){try{const a=createDawgAsset(npcDawg(c.name)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.7/h);const group=new T.Group();group.add(a.root);this.scene.add(group);n={asset:a,group};this.npcs.set(c.name,n);}catch{return;}}
+  cast.slice(0,SPOTS.length).forEach((c,i)=>{let n=this.npcs.get(c.name);if(!n){try{const a=createDawgAsset(npcDawg(c.name)),b=new T.Box3().setFromObject(a.root),h=b.getSize(new T.Vector3()).y||1;a.root.scale.setScalar(1.7/h);const group=new T.Group();group.add(a.root);if(/^Officer /.test(c.name)){const cap=patrolCap();cap.position.y=new T.Box3().setFromObject(a.root).max.y-.1;group.add(cap);}this.scene.add(group);n={asset:a,group};this.npcs.set(c.name,n);}catch{return;}}
    const [x,y,z,ry]=SPOTS[i];n.group.position.set(x,y,z);n.group.rotation.y=ry;n.group.visible=true;n.slot=c.id;});}
  // place: {seed, title, tint (css colour), look (SKIES key), rain, dawg, reduced, cast:[{id,name}]}
  draw(place){if(!this.ready||this.dead)return false;const look=place.look||'neon',key=place.seed+'|'+place.title+'|'+look;if(key!==this.key){this.key=key;this.setPlace({seed:place.seed,look});
@@ -84,7 +95,9 @@ export class ThreeStreetScene {
   this.castFor(place.cast);for(const n of this.npcs.values())if(n.group.visible)setDawgPose(n.asset,real+n.slot.length,reduced?'still':'idle');
   if(place.rain&&!reduced)for(let i=0;i<4;i++)this.particles.burst((Math.random()-.5)*16,9,(Math.random()-.5)*14-4,1,0x9fc4ff,{speed:.2,life:.7,gravity:-24,up:0,spread:.1});
   // Camera: holds a framing for a while, then glides to the next; reduced motion keeps the first.
-  if(!reduced&&real-this.shotAt>9){this.shotAt=real;this.shot=(this.shot+1)%SHOTS.length;}const [p,a]=SHOTS[reduced?0:this.shot],f=reduced?1:Math.min(1,dt*.9);this.camPos.lerp(new T.Vector3(...p),f);this.camAt.lerp(new T.Vector3(...a),f);
+  // Someone has stopped you: the camera goes to the corner and stays on them; a patrol stop brings the cruiser.
+  const stop=place.encounter==='stop';if(this.cruiser.visible!==stop)this.cruiser.visible=stop;if(stop){const ph=reduced?0:Math.floor(real*5)%2;this.beacons[0].material.opacity=ph?.15:1;this.beacons[1].material.opacity=ph?1:.15;this.beaconLight.color.set(ph?0x2f6bff:0xff2030);this.beaconLight.intensity=this.quality==='high'?26:14;}
+  if(!reduced&&!place.encounter&&real-this.shotAt>9){this.shotAt=real;this.shot=(this.shot+1)%SHOTS.length;}const [p,a]=place.encounter?ENCOUNTER_SHOT:SHOTS[reduced?0:this.shot],f=reduced?1:Math.min(1,dt*(place.encounter?2.2:.9));this.camPos.lerp(new T.Vector3(...p),f);this.camAt.lerp(new T.Vector3(...a),f);
   this.camera.position.copy(this.camPos);if(!reduced){this.camera.position.x+=Math.sin(real*.25)*.35;this.camera.position.y+=Math.sin(real*.4)*.08;}this.camera.lookAt(this.camAt);this.camera.fov=fitFov(52,this.camera.aspect,78);this.camera.updateProjectionMatrix();
   const cp=this.camera.position;this.sky.position.copy(cp);this.skyline.position.set(cp.x,this.skyline.position.y,cp.z);const sunDir=new T.Vector3(-.42,.055,-.9).normalize();this.sun.position.copy(cp).addScaledVector(sunDir,700);this.glitter.position.set(cp.x+sunDir.x*240,-.58,cp.z+sunDir.z*240);this.glitter.rotation.z=Math.atan2(sunDir.x,sunDir.z);
   this.particles.update(dt);this.stage.render(dt,real,{reduced,aberration:.0012});this.canvas.style.opacity='0';

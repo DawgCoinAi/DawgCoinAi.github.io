@@ -7,8 +7,8 @@ import {makeBackup,parseBackup,applyBackup,SAVE_PREFIX} from '../dist/progress-b
 import {TradeGame} from '../dist/engine.js';
 import {StoryGame} from '../dist/story-engine.js';
 
-test('Snake buffers one legal turn, grows on gold, and freezes while paused',()=>{
- const g=new SnakeGame(()=>0);g.start();assert.equal(g.move('left'),false);g.food={x:7,y:8};assert.equal(g.move('up'),true);assert.equal(g.move('left'),false);g.tick(.24);assert.deepEqual(g.body[0],{x:7,y:8});assert.equal(g.body.length,4);assert.equal(g.score,25);assert.equal(g.coins,1);assert.ok(!g.body.some(p=>p.x===g.food.x&&p.y===g.food.y));g.pause();const s=JSON.stringify(g);g.tick(5);assert.equal(JSON.stringify(g),s);
+test('Snake buffers legal turns, grows on gold, and freezes while paused',()=>{
+ const g=new SnakeGame(()=>0);g.start();assert.equal(g.move('left'),false);g.food={x:7,y:8};assert.equal(g.move('up'),true);assert.equal(g.move('down'),false,'no reversing onto the queued turn');assert.equal(g.move('left'),true,'a second turn waits behind the first');assert.equal(g.move('right'),false,'only two turns wait');g.tick(.24);assert.deepEqual(g.body[0],{x:7,y:8});assert.equal(g.dir,'up');assert.equal(g.queued,'left');assert.equal(g.body.length,4);assert.equal(g.score,30,'25 for the gold plus 5 for a direct line');assert.equal(g.streak,1);assert.equal(g.coins,1);assert.ok(!g.body.some(p=>p.x===g.food.x&&p.y===g.food.y));g.pause();const s=JSON.stringify(g);g.tick(5);assert.equal(JSON.stringify(g),s);
 });
 test('Snake detects walls and self collisions but permits a vacating tail cell',()=>{
  const wall=new SnakeGame();wall.start();wall.body=[{x:14,y:8},{x:13,y:8},{x:12,y:8}];wall.tick(.24);assert.equal(wall.status,'over');
@@ -36,4 +36,24 @@ test('Node launcher serves game modules and bundled fonts; blocks traversal and 
  const server=createGameServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
  try{const index=await fetch(base+'/');assert.equal(index.status,200);assert.match(await index.text(),/Neon Snake/);assert.equal(index.headers.get('cache-control'),'no-store');const js=await fetch(base+'/app.js');assert.match(js.headers.get('content-type'),/javascript/);const font=await fetch(base+'/assets/fonts/body.woff');assert.equal(font.status,200);assert.equal(font.headers.get('content-type'),'font/woff');const model=await fetch(base+'/assets/atelier/DAWG-Atelier-Example.glb');assert.equal(model.status,200);assert.equal(model.headers.get('content-type'),'model/gltf-binary');const modelBytes=new Uint8Array(await model.arrayBuffer());assert.equal(new TextDecoder().decode(modelBytes.slice(0,4)),'glTF');const fashion=await fetch(base+'/dawg-atelier.js');assert.equal(fashion.status,200);for(const path of ['/dash-presentation.js','/dawg-gpu.js','/dawg-graphics-model.js','/dawg-normal-map.js','/vendor/three.js','/vendor/pixi.js']){const module=await fetch(base+path);assert.equal(module.status,200,path);assert.match(module.headers.get('content-type'),/javascript/);assert.ok((await module.text()).length>100);}const head=await fetch(base+'/index.html',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');assert.equal((await fetch(base+'/no-file')).status,404);assert.equal((await fetch(base+'/assets/')).status,404);assert.equal((await fetch(base+'/',{method:'POST'})).status,405);assert.equal((await fetch(base+'/%2e%2e%2fpackage.json')).status,403);}
  finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
+
+test('Snake pays a rising bonus for direct lines to the gold and old saves still load',async()=>{
+ const {snapshotQuick,restoreQuick}=await import('../dist/pack-checkpoint.js');
+ const g=new SnakeGame(()=>.5);g.start();const eat=(steps)=>{const h=g.body[0];g.food={x:h.x+1,y:h.y};g.par=1;g.steps=steps;g.dir='right';g.queued=g.queued2=null;const s=g.score;g.elapsed=0;g.tick(g.interval);return g.score-s;};
+ g.body=[{x:2,y:16},{x:1,y:16},{x:0,y:16}];assert.equal(eat(0),30);assert.equal(eat(2),35);assert.equal(eat(30),25,'a wandering route pays the base 25 and ends the streak');assert.equal(g.streak,0);assert.equal(g.bestStreak,2);assert.equal(eat(0),30);
+ g.move('up');g.move('left');const snap=snapshotQuick(g,'snake'),back=restoreQuick(JSON.parse(JSON.stringify(snap)));assert.ok(back);assert.equal(back.queued2,'left');assert.equal(back.streak,g.streak);
+ const old={...snap};for(const k of ['queued2','steps','par','streak','bestStreak'])delete old[k];const legacy=restoreQuick(old);assert.ok(legacy,'a save from before the streak still loads');assert.equal(legacy.queued2,null);assert.equal(legacy.streak,0);
+ assert.equal(restoreQuick({...snap,queued2:'sideways'}),null);assert.equal(restoreQuick({...snap,streak:-1}),null);
+});
+
+test('Snake: three direct lines charge the head, and a charged pack smashes one crystal',async()=>{
+ const {snapshotQuick,restoreQuick}=await import('../dist/pack-checkpoint.js');
+ const g=new SnakeGame(()=>.5,12345);assert.ok(g.rocks.length>0);g.start();const total=g.rocks.length,rock=g.rocks[0];
+ const plain=new SnakeGame(()=>.5,12345);plain.start();plain.body=[{x:rock.x-1,y:rock.y},{x:rock.x-2,y:rock.y},{x:rock.x-3,y:rock.y}];plain.dir='right';plain.food={x:0,y:0};plain.tick(plain.interval);assert.equal(plain.status,'over');
+ g.streak=2;g.body=[{x:0,y:17},{x:1,y:17},{x:2,y:17}];g.dir='left';g.body=[{x:1,y:17},{x:2,y:17},{x:3,y:17}];g.food={x:0,y:17};g.par=1;g.steps=0;g.tick(g.interval);assert.equal(g.streak,3);assert.equal(g.charged,true);assert.ok(g.events.some(e=>e.type==='charge'));
+ g.body=[{x:rock.x-1,y:rock.y},{x:rock.x-2,y:rock.y},{x:rock.x-3,y:rock.y}];g.dir='right';g.queued=g.queued2=null;g.food={x:0,y:0};const s=g.score;g.elapsed=0;g.tick(g.interval);
+ assert.equal(g.status,'playing');assert.equal(g.charged,false);assert.equal(g.rocks.length,total-1);assert.equal(g.score,s+50);assert.deepEqual(g.body[0],{x:rock.x,y:rock.y});
+ g.coins=5;const snap=snapshotQuick(g,'snake'),back=restoreQuick(JSON.parse(JSON.stringify(snap)));assert.ok(back,'a save with the head where a crystal used to be still loads');assert.equal(back.rocks.length,total-1);
+ assert.equal(restoreQuick({...snap,smashed:[99]}),null);assert.equal(restoreQuick({...snap,smashed:undefined}),null,'the crystal is back, so the head would be inside it');
 });

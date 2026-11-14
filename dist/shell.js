@@ -23,6 +23,7 @@ export const BLURBS={
  turbo:'A 3D speed run through the sky: loops, corkscrews, rails and the high road. Beat the clock.',
  pinball:'One deep table, Dawg City Nights: real flipper physics, two ramps, two orbits, five timed modes, multiball jackpots and a wizard mode. Climb the ladder from Stray to Top Dawg.',
  kart:'Three laps, five rivals, three circuits with jumps, tunnels and shortcuts. Drift, draft and win the cups.',
+ fight:'A one-on-one fighting game with ten original DAWGs, real combos, supers and over thirty finishing moves: launch a rival into orbit, turn them to gold or bury them in tennis balls, then post it to DAWG Chat.',
  nemesis:'A machine that studies how you move, then shoots where you’re about to be. Break your own habits or get PREDICTED. It remembers you.',
  bark:'Twenty DAWGs on a shrinking rooftop and one move: a charged bark that sends whoever is in front of you flying. Last one on the roof wins.',
  paint:'Three minutes, one night-market city, and every crew wants it in their colour. Loop out and back to flood whole blocks, buildings and landmarks with your paint, cut open trails, dash, drop paint bombs, and own the most of the town when the whistle goes.',
@@ -37,7 +38,7 @@ export const HOOKS={
  classic:'Eat the block. Turn the tables. Own the night.',rush:'Sixty seconds. Every coin counts.',daily:'One maze for everyone. A new twist every day.',
  trade:'Drive the city. Deal from your phone. Lose the cruisers.',flappy:'Jetpack the skyline from golden hour to fireworks.',cross:'Hop the traffic. Ride the decks. Outrun the blackout.',
  snake:'Ride the light. Grow the pack. Don’t bite your tail.',runner:'Three lanes, one night, no brakes.',turbo:'Loops, rails and the high road at full burn.',
- pinball:'Real flippers, five modes, one wizard jackpot.',kart:'Drift, draft and steal the cup on the last corner.',nemesis:'It studies how you move. Then it cheats.',
+ pinball:'Real flippers, five modes, one wizard jackpot.',kart:'Drift, draft and steal the cup on the last corner.',nemesis:'It studies how you move. Then it cheats.',fight:'Ten DAWGs. Real combos. Thirty-six ways to send ’em home.',
  bark:'Twenty DAWGs. One shrinking roof. Bark them off it.',paint:'Flood the city in your colour before the whistle.',domino:'Peg it. Press GO. Watch it all fall into place.',
  heist:'Your past selves are your crew.',climb:'One leash. 500 meters. No checkpoints.',chess:'36 duels. Every capture is its own fight scene.',story:'One velvet suit. One night. Six endings.'
 };

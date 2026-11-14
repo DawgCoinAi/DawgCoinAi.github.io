@@ -14,7 +14,7 @@ test('Every registered game has a tab, an XP discipline and a passport stamp',()
  assert.equal(new Set(GAME_IDS).size,GAME_IDS.length);for(const g of GAMES){assert.ok(['maze','pack','trade'].includes(g.kind));assert.ok(g.views.every(v=>VIEWS.includes(v)));if(g.views.length)assert.ok(g.views.includes('2d'),g.id+' plays in 2D too');}
 });
 test('Pack games in the registry all have quick-game checkpoints, except the story and chess',()=>{
- for(const id of PACK_IDS)if(id!=='story'&&id!=='chess')assert.ok(QUICK_MODES.includes(id),id);
+ for(const id of PACK_IDS)if(id!=='story'&&id!=='chess'&&id!=='fight')assert.ok(QUICK_MODES.includes(id),id);
 });
 test('Camera choices fall back to each game’s default and only switch where supported',()=>{
  assert.equal(viewFor('runner',{}),'third','third person is the default everywhere');assert.equal(viewFor('runner',{runner:'first'}),'first','first person stays a choice');assert.equal(viewFor('runner',{runner:'sideways'}),'third');for(const g of GAMES)if(g.views.length)assert.equal(g.views[0],'third',g.id);

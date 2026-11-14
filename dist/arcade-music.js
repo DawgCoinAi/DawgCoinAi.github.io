@@ -26,6 +26,7 @@ export const TRACKS={
  domino:{title:'Tip Toe',bpm:118,root:45,prog:['i','VI','III','VII'],hook:[0,_,7,_,12,_,10,_,7,_,3,_,5,_,2,_],arp:[0,7,12,16]},
  heist:{title:'Take Two',bpm:112,root:43,prog:['i','iv','VI','V'],hook:[0,_,3,_,7,_,10,_,8,_,7,_,3,_,2,_],arp:[0,3,7,12]},
  climb:{title:'Vertigo',bpm:134,root:46,prog:['i','VI','iv','V'],hook:[12,_,15,_,17,_,19,_,22,_,19,_,17,15,_,12],arp:[0,7,12,19]},
+ fight:{title:'Bite Night',bpm:146,root:40,prog:['i','VI','VII','v'],hook:[12,_,12,15,_,12,_,10,12,_,15,17,_,15,12,_],arp:[0,12,7,10]},
  chess:{title:'Grandmaster Groove',bpm:88,root:45,prog:['i7','VI7','iv7','v7'],lounge:true},
  // Street Hustle's car radio: a sunset-synth cruiser and a late-night house station.
  hustle:{title:'Palm Static',bpm:112,root:48,prog:['i','VI','III','VII'],hook:[12,_,_,15,_,_,17,_,15,_,12,_,10,_,12,_],arp:[0,12,7,15]},

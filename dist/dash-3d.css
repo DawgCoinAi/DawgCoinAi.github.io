@@ -95,7 +95,7 @@ body.maze-3d.mobile-session .cabinet-top{background:#0b0a16b8;backdrop-filter:bl
 .maze3d.m3-first .m3-arrows i{width:auto;height:auto;border:1px solid var(--c);border-radius:999px;padding:6px 11px;background:#0b0a16d9;color:#fff;font:900 clamp(13px,3.2vw,18px)/1 var(--display);white-space:nowrap;box-shadow:0 0 16px var(--c)}
 .maze3d.m3-first .m3-arrows i.m3-near{background:var(--c);color:#12060a;animation:m3pulse .28s ease-in-out infinite alternate;transform:translate(-50%,-50%) scale(1.25)!important}
 .maze3d .m3-radar{position:absolute;right:12px;top:calc(var(--m3-top) + 10px);width:clamp(118px,30vmin,210px);height:auto;aspect-ratio:1;border-radius:50%;box-shadow:0 0 26px #000c;opacity:.96}
-.maze3d .m3-view{position:absolute;left:50%;bottom:calc(var(--m3-bottom) + 14px);transform:translateX(-50%);padding:5px 12px;border-radius:999px;background:#0b0a16c4;border:1px solid #c8ff5a66;color:#e6ffb8;font:800 10px/1 var(--mono,monospace);letter-spacing:1.4px;white-space:nowrap}
+.maze3d .m3-view{position:absolute;left:50%;top:calc(var(--m3-top) + 12px);transform:translateX(-50%);padding:5px 12px;border-radius:999px;background:#0b0a16c4;border:1px solid #c8ff5a66;color:#e6ffb8;font:800 10px/1 var(--mono,monospace);letter-spacing:1.4px;white-space:nowrap}
 @keyframes m3pulse{from{opacity:.55}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.maze3d .m3-clock,.maze3d .m3-mirror,.maze3d.m3-frenzy::after,.maze3d .m3-bump,.maze3d.m3-first .m3-arrows i.m3-near{animation:none}}
 /* m3:end */

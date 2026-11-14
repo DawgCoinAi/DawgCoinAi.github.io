@@ -103,7 +103,7 @@ const D={
  kick:{bp:-.32,byaw:-.2,an:[-.5,.6,-1],af:[-.9,.3,-1.5],ln:[.2,0,.3],lf:[-1.6,0,.02]}
 };
 export const POSE=Object.fromEntries(Object.entries(D).map(([k,o])=>[k,P(o)]));
-for(const [a,b]of [['point','taunt'],['windup','heavyW'],['punch','heavyH'],['upper','upperH'],['slam','overH'],['cast','castH'],['palm','palmH'],['push','palmH'],['grab','throwW'],['fold','dust'],['catch','reach'],['tumble','ball'],['walk','walkA'],['run','dashf']])POSE[a]=POSE[b];
+for(const [a,b]of [['point','taunt'],['windup','heavyW'],['punch','heavyH'],['upper','upperH'],['slam','overH'],['cast','castH'],['palm','palmH'],['push','palmH'],['grab','throwW'],['fold','dust'],['catch','reach'],['tumble','ball'],['walk','walkA'],['run','dashf'],['hit','hithigh']])POSE[a]=POSE[b];
 // Poses that keep moving while held (cinematics): [index, amplitude, speed].
 export const WIGGLE={wave:[14,.35,11],scrub:[14,.5,16],dust:[14,.3,14],dizzy:[7,.12,3.2],cheer:[1,.07,9],rake:[14,.3,6],run:[0,0,0],walk:[0,0,0],hang:[23,.25,5],alert:[11,.05,14],fold:[14,.4,12]};
 // Move animations: [windup pose, strike pose] or a cycling list; the scene eases stand → windup

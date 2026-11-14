@@ -29,7 +29,7 @@ const NORMALS={
  '2L':{name:'Shin Tap',s:5,a:3,r:9,dmg:24,lv:'low',hs:14,bs:9,x1:.98,cancel:['5LL','sp','su'],anim:'lowjab',w:1,crouch:1},
  '5H':{name:'Haymaker',s:9,a:4,r:17,dmg:70,lv:'mid',hs:21,bs:15,x1:1.2,push:.09,cancel:['sp','su'],anim:'heavy',w:2},
  '6H':{name:'Hammer',s:20,a:4,r:17,dmg:82,lv:'over',hs:24,bs:13,x1:1.15,push:.07,cancel:['su'],anim:'over',w:2,adv:[6,18,.03]},
- '2H':{name:'Sky Upper',s:8,a:5,r:24,dmg:74,lv:'mid',hs:20,bs:16,x1:.92,y:[.4,2.5],launch:[.018,.205],jp:2,cancel:['sp','su'],anim:'upper',w:2,crouch:1},
+ '2H':{name:'Sky Upper',s:8,a:5,r:20,dmg:74,lv:'mid',hs:20,bs:16,x1:.92,y:[.4,2.5],launch:[.006,.25],jp:2,cancel:['sp','su'],anim:'upper',w:2,crouch:1},
  '4H':{name:'Sweep',s:11,a:4,r:22,dmg:58,lv:'low',hs:18,bs:14,x1:1.38,kd:1,cancel:[],anim:'sweep',w:2,crouch:1},
  'jL':{name:'Air Jab',s:5,a:10,r:0,dmg:34,lv:'over',hs:15,bs:10,x1:.9,y:[-.3,1.1],air:1,cancel:[],anim:'airL',w:1},
  'jH':{name:'Air Stomp',s:8,a:9,r:0,dmg:66,lv:'over',hs:22,bs:14,x1:1,y:[-.5,1],air:1,cancel:[],anim:'airH',w:2},
@@ -93,7 +93,7 @@ const RAW=[
   intro:'I’m already behind you. Check.',win:'gg. Uninstall.',taunt:'Your hitbox is showing.',ending:'Jinx steps into a cabinet and is never seen again. The high score reads J-N-X.',
   specials:[
    special(0,{id:'glitch',name:'Glitch Jab',s:9,a:4,r:20,dmg:90,tele:[6,'fwd',2.1],x1:1.1,anim:'jab',ex:{launch:[.02,.2]}}),
-   special(1,{id:'drop',name:'Drop In',s:14,a:30,r:8,dmg:100,lv:'over',tele:[8,'above',2.5],fall:1,y:[-.6,.9],x1:.8,launch:[.01,.12],anim:'dive',cancel:[],ex:{launch:[.01,.2],dmg:115}}),
+   special(1,{id:'drop',name:'Drop In',s:14,a:30,r:14,dmg:100,lv:'over',tele:[8,'above',2.5],fall:1,y:[-.6,.9],x1:.8,launch:[.01,.12],anim:'dive',cancel:[],ex:{launch:[.01,.2],dmg:115}}),
    special(2,{id:'decoy',name:'Decoy',s:8,a:1,r:16,dmg:0,x1:0,tele:[7,'back',2.4],anim:'tele',cancel:[],proj:{k:'decoy',vx:0,y:.2,dx:0,dmg:80,life:100,trap:1,launch:[.02,.17],h:1.5,w:.6,at:'origin'},ex:{proj:{k:'decoy',vx:0,y:.2,dx:0,dmg:115,life:150,trap:1,launch:[.02,.2],h:1.6,w:.9,at:'origin'}}}),
    special(3,{id:'blink',name:'Blink',s:16,a:0,r:1,dmg:0,x1:0,tele:[8,'behind',.95],anim:'tele',cancel:[],ex:{s:10,free:7}})],
   super:superMove({id:'bsod',name:'Blue Screen',s:6,a:36,r:28,dmg:52,hits:6,gap:6,flip:1,inv:[1,10],x1:1.2,anim:'flurry',last:{launch:[.03,.25]}}),
@@ -156,7 +156,7 @@ const RAW=[
 ];
 
 const levelY=m=>m.y||Y[m.lv]||Y.mid;
-function finish(m,f){const out={push:.06,jp:1,x0:-.15,hits:1,gap:0,...m};out.y=levelY(out);
+function finish(m,f){const out={push:.06,jp:1,x0:-.15,hits:1,gap:0,cancel:[],...m};out.y=levelY(out);
  if(out.kind!=='throw'&&out.lv!=='throw'){out.hs??=18;out.bs??=12;}out.chip??=out.kind==='special'||out.kind==='super'?Math.round(out.dmg*.12):0;return out;}
 function build(raw){
  const ds=raw.ds||0,pow=raw.pow||1,reach=raw.reach||1,moves={};

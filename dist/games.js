@@ -24,7 +24,8 @@ export const GAMES=[
  {id:'domino',title:'Domino Dynasty',kind:'pack',views:['third','2d']},
  {id:'paint',title:'Paint the Town',kind:'pack',views:['third','2d']},
  {id:'bark',title:'Last Bark Standing',kind:'pack',views:['third','2d']},
- {id:'nemesis',title:'IT LEARNS',kind:'pack',views:['third','2d']}
+ {id:'nemesis',title:'IT LEARNS',kind:'pack',views:['third','2d']},
+ {id:'fight',title:'BITE NIGHT',kind:'pack',views:[]}
 ];
 export const GAME_IDS=GAMES.map(g=>g.id);
 export const PACK_IDS=GAMES.filter(g=>g.kind==='pack').map(g=>g.id);

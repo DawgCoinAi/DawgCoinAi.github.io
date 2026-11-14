@@ -52,11 +52,15 @@ function maze(g,mem){const p=g.player;if(p.moving&&p.progress<.85)return;const s
 class DemoRenderer extends PackRenderer {status(){}dispose(){for(const k of Object.keys(this.gpus)){try{this.gpus[k]?.dispose();}catch{}}this.gpus={};}}
 
 export class GameDemo {
- constructor(host,kind,{face,character,view}={}){this.host=host;this.kind=kind;this.mem={};this.raf=0;this.last=0;this.dead=false;
+ constructor(host,kind,{face,character,view}={}){this.host=host;this.kind=kind;this.mem={};this.raf=0;this.last=0;this.dead=false;if(kind==='fight'){this.fightDemo(host);return;}
   const c=this.canvas=document.createElement('canvas');c.className='demo-canvas';host.replaceChildren(c);
   if(QUICK_MODES.includes(kind)){c.width=420;c.height=560;this.renderer=new DemoRenderer(c,face);this.renderer.character=character;this.renderer.views={[kind]:view};}
   else{c.width=1008;c.height=1104;this.renderer=new ArcadeRenderer(c,face);this.renderer.character=character;}
   this.fresh();this.frame=this.frame.bind(this);this.raf=requestAnimationFrame(this.frame);}
+ fightDemo(host){const box=document.createElement('div');box.className='demo-canvas fight-moment';box.style.cssText='position:relative;width:100%;height:100%;min-height:160px;overflow:hidden';host.replaceChildren(box);
+  Promise.all([import('./fight-3d.js'),import('./fight-engine.js'),import('./fight-roster.js')]).then(([{FightScene},E,R])=>{if(this.dead)return;const sc=this.fightScene=new FightScene(box,{quality:'low',viewer:true});sc.init();let g=null,acc=0;
+   const fresh=()=>{const seed=(Math.random()*2**31)>>>0,ids=R.STARTERS.filter(x=>x!=='you'),i=seed%ids.length,j=(i+1+(seed>>>8)%(ids.length-1))%ids.length,st=R.STAGE_IDS[(seed>>>4)%R.STAGE_IDS.length];sc.setStage(st);sc.setFighters(ids[i],ids[j]);g=E.createMatch({seed,p:[ids[i],ids[j]],stage:st,cpu:[4,4]});};fresh();
+   const loop=now=>{if(this.dead)return;const dt=this.last?Math.min(.05,(now-this.last)/1000):0;this.last=now;let ev=[],n=0;acc+=dt;while(acc>=1/60&&n<4){acc-=1/60;n++;ev=ev.concat(E.stepAuto(g));}if(g.phase==='over'){this.overAt||=now;if(now-this.overAt>1800){this.overAt=0;fresh();}}try{sc.frame(g,ev,dt);}catch{}this.raf=requestAnimationFrame(loop);};this.raf=requestAnimationFrame(loop);}).catch(()=>{});}
  fresh(){const seed=(Math.random()*2**31)>>>0;this.mem={};this.overAt=0;
   if(QUICK_MODES.includes(this.kind)){this.game=createQuickGame(this.kind,seed);}else{this.game=new MazeGame(this.kind==='rush'?'rush':'classic',seededRandom(seed),{worldSeed:seed});}
   this.game.start?.();}
@@ -67,5 +71,5 @@ export class GameDemo {
   else g.start?.();
   if(g.events)g.events.length=0;try{if(QUICK_MODES.includes(k))this.renderer.draw(g,k,now);else this.renderer.draw(g,now);}catch{}
   this.raf=requestAnimationFrame(this.frame);}
- dispose(){this.dead=true;cancelAnimationFrame(this.raf);this.renderer.dispose?.();this.host.replaceChildren();}
+ dispose(){this.dead=true;cancelAnimationFrame(this.raf);try{this.fightScene?.dispose();}catch{}this.renderer?.dispose?.();this.host.replaceChildren();}
 }

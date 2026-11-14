@@ -5,7 +5,7 @@ import {FIGHTERS,fighter,IN,stageOf,FINISHERS,finisher,finishersFor,MOD_IDS,FIGH
 import {CINE_DUR} from './fight-cine.js';
 import {aiInit,aiInput} from './fight-ai.js';
 
-export const K={WALL:6.2,G:.0115,JUMP:.212,JUMPX:.062,METER:300,EX:100,SUPER:200,ROUND:60*60,INTRO:100,KO:130,FINISH:400,END:90,BUF:8,DASH:14,BACK:16,TECH:9,JMAX:9,CAP:13,CLOSE:1.7,FAR:3.2,UNDER:.3,UNDERT:420,BODY:.36,WINS:2};
+export const K={WALL:6.2,G:.0115,JUMP:.212,JUMPX:.062,METER:300,EX:100,SUPER:200,ROUND:60*60,INTRO:100,KO:100,FINISH:400,END:90,BUF:8,DASH:14,BACK:16,TECH:9,JMAX:9,CAP:13,CLOSE:1.7,FAR:3.2,UNDER:.3,UNDERT:420,BODY:.36,WINS:2};
 export const FEATS=[
  {id:'fight.debut',name:'Opening Night',text:'Win a match'},
  {id:'fight.untouched',name:'Untouched',text:'Win a round without taking a hit'},
@@ -104,7 +104,7 @@ function ground(g,f,o){
  if(d>=7){f.st='pre';f.t=0;f.jx=d===9?1:d===7?-1:0;f.vx=0;return;}
  if(d<=3){f.st='crouch';f.low=1;f.vx=0;return;}
  const tp=f.taps,n=tp.length;
- if(n>=2&&tp[n-1][1]===g.frame&&tp[n-2][0]===tp[n-1][0]&&g.frame-tp[n-2][1]<=14&&(tp[n-1][0]===6||tp[n-1][0]===4)){const fw=tp[n-1][0]===6;f.st=fw?'dash':'bdash';f.t=0;f.taps=[];if(!fw)f.inv=Math.max(f.inv,7);emit(g,'dash',{side:f.side,fw});return;}
+ if(g.phase!=='finish'&&n>=2&&tp[n-1][1]===g.frame&&tp[n-2][0]===tp[n-1][0]&&g.frame-tp[n-2][1]<=14&&(tp[n-1][0]===6||tp[n-1][0]===4)){const fw=tp[n-1][0]===6;f.st=fw?'dash':'bdash';f.t=0;if(!fw)f.inv=Math.max(f.inv,7);emit(g,'dash',{side:f.side,fw});return;}
  const F=fighter(f.id);
  if(d===6){f.st='walk';f.vx=F.walk*f.face;}else if(d===4){f.st='walk';f.vx=-F.walk*.78*f.face;}else{f.st='idle';f.vx=0;}
 }
@@ -138,7 +138,7 @@ function tick(g,f,o){
  }
  // Physics.
  f.x+=f.vx;
- if(air(f)){const k=f.st==='launch'?1+.1*Math.min(f.jug,K.JMAX):1;f.vy-=grav*k;f.y+=f.vy;
+ if(air(f)){const k=f.st==='launch'?1+.06*Math.min(f.jug,K.JMAX):1;f.vy-=grav*k;f.y+=f.vy;
   if(f.y<=0){f.y=0;f.vy=0;land(g,f,o);}}
  if(f.x>K.WALL||f.x<-K.WALL){const s=sign(f.x);f.x=s*K.WALL;
   if(f.ws&&(f.st==='launch'||f.st==='hit')&&f.vx*s>.035)splat(g,f,o,s);else if(f.st==='launch')f.vx=0;}
@@ -220,7 +220,7 @@ function strike(g,att,def,m,src){
  const blocking=(def.st==='block'||def.st==='bstun')&&!air(def)&&lv!=='throw'&&!(lv==='low'&&!def.low)&&!(lv==='over'&&def.low);
  const multi=(P?P.total>1:m.hits>1)&&!isLast;if(multi){spec.push=.012;if(!spec.launch&&air(def))spec.launch=[.004,.075];}
  const str=m.w||2,away=sign(def.x-(P?P.x-P.face:att.x))||att.face;
- if(blocking){const snap=def.st==='block'&&def.pb[3]<=7,iron=g.mod==='iron';let chip=snap||iron||def.ud>0?0:Math.round((spec.dmg||0)*(m.kind==='normal'?0:.14));chip=Math.max(0,Math.min(chip,def.hp-1));
+ if(blocking){const snap=def.st==='block'&&def.pb[3]<=5,iron=g.mod==='iron';let chip=snap||iron||def.ud>0?0:Math.round((spec.dmg||0)*(m.kind==='normal'?0:.14));chip=Math.max(0,Math.min(chip,def.hp-1));
   if(g.phase==='finish')chip=0;def.hp-=chip;def.st='bstun';def.stun=Math.max(4,(spec.bs||12)-(snap?5:0));def.vx=away*(spec.push||.06)*.9;if(Math.abs(def.x)>=K.WALL-.02&&!P)att.vx=-att.face*(spec.push||.06);
   def.meter=Math.min(K.METER,def.meter+(snap?18:4));att.meter=Math.min(K.METER,att.meter+3);g.hitstop=Math.max(g.hitstop,snap?9:3+str);
   if(snap){g.stats[def.side].snaps++;if(g.stats[def.side].snaps>=3)feat(g,def.side,'fight.snap');}
@@ -237,11 +237,11 @@ function strike(g,att,def,m,src){
  def.mv=null;def.low=0;def.th=null;def.hurt=12;def.ws=spec.wall?1:0;
  if(g.phase==='finish'){def.st='launch';def.vx=away*.07;def.vy=.17;def.y=Math.max(def.y,.02);def.inv=999;g.pt=Math.max(g.pt,K.FINISH-K.END);g.fin=g.fin||{id:null,kind:'plain'};emit(g,'plain',{side:att.side});}
  else if(air(def)||spec.launch||spec.kd||blow||def.hp<=0){
-  const L=spec.launch||(spec.kd?[.03,.1]:air(def)?[.03,.13]:[.07,.17]),decay=Math.max(.45,1-.065*def.jug);
+  const L=spec.launch||(spec.kd?[.03,.1]:air(def)?[.02,.168]:[.07,.17]),decay=Math.max(.45,1-.065*def.jug);
   def.st='launch';def.vx=away*Math.abs(L[0])*(L[0]<0?-1:1)+(spec.push>.12?away*spec.push*.6:0);def.vy=L[1]*decay;def.y=Math.max(def.y,.02);
   if(blow){def.vx=away*.09;def.vy=.2;def.inv=999;}if(def.jug>K.JMAX)def.inv=999;}
  else{def.st='hit';def.stun=Math.max(5,(spec.hs||18)-Math.max(0,def.sh-3)*2+(counter?4:0));def.vx=away*(spec.push||.06);if(Math.abs(def.x)>=K.WALL-.02&&!P)att.vx=-att.face*(spec.push||.06)*1.2;}
- g.hitstop=Math.max(g.hitstop,[0,5,8,9,10][str]+(counter?3:0));
+ g.hitstop=Math.max(g.hitstop,multi?3:[0,5,8,9,10][str]+(counter?3:0));
  emit(g,'hit',{side:def.side,by:att.side,id:m.id,x,y:P?P.y:def.y+(lv==='low'?.35:lv==='high'?1.35:1),dmg,w:str,lv,combo:def.ch,counter,proj:P?P.k:null,kind:m.kind,launch:def.st==='launch'});
  g.last={by:att.side,kind:m.kind,id:m.id};checkKO(g,att,def,m);return true;}
 function checkKO(g,att,def,m){
@@ -265,7 +265,7 @@ function resolve(g){
   if(f.hitN>=m.hits||(f.hitN>0&&t-f.lastHit<m.gap))continue;
   if(m.flip&&f.hitN>0){const side=sign(f.x-o.x)||1;f.x=clamp(o.x-side*.9,-K.WALL,K.WALL);f.face=sign(o.x-f.x)||f.face;emit(g,'tele',{side:f.side,from:f.x,to:f.x,y:f.y});}
   const a0=f.x+f.face*m.x0,a1=f.x+f.face*m.x1,[h0,h1,y0,y1]=hurtbox(o);
-  if(!overlap(Math.min(a0,a1),Math.max(a0,a1),h0,h1)||!overlap(f.y+m.y[0],f.y+m.y[1],y0,y1))continue;
+  if(!overlap(Math.min(a0,a1),Math.max(a0,a1),h0,h1)||!overlap(f.y+m.y[0]-(o.st==='launch'?.3:0),f.y+m.y[1]+(o.st==='launch'?.9:0),y0,y1))continue;
   pend.push([f,o,m]);}
  for(const [f,o,m]of pend){if(f.st!=='atk'||f.mv!==m.id)continue;
   const ok=m.lv==='throw'?grab(g,f,o,m):strike(g,f,o,m,null);
@@ -309,7 +309,7 @@ function finishMatch(g,winner){
  for(const f of g.f)if(f.st!=='ko'&&f.st!=='down'&&f.side===winner)f.st='win';
  emit(g,'over',{winner,score,finisher:g.result.finisher});}
 function tryFinisher(g,w,l){
- if(!actionable(w)&&w.st!=='dash')return false;
+ if(!actionable(w)&&!['dash','bdash','pre','jump'].includes(w.st))return false;
  const list=finishersFor(w.id,g.stage),dist=Math.abs(l.x-w.x),p=w.pb;let pick=null;
  if(g.simple[w.side]&&p[2]===0){const d=w.dir;pick=w.in&G?list[4]:d>=7?list[3]:d<=3?list[0]:d===6?list[1]:d===4?list[2]:null;if(!pick){emit(g,'finhint',{side:w.side});use(w,2);return true;}}
  else if((p[0]===0||p[1]===0)&&w.taps.length>=3){const t=w.taps.slice(-3);if(g.frame-t[0][1]<=110){const s=t.map(x=>({6:'F',4:'B',2:'D',8:'U'})[x[0]]).join('')+' '+(p[1]===0?'B':'A'),hit=list.find(f=>f.seq===s);

@@ -18,6 +18,7 @@ export const HOW={
  turbo:['← → or swipe to change lane; tap or ↑ to jump, ↑ again in the air to flip','↓ rolls under bars and through bots; hold Space (or the screen) to burn turbo','The clock refills only at checkpoints: stay fast, chain tricks, take the high road'],
  pinball:['Hold ← → (or each side of the screen) to flip; hold ↓ or the right side and let go to plunge','Shoot the Dawg House scoop to start a mode, then follow the flashing arrows','Chain ramps and orbits for combos, lock 3 balls for multiball, beat all 5 modes for Top Dawg'],
  kart:['Hold ← → to steer, ↓ to drift','Hit a control as the lights go green','Drift for mini-turbos, ↑ fires your item'],
+ fight:['Keys: WASD move · J light · K heavy · L special · I guard. On a phone: stick on the left, four buttons on the right','Chain LIGHT, LIGHT, LIGHT, cancel into a special (a direction + SPECIAL), launch with ↓ + HEAVY and juggle','Win the last round and the announcer says SEND ’EM HOME: hold a direction and press SPECIAL for a finishing move','Finishers are collected in your gallery and can be posted to DAWG Chat'],
  nemesis:['One step a beat (swipe or arrows), or stay put. Get off the glowing tiles before the beat lands','It learns what you do in each situation. When the eye turns red it is firing an unmarked shot where it expects you: don’t do the usual','Dodging a guess is an OUTSMART (multiplier up). Gold bones are bait, and some are rigged'],
  bark:['Drag anywhere (or arrows / WASD) to move around the roof','Hold BARK (or Space) to charge, let go to blast everyone in front of you; a full charge is a MEGA bark','Grab the golden bone for an instant MEGA bark. The roof shrinks for 90 seconds; last one standing wins'],
  paint:['Your DAWG never stops; steer with arrows, WASD or a swipe, and dash with Space or a tap','Leave your paint to lay a wet trail, loop back and everything inside floods: circle a building or a landmark and it is yours','Cross an open trail to cut its owner; grab paint bombs and shields; the last 30 seconds pay double'],
@@ -33,7 +34,7 @@ export const HOW={
 const FEAT_SOURCES={
  classic:()=>import('./engine.js'),rush:()=>import('./engine.js'),daily:()=>import('./engine.js'),
  bark:()=>import('./bark-engine.js'),climb:()=>import('./climb-engine.js'),domino:()=>import('./domino-engine.js'),heist:()=>import('./heist-engine.js'),
- kart:()=>import('./kart-engine.js'),nemesis:()=>import('./nemesis-engine.js'),paint:()=>import('./paint-engine.js'),pinball:()=>import('./pinball-engine.js'),
+ kart:()=>import('./kart-engine.js'),nemesis:()=>import('./nemesis-engine.js'),fight:()=>import('./fight-engine.js'),paint:()=>import('./paint-engine.js'),pinball:()=>import('./pinball-engine.js'),
  snake:()=>import('./snake-engine.js'),turbo:()=>import('./turbo-engine.js')
 };
 // A game's feats: [{id,name,text}], or [] when its engine has none.

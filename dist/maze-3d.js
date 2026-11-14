@@ -379,8 +379,9 @@ export class ThreeMaze {
  placeCamera(g,dt,real){
   this.measure(real*1000);const cam=this.camera,cols=this.cols||21,rows=this.rows||23,aspect=cam.aspect||1,tanV=Math.tan(VFOV*Math.PI/360),{top,bottom}=this.insets,free=Math.max(.35,1-top-bottom);
   // Fit: fill the free part of the screen with the block. Whichever of width or depth runs out
-  // first sets the distance; the camera then follows the DAWG along the other axis.
-  const zPer=2*tanV/Math.sin(PITCH)*free,xPer=2*tanV*aspect,fitZ=(rows+1.2)/zPer,fitW=(cols+1.2)/xPer,base=Math.max(Math.min(fitZ,fitW),9/xPer)*.9;
+  // first sets the distance; the camera then follows the DAWG along the other axis, but never
+  // zooms in so far that less than about three quarters of the block is on screen.
+  const zPer=2*tanV/Math.sin(PITCH)*free,xPer=2*tanV*aspect,fitZ=(rows+1.2)/zPer,fitW=(cols+1.2)/xPer,base=Math.max(Math.min(fitZ,fitW),.74*Math.max(fitZ,fitW),9/xPer)*.9;
   const over=g.status==='over'||g.status==='level',goal=this.flourish>0||over?1.16:g.status==='ready'?1.08:g.frenzy?.92:1;this.zoomGoal=goal-this.punch*.1;this.zoom+=(this.zoomGoal-this.zoom)*Math.min(1,dt*(this.punch>0?9:2.4));
   const dist=base*this.zoom*(this.zoomScale||1),visW=dist*xPer,visZ=dist*zPer,cx=(cols-1)/2,cz=(rows-1)/2,look=STEP[this.facing]||[0,0];
   const clamp=(v,c,half,span)=>{const slack=(span+1.6)/2-half;return slack<=0?c:Math.max(c-slack,Math.min(c+slack,v));};
@@ -417,7 +418,7 @@ export class ThreeMaze {
   el.mirror.hidden=!g.mirrored;
   const chips=(g.twists||[]).map(t=>t==='treasure'?'CHESTS '+(5-g.chests.length)+'/5':t==='boss'?'WARDEN '+'♥'.repeat(Math.max(0,g.ghosts[0]?.hp||0)):TWIST_INFO[t]?.name||'').filter(Boolean).join('|');
   if(chips!==this.chipText){this.chipText=chips;el.chips.innerHTML=chips?chips.split('|').map(c=>'<span>'+c+'</span>').join(''):'';}
-  const first=this.first;this.view.classList.toggle('m3-first',first);this.view.classList.toggle('m3-beast',first&&g.power>0);el.view.hidden=!first||!playing;if(first)this.hud.set(el.view,'view','STREET VIEW · COINS ×'+(g.viewBonus||1));el.radar.hidden=!first;
+  const first=this.first;this.view.classList.toggle('m3-first',first);this.view.classList.toggle('m3-beast',first&&g.power>0);el.view.hidden=!first||!playing;if(first)this.hud.set(el.view,'view','STREET ×'+(g.viewBonus||1));el.radar.hidden=!first;
   if(first){this.drawRadar(g,real);this.threats(g);return;}
   // Arrows on the screen edge for rivals outside the frame.
   const v=new T.Vector3();this.arrows.forEach((a,i)=>{a.textContent='';a.classList.remove('m3-near');const gh=g.ghosts[i];if(!gh||gh.cooldown>0||g.status!=='playing'){a.hidden=true;return;}const p=g.position(gh);v.set(p.x,.5,p.y).project(this.camera);const top=1-this.insets.top*2,bot=-1+this.insets.bottom*2;if(Math.abs(v.x)<=1&&v.y<=top&&v.y>=bot){a.hidden=true;return;}

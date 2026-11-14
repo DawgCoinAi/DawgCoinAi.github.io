@@ -264,7 +264,7 @@ export class ThreeChess {
   this.frameRival(real,dt,reduced,flip);
   // The resting camera is fitted to the view: far enough back that all eight ranks and both
   // sides of the board show at any shape of screen, from a folded phone to a wide monitor.
-  const top=this.view==='top',vfov=top?36:40,tanV=Math.tan(vfov*Math.PI/360),tanH=tanV*aspect,el=top?Math.PI/2-.001:.74,dist=Math.max(4.95/tanH,(top?4.95:4.3)/tanV)*(top?1:1.0);
+  const top=this.view==='top',vfov=top?36:40,tanV=Math.tan(vfov*Math.PI/360),tanH=tanV*aspect,el=top?Math.PI/2-.001:.74,dist=Math.max((top?4.95:5.3)/tanH,(top?4.95:4.3)/tanV);
   let pos=new T.Vector3(0,Math.sin(el)*dist,Math.cos(el)*dist*flip),at=new T.Vector3(0,top?0:.3,top?0:-.9*flip),fov=vfov;
   if(this.cine){const c=this.cine;c.t+=cdt;const f=typeof c.at==='function'?c.at():c.at,cf=c.fov,tv=Math.tan(cf*Math.PI/360),th=tv*aspect,yaw=c.yaw+c.drift*c.t,D=(this.shotScale||1)*Math.max(c.w/2/th,c.h/2/tv)*Math.max(.45,1+c.dolly*c.t),ch=Math.cos(c.pitch);
    const to=f.clone().addScaledVector(this.shotBack,Math.cos(yaw)*ch*D).addScaledVector(this.shotSide,Math.sin(yaw)*ch*D);to.y=Math.max(.22,f.y+Math.sin(c.pitch)*D);

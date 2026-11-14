@@ -38,10 +38,12 @@ function wallTexture(theme,look,lit){
   const win=look.win;c.fillStyle=lit?'#000':'#fff';c.fillRect(0,0,w,h);
   if(theme==='market'){
    if(!lit){c.fillStyle='#d8c2a8';c.fillRect(0,0,w,h);c.fillStyle='#00000030';for(let x=0;x<w;x+=16)c.fillRect(x,0,2,h);c.fillStyle='#5a3526';c.fillRect(0,h-10,w,10);}
-   // The shop window sits low, so even the shortest stall shows it.
-   c.fillStyle=lit?win[0]:'#3a2418';c.fillRect(12,h-62,w-24,46);if(lit){c.fillStyle='#000000a0';for(let i=0;i<5;i++)c.fillRect(18+i*20,h-34-(i%3)*7,12,18+(i%3)*7);c.fillStyle=win[2];c.fillRect(12,h-70,w-24,5);}
-   else{c.fillStyle='#22140e';c.fillRect(8,h-66,w-16,4);}
-   for(let i=0;i<4;i++){c.fillStyle=lit?win[1+i%2]:'#2a1a14';c.fillRect(10+i*29,14,20,22);}
+   // The shop front sits low, so even the shortest stall shows it: a counter, shelves of goods and a lantern-lit sign.
+   const g=c.createLinearGradient(0,h-60,0,h-18);g.addColorStop(0,lit?'#7a4a20':'#3a2418');g.addColorStop(1,lit?win[1]:'#4a2c1c');c.fillStyle=g;c.fillRect(34,h-60,w-46,42);
+   c.fillStyle=lit?'#000000c0':'#22140e';for(let i=0;i<3;i++)c.fillRect(34,h-48+i*13,w-46,2);for(let i=0;i<9;i++){c.fillStyle=lit?['#000000b0','#00000060','#000000d0'][i%3]:'#2a1810';c.fillRect(38+i*9,h-58+(i%3)*13,6,9);}
+   c.fillStyle=lit?'#000':'#5a3526';c.fillRect(10,h-60,18,50);c.fillStyle=lit?win[0]:'#2a1a14';c.fillRect(14,h-54,10,14);
+   c.fillStyle=lit?win[2]:'#6a2a22';c.fillRect(8,h-72,w-16,7);if(lit){c.fillStyle='#000000a0';for(let i=0;i<7;i++)c.fillRect(14+i*15,h-70,8,3);}
+   for(let i=0;i<4;i++){c.fillStyle=lit?(i%2?'#000':win[i%3]):'#2a1a14';c.fillRect(10+i*29,12,20,26);if(!lit){c.fillStyle='#6a4a34';c.fillRect(8+i*29,40,24,3);}}
   }else if(theme==='arcade'){
    if(!lit){c.fillStyle='#b8b0e0';c.fillRect(0,0,w,h);c.fillStyle='#00000038';for(let y=0;y<h;y+=32)c.fillRect(0,y,w,3);}
    for(let y=0;y<4;y++)for(let x=0;x<4;x++){const on=hash(y*7+3,x)>.3;c.fillStyle=lit?(on?win[(x+y)%3]:'#000'):on?'#2a2450':'#17142c';c.fillRect(8+x*30,6+y*30,22,20);}
@@ -293,8 +295,8 @@ export class ThreeMaze {
   if(g.status!==this.status){this.status=g.status;this.statusSince=now;}
   const ease=(v,to,k)=>v+(to-v)*Math.min(1,dt*k);
   this.firstMix=ease(this.firstMix,this.cameraMode==='first'?1:0,4);if(Math.abs(this.firstMix-(this.cameraMode==='first'?1:0))<.002)this.firstMix=this.cameraMode==='first'?1:0;const fm=smooth(this.firstMix);
-  // Street view raises every building to full height and pulls the fog in for depth.
-  this.block.scale.y=1+fm*1.7;this.scene.fog.near=34+(5-34)*fm-this.darkMix*fm*3.5;this.scene.fog.far=95+(g.dark?9-95:30-95)*fm;
+  // Street view raises every building to full height (the facades repeat upward as extra storeys) and pulls the fog in for depth.
+  this.block.scale.y=1+fm*1.7;if(this.wallMat){this.wallMat.map.repeat.y=this.wallMat.emissiveMap.repeat.y=this.block.scale.y;}this.scene.fog.near=34+(5-34)*fm-this.darkMix*fm*3.5;this.scene.fog.far=95+(g.dark?9-95:30-95)*fm;
   this.powerMix=ease(this.powerMix,g.power>0?1:0,g.power>0?7:3);this.darkMix=ease(this.darkMix,g.dark?1:0,2.5);this.flourish=Math.max(0,this.flourish-dt);this.punch=Math.max(0,this.punch-dt*2.2);this.slow=Math.max(0,this.slow-dt);
   // Power flips the whole scene: cold electric light, hotter windows and streets, more bloom.
   const pm=this.powerMix,fl=this.flourish>0?.5+.5*Math.sin(real*14):0,ending=g.power>0&&g.power<2&&Math.floor(real*8)%2===0;
@@ -307,7 +309,7 @@ export class ThreeMaze {
   // Treats.
   let n=0,pw=0;const d3=this.dummy,spots=this.dark.material.uniforms.uSpots.value;for(const h of this.halos)h.visible=false;
   for(const [k,c]of g.pellets){const i=k.indexOf(','),x=+k.slice(0,i),y=+k.slice(i+1);if(c==='o'){if(pw<8){const s=reduced?1:1+Math.sin(real*5+x)*.16;d3.position.set(x,.34,y);d3.rotation.set(0,real*1.5,.35);d3.scale.setScalar(s);d3.updateMatrix();this.powers.setMatrixAt(pw,d3.matrix);const h=this.halos[pw];h.visible=true;h.position.set(x,.36,y);h.scale.setScalar(1.5*s);if(pw<4)spots[pw].set(x,y,1);pw++;}}
-   else if(n<420){d3.position.set(x,.2+(reduced?0:Math.sin(real*3+x*1.3+y*.7)*.03),y);d3.rotation.set(0,(x*7+y*3)%3+real*.6,0);d3.scale.setScalar(1.02+pm*.2+this.firstMix*.5);d3.updateMatrix();this.pellets.setMatrixAt(n++,d3.matrix);}}
+   else if(n<420){d3.position.set(x,.2+(reduced?0:Math.sin(real*3+x*1.3+y*.7)*.03),y);d3.rotation.set(0,(x*7+y*3)%3+real*.6,0);d3.scale.setScalar(1.02+pm*.2+this.firstMix*.1);d3.updateMatrix();this.pellets.setMatrixAt(n++,d3.matrix);}}
   for(let i=pw;i<4;i++)spots[i].z=0;this.pellets.count=n;this.powers.count=pw;this.pellets.instanceMatrix.needsUpdate=true;this.powers.instanceMatrix.needsUpdate=true;
   this.loot.visible=!!g.loot;if(g.loot){this.loot.position.set(g.loot.x,.12+Math.sin(real*3)*.06,g.loot.y);this.loot.rotation.y=real*2;this.loot.scale.setScalar(g.loot.time<3&&Math.floor(real*8)%2?.8:1.15);}
   this.chests.count=g.chests?.length||0;this.chestGlow.forEach((h,i)=>{const c=g.chests?.[i];h.visible=!!c;if(!c)return;d3.position.set(c.x,.05+Math.abs(Math.sin(real*2+i))*.05,c.y);d3.rotation.set(0,i,0);d3.scale.setScalar(1);d3.updateMatrix();this.chests.setMatrixAt(i,d3.matrix);h.position.set(c.x,.4,c.y);});this.chests.instanceMatrix.needsUpdate=true;
@@ -348,10 +350,12 @@ export class ThreeMaze {
   const dash=g.dashTime>0,beast=g.power>0,size=(this.first?1:1.85)+(beast?.2:0);this.holder.position.set(p.x,dash&&!this.reduced?.06:0,p.y);this.holder.rotation.set(dash?.28:0,this.yaw,this.reduced?0:-diff*.25);this.holder.scale.set(size,size*(dash?.92:1),size*(dash?1.18:1));
   if(this.asset)setDawgPose(this.asset,g.status==='ready'?real:real*(dash?2.4:1.5),moving?'run':'idle');
   this.holder.visible=!this.first&&!(g.invincible>0&&g.status==='playing'&&!this.reduced&&Math.floor(real*10)%2===0);this.playerShadow.visible=!this.first;
-  this.lamp.position.set(p.x+Math.sin(this.yaw)*.5,1.5,p.y+Math.cos(this.yaw)*.5+.6);this.lamp.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xfff0c8);this.lamp.intensity=(this.quality==='high'?9:7)*(1+this.darkMix*.8+(beast?.5:0));
+  this.lamp.position.set(p.x+Math.sin(this.yaw)*.5,1.5,p.y+Math.cos(this.yaw)*.5+.6);this.lamp.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xfff0c8);this.lamp.intensity=(this.quality==='high'?9:7)*(1+this.darkMix*.8+(beast?.5:0))*(1-this.firstMix*.6);
   this.marker.position.set(p.x,.03,p.y);this.marker.rotation.y=real*1.2;this.marker.scale.setScalar((beast?2.6:2)+(this.reduced?0:Math.sin(real*5)*.08));this.marker.material.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xc8ff5a).multiplyScalar(1.5);this.marker.visible=this.holder.visible;this.placeBody(g,real,dt,moving);
   this.playerShadow.position.set(p.x,.02,p.y);this.aura.position.set(p.x,.7,p.y);this.aura.visible=!this.first;this.aura.material.color.set(beast?0x9cff6a:dash?0x7ff3ff:0xfff0b0).multiplyScalar(beast?1.3:.9);this.aura.scale.setScalar(beast?3.4:2.6);
-  if(moving&&!this.reduced&&(dash||beast||g.corner>0))this.particles.burst(p.x,.3,p.y,dash?3:1,dash?0x63f6ff:beast?0x9cff6a:0xfff2a0,{speed:.8,life:.4,gravity:0,up:.2});
+  // At street level sparks would burst right against the lens, so they shrink and the trail is dropped.
+  this.particles.points.material.size=this.first?.07:.22;
+  if(moving&&!this.reduced&&!this.first&&(dash||beast||g.corner>0))this.particles.burst(p.x,.3,p.y,dash?3:1,dash?0x63f6ff:beast?0x9cff6a:0xfff2a0,{speed:.8,life:.4,gravity:0,up:.2});
   this.px=p.x;this.py=p.y;
  }
  drawAmbient(g,real,dt){

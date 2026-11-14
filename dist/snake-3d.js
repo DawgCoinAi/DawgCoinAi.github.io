@@ -60,7 +60,7 @@ export class ThreeSnake {
   const floor=add(new T.Mesh(new T.PlaneGeometry(W,H).rotateX(-Math.PI/2),this.gridMat));floor.position.set(CX,0,CZ);floor.receiveShadow=true;
   const slab=add(new T.Mesh(new T.BoxGeometry(W+3,1.6,H+3),new T.MeshStandardMaterial({color:0x0c1020,metalness:.7,roughness:.35})));slab.position.set(CX,-.82,CZ);
   this.underMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});const under=add(new T.Mesh(new T.BoxGeometry(W+3.2,.12,H+3.2),this.underMat));under.position.set(CX,-1.7,CZ);
-  this.aura=add(new T.Sprite(new T.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,opacity:.35})));this.aura.position.set(CX,-6,CZ);this.aura.scale.set(70,70,1);
+  this.aura=add(new T.Mesh(new T.PlaneGeometry(64,64).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glowTex,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,opacity:.35})));this.aura.position.set(CX,-4,CZ);
   // Barrier rails, warp curtains for the Warp Ring, and hazard tiles for The Crush.
   this.railMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});const wallMat=new T.MeshStandardMaterial({color:0x141a36,metalness:.7,roughness:.3});
   const sides=[[CX,-.75,W+1,.5],[CX,H-.25,W+1,.5],[-.75,CZ,.5,H+1],[W-.25,CZ,.5,H+1]];this.curtainMat=new T.MeshBasicMaterial({map:texture(8,64,(c,w,h)=>{const gr=c.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#ffffff00');gr.addColorStop(1,'#ffffffcc');c.fillStyle=gr;c.fillRect(0,0,w,h);}),color:hdr(0xa77bff,1.6),transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending,toneMapped:false});
@@ -80,7 +80,7 @@ export class ThreeSnake {
   const CAP=W*H+200;this.shellMat=pbr({color:0xffffff,metalness:.35,roughness:.18,clearcoat:1,clearcoatRoughness:.05,emissive:0x202020,emissiveIntensity:1},this.quality);
   this.links=add(new T.InstancedMesh(new T.CylinderGeometry(.3,.3,1,12,1,true).rotateX(Math.PI/2).scale(1,.78,1).translate(0,.26,0),this.shellMat,CAP));this.joints=add(new T.InstancedMesh(new T.SphereGeometry(.3,14,10).scale(1,.78,1).translate(0,.26,0),this.shellMat,CAP));
   this.cores=add(new T.InstancedMesh(new T.BoxGeometry(.13,.05,1).translate(0,.5,0),new T.MeshBasicMaterial({color:0xffffff,toneMapped:false}),CAP));
-  this.pools=add(new T.InstancedMesh(new T.PlaneGeometry(2.3,2.3).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glowTex,color:0xffffff,transparent:true,opacity:.34,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}),high?200:90));this.pools.position.y=.03;
+  this.pools=add(new T.InstancedMesh(new T.PlaneGeometry(2.3,2.3).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:glowTex,color:0xffffff,transparent:true,opacity:.2,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}),high?200:90));this.pools.position.y=.03;
   for(const m of [this.links,this.joints,this.cores,this.pools]){m.frustumCulled=false;m.setColorAt(0,new T.Color(1,1,1));m.count=0;}this.links.castShadow=this.joints.castShadow=true;
   // Your head: a light-cycle nose with a visor; DAWG rides it.
   this.headMat=pbr({color:0xe8fff2,emissive:0x7dffb0,emissiveIntensity:.7,metalness:.45,roughness:.18,clearcoat:1,clearcoatRoughness:.05},this.quality);this.head=add(new T.Group());const nose=new T.Mesh(new T.CapsuleGeometry(.34,.5,6,14).rotateX(Math.PI/2).scale(1.05,.8,1).translate(0,.3,.08),this.headMat);nose.castShadow=true;this.head.add(nose);
@@ -93,7 +93,7 @@ export class ThreeSnake {
   // Power-up: a faceted core inside two rings, in the colour of what it does.
   this.power=add(new T.Group());this.powerMat=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});this.powerCore=new T.Mesh(new T.OctahedronGeometry(.26,0),this.powerMat);const r1=new T.Mesh(new T.TorusGeometry(.42,.03,8,30),this.powerMat),r2=new T.Mesh(new T.TorusGeometry(.42,.03,8,30).rotateX(Math.PI/2),this.powerMat);this.power.add(this.powerCore,r1,r2);this.powerGlow=add(new T.Sprite(new T.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false})));this.powerGlow.scale.set(2.2,2.2,1);
   // Rider camera: the next cells of your path, lit on the floor.
-  this.path=add(new T.InstancedMesh(new T.PlaneGeometry(.8,.8).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.5,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}),6));this.path.position.y=.035;this.path.frustumCulled=false;this.path.setColorAt(0,new T.Color(1,1,1));this.path.count=0;
+  this.path=add(new T.InstancedMesh(new T.PlaneGeometry(.8,.8).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.26,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}),6));this.path.position.y=.035;this.path.frustumCulled=false;this.path.setColorAt(0,new T.Color(1,1,1));this.path.count=0;
   this.particles=new Particles(s,high?500:240,glowTex);this.dummy=new T.Object3D();
  }
  buildRocks(g){this.rocks?.removeFromParent();this.rocks=new T.InstancedMesh(this.rockGeo,this.rockMat,Math.max(1,g.rocks.length));g.rocks.forEach((r,i)=>{this.dummy.position.set(r.x,0,r.y);this.dummy.rotation.set(0,(r.x*7+r.y*3)%6,0);this.dummy.scale.set(1,1,1);this.dummy.updateMatrix();this.rocks.setMatrixAt(i,this.dummy.matrix);});this.rocks.count=g.rocks.length;this.rocks.castShadow=this.rocks.receiveShadow=true;this.scene.add(this.rocks);this.rockSeed=g.worldSeed;this.dummy.rotation.set(0,0,0);}
@@ -132,8 +132,10 @@ export class ThreeSnake {
   const playing=g.status==='playing',over=g.status==='over',mix=this.rig.mix,first=mix>.5,A=ARENAS[g.arena||0],L=this.look,k=Math.min(1,dt*2);for(let i=0;i<4;i++)L[i].lerp(A[i],k);
   // Reactive light: the whole stadium pulses on the beat, harder as the snake grows, and kicks on every gold.
   this.energy=Math.max(0,this.energy-dt*1.6);const grow=Math.min(1,g.body.length/40),beat=reduced?0:Math.pow(Math.max(0,Math.sin(real*Math.PI*2.1*(g.boosting?2:1))),8),pulse=.25+grow*.55+beat*(.2+grow*.5)+this.energy*.7;
-  this.gridMat.emissive.copy(L[0]);this.gridMat.emissiveIntensity=.35+pulse*.7;this.railMat.color.copy(L[1]).multiplyScalar(1.3+pulse*.9);this.underMat.color.copy(L[0]).multiplyScalar(.8+pulse);this.aura.material.color.copy(L[0]);this.aura.material.opacity=.16+pulse*.2;
-  this.crowdMat.opacity=.45+pulse*.5;this.crowdMat.color.copy(L[0]).lerp(new T.Color(1,1,1),.5).multiplyScalar(1+pulse*.6);if(!reduced)this.crowdMat.map.offset.x=real*.01;this.floodMat.color.setRGB(1.2+pulse,1.05+pulse*.8,.9+pulse*.6);
+  // At eye level every glow stacks up along the floor, so the rider camera runs the lights lower.
+  this.bloom0??=this.stage.bloomBase;this.stage.bloomBase=this.bloom0*(1-mix*.55);this.pools.material.opacity=.2*(1-mix*.75);this.gridMat.envMapIntensity=1.3-mix*.8;
+  this.gridMat.emissive.copy(L[0]);this.gridMat.emissiveIntensity=(.35+pulse*.7)*(1-mix*.5);this.railMat.color.copy(L[1]).multiplyScalar(1.3+pulse*.9);this.underMat.color.copy(L[0]).multiplyScalar(.8+pulse);this.aura.material.color.copy(L[0]);this.aura.material.opacity=.16+pulse*.2;
+  this.crowdMat.opacity=.3+pulse*.3;this.crowdMat.color.copy(L[0]).lerp(new T.Color(1,1,1),.5).multiplyScalar((1+pulse*.6)*(1-mix*.55));if(!reduced)this.crowdMat.map.offset.x=real*.01;this.floodMat.color.setRGB(1.2+pulse,1.05+pulse*.8,.9+pulse*.6);
   const u=this.sky.material.uniforms;u.uTop.value.set(0x03040a);u.uHorizon.value.copy(L[0]).multiplyScalar(.1);u.uGlow.value.copy(L[1]).multiplyScalar(.16);this.scene.fog.color.copy(L[0]).multiplyScalar(.05);
   this.curtainMat.opacity+=((g.wrap?.55+beat*.2:0)-this.curtainMat.opacity)*Math.min(1,dt*4);
   // Bodies.
@@ -146,7 +148,7 @@ export class ThreeSnake {
   // The head and the look of its powers.
   const head=seg[0];let diff=((HEADING[g.dir]-this.yaw+Math.PI*3)%(Math.PI*2))-Math.PI;this.yaw+=diff*Math.min(1,dt*(reduced?40:first?11:16));
   this.head.position.set(head.x,0,head.y);this.head.rotation.y=this.yaw;this.head.scale.setScalar(over?Math.max(.3,1-dead*.7):1);this.headMat.emissive.set(over?0xff3d6e:g.charged?0xffc83d:g.phase?0xc78bff:0x7dffb0);this.headMat.emissiveIntensity=(g.charged||g.phase)&&!reduced?1.2+Math.sin(real*10)*.5:.7;this.headMat.opacity=1;
-  this.headLight.color.copy(g.charged?this.col.set(0xffc83d):g.boosting?this.col.set(0xff8a3d):L[2]);this.headLight.intensity=(g.charged?11:6)+pulse*4;this.headLight.position.set(head.x,1,head.y);this.shellMat.emissiveIntensity=g.phase&&!reduced?1.5+Math.sin(real*9):1;
+  this.headLight.color.copy(g.charged?this.col.set(0xffc83d):g.boosting?this.col.set(0xff8a3d):L[2]);this.headLight.intensity=(g.charged?7:3)+pulse*2;this.headLight.position.set(head.x,1,head.y);this.shellMat.emissiveIntensity=g.phase&&!reduced?1.5+Math.sin(real*9):1;
   if(playing&&g.boosting&&!reduced&&Math.random()<.8){const b=seg[Math.min(2,n0)];this.particles.burst(b.x,.3,b.y,1,0xff8a3d,{speed:1.5,life:.5,up:1});}
   this.rockMat.emissiveIntensity=g.charged&&!reduced?1.2+Math.sin(real*8)*.6:.95;this.rockMat.emissive.set(g.charged?0xffb347:0xff3fb4);
   // Gold and power-up.
@@ -157,7 +159,7 @@ export class ThreeSnake {
   // Rider camera aids: the cells ahead along your path (through a queued turn), red where blocked.
   const look=this.ahead(g);let pn=0;if(first&&playing)for(const c of look.cells){this.dummy.position.set(c.x,0,c.y);this.dummy.rotation.set(0,0,0);this.dummy.scale.setScalar(1);this.dummy.updateMatrix();this.path.setMatrixAt(pn,this.dummy.matrix);this.path.setColorAt(pn++,this.col.setRGB(c.bad?2.4:.3,c.bad?.2:1.5,c.bad?.3:.7));}this.path.count=pn;this.path.instanceMatrix.needsUpdate=true;if(pn)this.path.instanceColor.needsUpdate=true;
   // Cameras: the whole arena from the south stand, or just behind DAWG's ears, level, looking down the lane.
-  const f=[Math.sin(this.yaw),Math.cos(this.yaw)],firstPose={pos:new T.Vector3(head.x-f[0]*1.55,1.55,head.y-f[1]*1.55),at:new T.Vector3(head.x+f[0]*3.2,.25,head.y+f[1]*3.2)};
+  const f=[Math.sin(this.yaw),Math.cos(this.yaw)],firstPose={pos:new T.Vector3(head.x-f[0]*1.9,1.95,head.y-f[1]*1.9),at:new T.Vector3(head.x+f[0]*3.4,.2,head.y+f[1]*3.4)};
   const third={pos:new T.Vector3(CX,22.5,CZ+12.5),at:new T.Vector3(CX,0,CZ+.9)};
   this.rig.update(dt,third,firstPose,{follow:first?26:8});if(!first||over)this.stage.applyShake(real,reduced);this.rig.aim();
   const cam=this.camera;cam.fov+=(fitFov(first?70:44,cam.aspect,first?76:41)-cam.fov)*Math.min(1,dt*6);cam.near=.05;cam.updateProjectionMatrix();this.sky.position.copy(cam.position);
@@ -187,7 +189,7 @@ export class ThreeSnake {
   if(!playing)return;
   // Warning before a wall or a body, with the open side named; and an edge arrow to the gold when it is not ahead.
   const d=look.dist,warn=d>0&&d<=3;if(ui.warn.hidden===warn)ui.warn.hidden=!warn;if(warn){const open=look.left&&look.right?'◀ TURN ▶':look.left?'◀ TURN LEFT':look.right?'TURN RIGHT ▶':'NO WAY OUT';h.set(ui.warn,'w',(d===1?'NOW · ':'IN '+d+' · ')+open);ui.warn.dataset.soft=d===3?'1':'0';}
-  let side='';if(g.food){const fx=g.food.x-g.body[0].x,fy=g.food.y-g.body[0].y,fw=Math.sin(HEADING[g.dir])*fx+Math.cos(HEADING[g.dir])*fy,rt=Math.sin(HEADING[RIGHT[g.dir]])*fx+Math.cos(HEADING[RIGHT[g.dir]])*fy;side=Math.abs(rt)>Math.max(1,fw)?rt>0?'right':'left':fw<0?'back':'';if(side)h.set(ui.edge,'e',side==='left'?'◀ GOLD '+Math.abs(rt):side==='right'?'GOLD '+Math.abs(rt)+' ▶':'GOLD BEHIND ▼');}
+  let side='';if(g.food){const fx=g.food.x-g.body[0].x,fy=g.food.y-g.body[0].y,fw=Math.sin(HEADING[g.dir])*fx+Math.cos(HEADING[g.dir])*fy,rt=Math.sin(HEADING[RIGHT[g.dir]])*fx+Math.cos(HEADING[RIGHT[g.dir]])*fy;side=Math.abs(rt)>Math.max(1,fw)?rt>0?'right':'left':fw<0?'back':'';if(side)h.set(ui.edge,'e',side==='left'?'◀ GOLD '+Math.round(Math.abs(rt)):side==='right'?'GOLD '+Math.round(Math.abs(rt))+' ▶':'GOLD BEHIND ▼');}
   if(ui.edge.hidden===!!side)ui.edge.hidden=!side;if(side)ui.edge.dataset.side=side;
  }
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}

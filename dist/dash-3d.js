@@ -36,7 +36,9 @@ export class ThreeDash {
  constructor(target,onFailure,{quality:q=quality()}={}){this.target=target;this.onFailure=onFailure;this.quality=q;this.ready=false;this.failed=false;this.dead=false;this.live=new Map();this.free={};this.frame=0;this.combo=0;this.asset=null;this.assetKey='';this.lastGame=null;this.statusSince=performance.now();this.status='';this.district=-1;this.clock=performance.now();this.cameraMode='third';}
  async init(){
   this.stage=new Stage({quality:this.quality,className:'dash3d',onFailure:()=>this.fail()}).init();this.view=this.stage.view;this.scene=this.stage.scene;this.camera=this.stage.camera;this.r=this.stage.r;
-  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-combo d3-flow" hidden><b>×2</b><small>FLOW</small><em><s></s></em></div><div class="d3-power" hidden><span></span><em><s></s></em></div>');this.view.append(this.hud.root);
+  this.hud=new Hud('<div class="d3-meter"><b class="d3-dist">0</b><small>M</small></div><div class="d3-gold"><i></i><b>0</b></div><div class="d3-zone"></div><div class="d3-combo d3-flow" hidden><b>×2</b><small>FLOW</small><em><s></s></em></div><div class="d3-power" hidden><span></span><em><s></s></em></div><div class="d3-fpchip" hidden>RUNNER CAM · TRICKS ×'+RUNNER.firstPerson+'</div><div class="d3-next" hidden><i></i><i></i><i></i><em><s></s></em></div><div class="d3-open" hidden></div>');this.view.append(this.hud.root);
+  if(!document.querySelector('style#d3-fp-style')){const st=document.createElement('style');st.id='d3-fp-style';st.textContent=`.dash3d .d3-fpchip{position:absolute;left:50%;top:var(--d3-top);transform:translateX(-50%);padding:5px 12px;border-radius:999px;background:#0b0a16c8;border:1px solid #5ee7ff88;color:#c8f8ff;font:800 11px var(--mono);letter-spacing:2px;white-space:nowrap}.dash3d .d3-next{position:absolute;left:50%;top:calc(var(--d3-top) + 34px);transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,clamp(58px,15vw,84px));gap:5px;padding:7px;border-radius:14px;background:#070812d9;border:1px solid #ffffff2a;box-shadow:0 0 22px #000a}.dash3d .d3-next i{display:grid;place-items:center;height:clamp(34px,8vw,44px);border-radius:9px;font:900 clamp(11px,2.6vw,14px)/1 var(--display);font-style:normal;letter-spacing:1px;border:2px solid transparent}.dash3d .d3-next i[data-k=open]{background:#12351f;color:#9dffb0}.dash3d .d3-next i[data-k=crate]{background:#3a2a08;color:#ffd25e}.dash3d .d3-next i[data-k=bar]{background:#07303a;color:#7ff3ff}.dash3d .d3-next i[data-k=block]{background:#3a0a14;color:#ff8097}.dash3d .d3-next i[data-me="1"]{border-color:#fff;box-shadow:0 0 14px #ffffff88}.dash3d .d3-next em{grid-column:1/4;height:5px;border-radius:5px;background:#ffffff22;overflow:hidden}.dash3d .d3-next s{display:block;height:100%;background:#b9ff5e;transform-origin:left}.dash3d .d3-next[data-hot="1"] s{background:#ff5470}.dash3d .d3-open{position:absolute;top:46%;padding:12px 14px;border-radius:14px;background:#0b1a12e0;border:2px solid #9dffb0;color:#dfffe9;font:900 clamp(18px,4vw,28px)/1 var(--display);box-shadow:0 0 24px #7dffb066}.dash3d .d3-open[data-side=left]{left:10px}.dash3d .d3-open[data-side=right]{right:10px}.dash3d .d3-open[data-hot="1"]{background:#3a0a14e0;border-color:#ff5470;color:#fff;box-shadow:0 0 28px #ff5470aa}.dash3d .d3-fpchip[hidden],.dash3d .d3-next[hidden],.dash3d .d3-open[hidden]{display:none}`;document.head.append(st);}
+  this.fpUi={chip:this.hud.q('.d3-fpchip'),next:this.hud.q('.d3-next'),cells:[...this.hud.root.querySelectorAll('.d3-next i')],bar:this.hud.q('.d3-next s'),open:this.hud.q('.d3-open')};
   this.ui={flow:this.hud.q('.d3-flow'),flowN:this.hud.q('.d3-flow b'),flowBar:this.hud.q('.d3-flow s'),dist:this.hud.q('.d3-dist'),gold:this.hud.q('.d3-gold b'),zone:this.hud.q('.d3-zone'),power:this.hud.q('.d3-power'),powerLabel:this.hud.q('.d3-power span'),powerBar:this.hud.q('.d3-power s')};
   this.rig=new CameraRig(this.camera);this.rig.setMode(this.cameraMode);this.ambient=new AmbientLoop(now=>this.render(this.lastGame,this.lastDawg,now));
   this.build();this.target.parentElement.append(this.view);this.ready=true;this.onAsset?.('3D CITY · LIVE');return this;
@@ -177,7 +179,7 @@ export class ThreeDash {
    for(let j=1;j<=2;j++){if((row.got??2)>=3-j)continue;const tz=row.z-RUNNER.trail*j;if(tz<=0)continue;const tp=dashPoint(row.safe,tz),tc=this.claim('t'+row.id+':'+j,'coin');let tx=tp.x,ty=0;if(g.magnet>0&&tz<38){const pull=smooth(1-tz/38);tx+=(p.x-tx)*pull;ty=lift*pull;}tc.position.set(tx,ty+(reduced?0:Math.sin(real*3+row.id+j)*.12),tp.z);tc.userData.spin.rotation.y=reduced?0:real*3.4+row.id+j*.9;}
    if(row.prize>=0){const ob=row.obstacles.find(o=>o.lane===row.prize),pp=dashPoint(row.prize,row.z),pz=this.claim('z'+row.id,'prize'),py=ob?.type==='bar'?.62:2.3;pz.position.set(pp.x,0,pp.z);pz.userData.spin.position.y=pz.userData.glow.position.y=pz.userData.halo.position.y=py+(reduced?0:Math.sin(real*4+row.id)*.08);pz.userData.spin.rotation.set(0,reduced?.5:real*2.6,.35);pz.userData.halo.rotation.set(0,reduced?0:real*1.3,0);}
    if(row.power){const pw=this.claim('p'+row.id,row.power);pw.position.set(cp.x,reduced?0:Math.sin(real*2.4)*.15,cp.z-2.2);pw.userData.spin.rotation.y=real*2;}}
-  this.sweep();
+  this.sweep();this.roadMarks(g,real);
   this.placePlayer(g,p,lift,since,real);
   this.particles.update(dt,{x:0,y:0,z:g.status==='playing'?g.speed*DEPTH:0});
   if(g.status==='playing'&&!reduced&&g.jump===0&&g.slide===0&&!this.rig.first&&Math.random()<.35)this.burst(p.x+(Math.random()-.5)*.5,.06,.4,1,g.shield?0x48e6ff:0xb9ff5e,{speed:1,life:.35,gravity:0,up:.2,stick:1});
@@ -205,15 +207,15 @@ export class ThreeDash {
   const pulse=this.reduced?1:.75+.25*Math.sin(real*5);this.gateStreakA.opacity=.45*pulse;this.gateStreakB.opacity=.45*(1.75-pulse);}
  placePlayer(g,p,lift,since,real){
   const h=this.holder,v=this.pivot,a=this.asset,over=g.status==='over',ready=g.status==='ready',first=this.rig.mix>.55;h.position.set(p.x,lift,0);v.rotation.set(0,0,0);
-  if(a){a.root.visible=!first||ready;if(ready)setDawgPose(a,real,'idle');else if(over)setDawgPose(a,0,'still');else setDawgPose(a,g.time,'run');}
+  if(a){a.root.visible=true;if(ready)setDawgPose(a,real,'idle');else if(over)setDawgPose(a,0,'still');else setDawgPose(a,g.time,'run');}
   // Flips belong to the chase view; in first person the camera rises with the jump instead.
   if(g.jump>0&&!this.reduced&&!first){const q=1-g.jump/.85;v.rotation.x=-smooth(Math.min(1,q*1.15))*Math.PI*2;}
   if(g.slide>0){const amt=slideAmount(g.slide);v.rotation.x=amt*1.25;h.position.y=-amt*.52;if(!this.reduced&&Math.random()<.6)this.burst(p.x+(Math.random()-.5)*.6,.08,first?-1.2:.9,2,0xffa04d,{speed:2.5,life:.35,gravity:-3,up:.5,stick:1});}
   v.rotation.z=-(g.lane-g.visualLane)*.42;
   if(over){const k=Math.min(1,since/.55);h.position.z=k*1.6;h.position.y=Math.sin(k*Math.PI)*1.1-k*.55;v.rotation.x=k*1.55;v.rotation.z=k*.6;}
   if(this.jumpWas>0&&g.jump===0&&g.status==='playing'){this.burst(p.x,.1,first?-1.5:.1,16,0x9aa3c7,{speed:3,life:.45,gravity:-1,up:.4,stick:1});this.stage.shake(.12);}this.jumpWas=g.jump;
-  this.playerShadow.visible=!first||ready;this.playerShadow.position.set(p.x,.03,h.position.z);const s=1.5/(1+lift*.55);this.playerShadow.scale.set(s,1,s*.8);
-  const powered=!!(g.shield||g.magnet>0);this.aura.visible=powered&&!first;if(powered){const u=this.aura.material.uniforms;u.uColor.value.set(g.shield?0x48e6ff:0xff4f8a);u.uTime.value=real;u.uAlpha.value=g.magnet>0&&g.magnet<3?(Math.sin(real*14)>0?.9:.3):.85;}
+  this.playerShadow.visible=true;this.playerShadow.position.set(p.x,.03,h.position.z);const s=1.5/(1+lift*.55);this.playerShadow.scale.set(s,1,s*.8);
+  const powered=!!(g.shield||g.magnet>0);this.aura.visible=powered;if(powered){const u=this.aura.material.uniforms;u.uColor.value.set(g.shield?0x48e6ff:0xff4f8a);u.uTime.value=real;u.uAlpha.value=g.magnet>0&&g.magnet<3?(Math.sin(real*14)>0?.9:.3):.85;}
   this.key.position.set(p.x-6,14,-10);this.key.target.position.set(p.x,0,-4);
  }
  placeCamera(g,p,lift,dt,since,speed,real){
@@ -221,7 +223,9 @@ export class ThreeDash {
   let third={pos:new T.Vector3(p.x*.72,3.25+lift*.3,5.7),at:new T.Vector3(p.x*.9,1.05+lift*.2,-12)};
   // First person: eye height of the DAWG, rising with jumps, dropping on slides, bobbing with the stride.
   const bob=this.reduced||g.status!=='playing'||lift>0||slide>0?0:Math.abs(Math.sin(g.time*13))*.07;
-  let first={pos:new T.Vector3(p.x,1.6+lift*.95-slide*.95+bob,-.15),at:new T.Vector3(p.x+lean*.6,1.35+lift*.4-slide*.6,-14)};
+  // (Runner camera: behind and above the ears, tilted down the road so three lanes and the next
+  // rows are in frame; it rises with a jump and drops with a slide, with no bob and no roll.)
+  let first={pos:new T.Vector3(p.x*.9,2.75+lift*.8-slide*.75+bob*0,2.35),at:new T.Vector3(p.x*.9,.7+lift*.35-slide*.2,-13)};
   const chase=third;
   if(ready){const a=Math.sin(real*.35)*.55,orbit={pos:new T.Vector3(p.x+Math.sin(a)*2.4,1.75,-4.6+Math.abs(Math.sin(a))*.6),at:new T.Vector3(p.x,1.25,0)};third=orbit;first=null;}
   else if(g.status==='playing'&&this.statusFrom==='ready'&&since<1.1){const k=smooth(since/1.1),a=Math.PI*k,R=4.6+(chase.pos.z-4.6)*k,swoop={pos:new T.Vector3(p.x+Math.sin(a)*R*(1-k)+(chase.pos.x-p.x)*k,1.75+(chase.pos.y-1.75)*k+Math.sin(k*Math.PI)*1.4,-Math.cos(a)*R),at:new T.Vector3(p.x,1.25,0).lerp(chase.at,k*k*k)};
@@ -229,11 +233,28 @@ export class ThreeDash {
   else if(over){const k=smooth(Math.min(1,since/1.4)),side=p.x>0?-1:1;third={pos:chase.pos.clone().lerp(new T.Vector3(p.x+side*3.4,2.1,-3.6),k),at:chase.at.clone().lerp(new T.Vector3(p.x,.9,1),k)};
    // First-person crash: the view tips over and drops toward the street.
    first={pos:first.pos.clone().lerp(new T.Vector3(p.x,.45,.6),k),at:first.at.clone().lerp(new T.Vector3(p.x+side*4,.2,-6),k)};}
-  const firstRoll=this.rig.mix>0?(over?smooth(Math.min(1,since/1.4))*.9:-lean*.12):0,roll=this.reduced?0:(-lean*.05)*(1-this.rig.mix)+firstRoll*this.rig.mix;
+  const firstRoll=this.rig.mix>0&&over?smooth(Math.min(1,since/1.4))*.9:0,roll=this.reduced?0:(-lean*.05)*(1-this.rig.mix)+firstRoll*this.rig.mix;
   this.rig.update(dt,third,first,{follow:ready||over?60:9,snap:ready&&!first,roll});this.stage.applyShake(real,this.reduced);this.rig.aim();
-  const base=this.reduced?60:60+Math.max(0,speed-25)/15*10+((g.mult||1)-1)*1.2+(g.magnet>0?3:0)+this.stage.trauma*4,fov=ready?50:base+this.rig.mix*8;cam.fov+=(fitFov(fov,cam.aspect)-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();
+  const base=this.reduced?60:60+Math.max(0,speed-25)/15*10+((g.mult||1)-1)*1.2+(g.magnet>0?3:0)+this.stage.trauma*4,fov=ready?50:base-this.rig.mix*4;cam.fov+=(fitFov(fov,cam.aspect,this.rig.mix>.5?78:64)-cam.fov)*Math.min(1,dt*4);cam.updateProjectionMatrix();
   this.sky.position.copy(cam.position);this.stars.position.copy(cam.position);this.skyline.position.set(cam.position.x,-8,cam.position.z);this.skyline.rotation.y=(g.distance*.00002)%1;this.moon.position.set(cam.position.x+150,170,cam.position.z-330);
  }
+ // Runner camera only: marks painted on the road before every row, at known distances.
+ // Green chevrons run down the open lane; the blocked lanes say what clears them.
+ roadMarks(g,real){
+  if(!this.marks){const glyph=(draw)=>texture(128,128,(c,w,h)=>{c.clearRect(0,0,w,h);c.strokeStyle=c.fillStyle='#fff';c.lineWidth=14;c.lineCap='round';c.lineJoin='round';c.font='900 30px system-ui,sans-serif';c.textAlign='center';draw(c);}),chev=c=>{for(const y of [70,34]){c.beginPath();c.moveTo(24,y+26);c.lineTo(64,y);c.lineTo(104,y+26);c.stroke();}};
+   const tex={open:glyph(chev),crate:glyph(c=>{c.beginPath();c.moveTo(30,58);c.lineTo(64,22);c.lineTo(98,58);c.stroke();c.fillText('JUMP',64,104);}),bar:glyph(c=>{c.beginPath();c.moveTo(30,22);c.lineTo(64,58);c.lineTo(98,22);c.stroke();c.fillText('SLIDE',64,104);}),block:glyph(c=>{c.beginPath();c.moveTo(30,24);c.lineTo(98,92);c.moveTo(98,24);c.lineTo(30,92);c.stroke();})},col={open:[.5,2,.8],crate:[2.2,1.5,.3],bar:[.4,1.9,2.2],block:[2.4,.3,.45]},geo=new T.PlaneGeometry(1.7,1.7).rotateX(-Math.PI/2);this.stage.extraGeometries.push(geo);
+   this.marks=Object.fromEntries(Object.keys(tex).map(k=>{const m=new T.InstancedMesh(geo,new T.MeshBasicMaterial({map:tex[k],color:new T.Color(...col[k]),transparent:true,opacity:0,depthWrite:false,toneMapped:false}),k==='open'?30:20);m.frustumCulled=false;m.position.y=.035;m.count=0;this.scene.add(m);return [k,m];}));
+   this.nowLine=new T.Mesh(new T.PlaneGeometry(LANE*3,.12).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:new T.Color(2,2,2),transparent:true,opacity:0,depthWrite:false,toneMapped:false}));this.nowLine.position.set(0,.04,-1.1);this.scene.add(this.nowLine);}
+  const mix=this.rig.mix,n={open:0,crate:0,bar:0,block:0},put=(k,lane,z)=>{const m=this.marks[k];if(n[k]>=m.instanceMatrix.count||z<1.5||z>150)return;const pt=dashPoint(lane,z);this.m4.makeTranslation(pt.x,0,pt.z);m.setMatrixAt(n[k]++,this.m4);};
+  if(mix>.02&&g.status==='playing')for(const row of g.rows){for(let j=1;j<=3;j++)put('open',row.safe,row.z-j*9);for(const o of row.obstacles){put(o.type,o.lane,row.z-9);put(o.type,o.lane,row.z-22);}}
+  const pulse=this.reduced?1:.8+.2*Math.sin(real*8);for(const k of Object.keys(n)){const m=this.marks[k];m.count=n[k];m.material.opacity=mix*.9*(k==='open'?pulse:1);m.visible=mix>.02&&n[k]>0;m.instanceMatrix.needsUpdate=true;}this.nowLine.material.opacity=mix*.5;this.nowLine.visible=mix>.02;
+ }
+ // Runner camera HUD: the next row as three lane tiles (what each lane needs), how close it is, and an arrow to the open lane.
+ fpHud(g){const ui=this.fpUi,first=this.rig.mix>.5&&g.status==='playing';if(ui.chip.hidden===first)ui.chip.hidden=ui.next.hidden=!first;if(!first){ui.open.hidden=true;return;}
+  const row=g.rows.find(r=>r.z>0);if(!row){ui.open.hidden=true;return;}const label={open:'OPEN',crate:'▲ JUMP',bar:'▼ SLIDE',block:'✕'};
+  ui.cells.forEach((el,lane)=>{const o=row.obstacles.find(o=>o.lane===lane),k=o?o.type:'open',me=lane===g.lane?'1':'0';if(el.dataset.k!==k){el.dataset.k=k;el.textContent=label[k];}if(el.dataset.me!==me)el.dataset.me=me;});
+  const secs=row.z/g.speed,hot=secs<.8?'1':'0';ui.bar.style.transform='scaleX('+Math.max(0,Math.min(1,secs/2.5)).toFixed(3)+')';if(ui.next.dataset.hot!==hot)ui.next.dataset.hot=hot;
+  const mine=row.obstacles.find(o=>o.lane===g.lane),side=mine&&(mine.type==='block'||secs<1.6)?(row.safe<g.lane?'left':'right'):'';if(ui.open.hidden===!!side)ui.open.hidden=!side;if(side){ui.open.dataset.side=side;ui.open.dataset.hot=secs<.9?'1':'0';this.hud.set(ui.open,'open',side==='left'?'◀ OPEN':'OPEN ▶');}}
  updateLines(g,speed,travelled){
   const playing=g.status==='playing'&&!this.reduced,amount=playing?Math.min(1,.22+Math.max(0,(speed-25)/12)+((g.mult||1)-1)*.14+(g.magnet>0?.45:0)+this.stage.trauma*.3+this.rig.mix*.25):0;this.lines.material.opacity=amount*.55;this.lines.visible=amount>.01;if(!this.lines.visible)return;
   const cam=this.camera.position;for(let i=0;i<this.lineSeeds.length;i++){const s=this.lineSeeds[i],side=s.x<.5?-1:1;this.m4.makeTranslation(cam.x+side*(1.6+s.y*4.5),Math.max(.3,cam.y-2.6+s.z*5.5),cam.z-2-(40-((s.y*40+travelled*2.2)%40)));this.lines.setMatrixAt(i,this.m4);}this.lines.instanceMatrix.needsUpdate=true;
@@ -248,7 +269,7 @@ export class ThreeDash {
   const label=g.magnet>0?'MAGNET':g.shield?'SHIELD':'';if(h.cache.p!==label){h.cache.p=label;ui.power.hidden=!label;ui.power.dataset.kind=label.toLowerCase();ui.powerLabel.textContent=label;}
   if(label)ui.powerBar.style.transform=`scaleX(${g.magnet>0?Math.min(1,g.magnet/(10+(g.career?.magnet||0))).toFixed(3):1})`;
   const mult=g.mult||1,flowing=g.streak>0&&g.status==='playing';ui.flow.hidden=!flowing;if(flowing){h.set(ui.flowN,'f',mult>1?'×'+mult:g.streak+'/'+RUNNER.perMult);ui.flowBar.style.transform=`scaleX(${Math.max(0,g.flow/RUNNER.flow).toFixed(3)})`;ui.flow.dataset.hot=mult>=RUNNER.maxMult?'1':'';}else this.lastMult=g.streak?this.lastMult:1;
-  h.live(g.status==='playing');
+  h.live(g.status==='playing');this.fpHud(g);
  }
  fail(){if(this.failed)return;this.failed=true;this.onFailure?.();this.dispose();}
  dispose(){

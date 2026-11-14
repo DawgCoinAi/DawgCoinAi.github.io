@@ -139,11 +139,12 @@ export class Chat {
  constructor({cloud,rankings,shell,announce,confirm,play,lastRun,medal}){Object.assign(this,{cloud,rankings,shell,announce,confirm,play,lastRun,medal});
   this.state='idle';this.list=[];this.rows=new Map();this.sent=[];this.more=true;this.loadingOlder=false;this.fresh=0;this.replays=new Map();this.probes=0;this.playing=null;this.mock=null;this.replayLoader=null;this.tempId=Number.MAX_SAFE_INTEGER-100000;
   this.box=$('chatList');if(!this.box)return;
-  const nav=$('chatNav');if(nav){nav.hidden=false;if(!$('chatBadge')){const dot=el('b','nav-badge chat-dot');dot.id='chatBadge';dot.hidden=true;nav.append(dot);}}
+  $('chatNav').hidden=false;
   this.wire();
   const prev=shell.onView;shell.onView=v=>{prev?.(v);this.openView(v);};
   // The cloud connects a moment after the page loads; chat wakes up when it does.
-  this.waiter=setInterval(()=>{if(this.reach){clearInterval(this.waiter);this.wake();}},1500);
+  this.waiter=setInterval(()=>{if(this.reach){clearInterval(this.waiter);this.wake();}},1500);this.waiter.unref?.();
+  for(const t of [globalThis,globalThis.visualViewport])t?.addEventListener?.('resize',()=>{const stick=this.atBottom();this.fit();if(stick)this.box.scrollTop=this.box.scrollHeight;});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)this.stopMoment();else if(this.viewing)this.refresh();});
   let debug='';try{debug=new URLSearchParams(location.search).get('debug')||'';}catch{}
   if(debug.split(',').includes('chat')){globalThis.__dawgChat=this;import('./chat-debug.js').then(m=>m.install(this)).catch(()=>{});}
@@ -176,8 +177,7 @@ export class Chat {
   document.addEventListener('pointerdown',e=>{if(this.menu&&!this.menu.contains(e.target)&&!e.target.closest('.chat-more'))this.closeMenu();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&this.menu)this.closeMenu();});
   // A finished run can go to chat from the results card.
-  const share=$('resultsShare');
-  if(share&&!$('resultsChat')){const b=btn('POST TO CHAT','btn chat-post-run',()=>this.postRun(b));b.id='resultsChat';b.hidden=true;share.after(b);$('resultsDialog')?.addEventListener('close',()=>{b.disabled=false;b.textContent='POST TO CHAT';});}
+  const b=$('resultsChat');b.onclick=()=>this.postRun(b);$('resultsDialog').addEventListener('close',()=>{b.disabled=false;b.textContent='POST TO CHAT';});
   this.count();
  }
  // ── Loading and polling ─────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ export class Chat {
  openView(view){
   clearInterval(this.poll);clearTimeout(this.offline);
   if(view!=='chat'){this.stopMoment();this.closeMenu();return;}
-  this.notices();
+  this.notices();this.fit();
   if(!this.reach){this.setState('connecting');this.offline=setTimeout(()=>{if(!this.reach&&this.viewing)this.setState('offline');},7000);return;}
   if(this.state!=='ready'&&this.state!=='soon')this.setState('loading');
   this.refresh().then(()=>{if(this.viewing&&this.state==='ready')this.toBottom(false);});
@@ -233,11 +233,15 @@ export class Chat {
   if(state==='soon')empty.append(el('br'),btn('PLAY SOMETHING','btn small primary',()=>this.shell.show('play')));
   this.box.replaceChildren(empty);$('chatNew').hidden=true;
  }
+ // The view is exactly as tall as the space between the top bar and the bottom nav (or the
+ // on-screen keyboard), whatever the shell's paddings are, so only the message list scrolls.
+ fit(){const view=this.box.closest('.chat-view');if(!view||!this.viewing||!view.getBoundingClientRect)return;const nav=document.querySelector('.app-nav')?.getBoundingClientRect(),h=globalThis.visualViewport?.height||innerHeight;
+  const under=nav&&nav.height&&nav.top>innerHeight/2?nav.height:0,top=view.getBoundingClientRect().top+(globalThis.scrollY||0);view.style.height=Math.max(340,Math.round(h-top-under-10))+'px';}
  // ── Notices above the list ──────────────────────────────────────────────────────────────
  notices(){
   const box=$('chatNotice'),p=this.rankings?.profile,rows=[];if(!box)return;
   const note=(text,label,on)=>{const d=el('div','chat-note');d.append(el('span','',text));if(label)d.append(btn(label,'btn small',on));return d;};
-  const toMe=()=>{this.shell.show('me');setTimeout(()=>$('playerName')?.focus(),50);};
+  const toMe=()=>{this.shell.show('me');setTimeout(()=>$('playerName').focus(),50);};
   if(!store.get(KIND))rows.push(note('Be kind. This room is public and everyone in the arcade can read it. Don’t share personal details; report anything nasty from a message’s ⋯ menu.','GOT IT',()=>{store.set(KIND,'1');this.notices();}));
   if(this.hiddenFromBoards)rows.push(note('You’re hidden from public boards, so you can read chat but not post.','CHANGE IN ME',toMe));
   else if(p&&!p.name)rows.push(note(`You’re chatting as Guest ${p.code||''}.`.replace(' .','.'),'PICK A NAME',toMe));
@@ -298,7 +302,9 @@ export class Chat {
   else job=path?this.fetchReplay(path):Promise.resolve(null);
   this.replays.set(game,job);return job.then(Boolean);
  }
- async fetchReplay(path){if(this.probes>=12)return null;this.probes++;
+ // The viewer sits beside index.html. The address is worked out from the page, not from this
+ // file, so it is the same in development and in the deploy bundle (which lives in bundle/).
+ async fetchReplay(path){if(this.probes>=12)return null;this.probes++;path=new URL(path,document.baseURI).href;
   try{const r=await fetch(path,{method:'HEAD'});if(!r.ok||!/javascript/.test(r.headers.get('content-type')||''))return null;return {path};}catch{return null;}}
  async replayModule(game){const hit=await this.replays.get(game);if(!hit)return null;if(hit.playMoment)return hit;
   const mod=await import(hit.path);this.replays.set(game,Promise.resolve(mod));return mod;}
@@ -336,8 +342,8 @@ export class Chat {
  markSeen(){const newest=[...this.list].reverse().find(m=>!m.pending);if(newest&&this.viewing&&!document.hidden){store.set(SEEN,Math.max(newest.id,Number(store.get(SEEN))||0));this.dot(false);}}
  dot(on){const d=$('chatBadge');if(d)d.hidden=!on;$('chatNav')?.setAttribute('aria-label',on?'Chat, new messages':'Chat');}
  // ── Sending ─────────────────────────────────────────────────────────────────────────────
- count(){const input=$('chatInput'),left=LIMITS.body-input.value.length,c=$('chatCount');c.textContent=String(left);c.classList.toggle('low',left<=20);
-  input.style.height='auto';input.style.height=Math.min(input.scrollHeight,112)+'px';input.style.overflowY=input.scrollHeight>112?'auto':'hidden';$('chatSend').disabled=!cleanText(input.value);}
+ count(){const input=$('chatInput'),left=LIMITS.body-(input.value||'').length,c=$('chatCount');c.textContent=String(left);c.classList.toggle('low',left<=20);
+  input.style.height='auto';input.style.height=Math.min(input.scrollHeight,112)+'px';input.style.overflowY=input.scrollHeight>112?'auto':'hidden';$('chatSend').disabled=!cleanText(input.value||'');}
  hint(text){const h=$('chatHint');if(!h)return;h.textContent=text||'';clearTimeout(this.hintTimer);if(text)this.hintTimer=setTimeout(()=>{h.textContent='';},6000);}
  async send(){const input=$('chatInput'),raw=input.value;if(!cleanText(raw)||this.sending)return;
   const r=await this.submit(raw,null,{show:true});if(r.ok){if(input.value===raw)input.value='';this.count();this.hint('');}else this.hint(r.reason);input.focus();}

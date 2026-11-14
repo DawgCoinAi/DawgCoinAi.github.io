@@ -57,7 +57,7 @@ const BUILD={
   m.trim.push(torus(.27,.012,{r:[Math.PI/2,0,0],p:[0,b+.06,0]}));return y+.3;},
  // King: a broad, caped alpha with a crown of points and a bone across the top.
  k(m){const b=pedestal(m,.36);m.body.push(lathe([[0,0],[.26,0],[.24,.1],[.2,.32],[.17,.5],[.2,.58],[0,.6]],{p:[0,b,0]}));
-  m.dark.push(tf(new T.LatheGeometry([[.3,0],[.28,.2],[.23,.45],[.21,.6]].map(([x,y])=>new T.Vector2(x,y)),20,Math.PI*.62,Math.PI*.76),{p:[0,b,-.02]}));m.trim.push(torus(.2,.025,{r:[Math.PI/2,0,0],p:[0,b+.58,0]}),sphere(.04,{p:[0,b+.5,.19]},10));
+  m.trim.push(tf(new T.LatheGeometry([[.3,0],[.28,.2],[.23,.45],[.21,.6]].map(([x,y])=>new T.Vector2(x,y)),20,Math.PI*.62,Math.PI*.76),{p:[0,b,-.02]}));m.trim.push(torus(.2,.025,{r:[Math.PI/2,0,0],p:[0,b+.58,0]}),sphere(.04,{p:[0,b+.5,.19]},10));
   const y=b+.78;head(m,y,1.05,{ears:'pointy',brow:true});m.trim.push(cyl(.15,.13,.1,{p:[0,y+.17,-.01]},24));
   for(let i=0;i<8;i++){const a=i/8*Math.PI*2;m.trim.push(cone(.03,.09,{p:[Math.sin(a)*.14,y+.26,Math.cos(a)*.14-.01]},6));}
   m.trim.push(...bone(.22,{p:[0,y+.36,-.01]}));m.glow.push(sphere(.03,{p:[0,y+.17,.14]},10));return y+.44;}};

@@ -29,5 +29,5 @@ test('Shell helpers: rank movement, relative times and unlock progress',()=>{
  const now=Date.parse('2026-10-24T12:00:00Z');assert.equal(timeAgo('2026-10-24T11:59:30Z',now),'just now');assert.equal(timeAgo('2026-10-24T11:45:00Z',now),'15 min ago');assert.equal(timeAgo('2026-10-24T09:00:00Z',now),'3 h ago');assert.equal(timeAgo('2026-10-21T12:00:00Z',now),'3 d ago');
  assert.equal(unlockProgress({open:true}),100);assert.equal(unlockProgress({open:false,routes:[{have:3,need:10},{have:30,need:60}]}),50);assert.equal(unlockProgress({open:false,routes:[]}),0);
  for(const id of GAME_IDS){assert.ok(BLURBS[id],id+' has hero copy');assert.ok(fs.existsSync(new URL('../dist/'+posterOf(id),import.meta.url)),id+' has a poster');}
- assert.deepEqual(VIEWS,['play','rankings','friends','me']);
+ assert.deepEqual(VIEWS,['play','rankings','friends','chat','me']);
 });

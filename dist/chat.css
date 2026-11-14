@@ -5,7 +5,8 @@
 @media (max-width:899px){.app-nav:has(#chatNav:not([hidden])){grid-template-columns:repeat(5,1fr)}}
 .app-nav .nav-badge.chat-dot{min-width:10px;width:10px;height:10px;padding:0;top:8px;left:calc(50% + 9px)}
 
-/* The view fills the screen so only the message list scrolls */
+/* The view fills the screen so only the message list scrolls (chat.js sets the exact height) */
+main:has(#viewChat:not([hidden])){padding-bottom:0}
 .chat-view:not([hidden]){display:flex;flex-direction:column;height:calc(100dvh - var(--ui-top-h) - var(--ui-nav-h) - 36px - env(safe-area-inset-bottom) - env(safe-area-inset-top));min-height:380px;max-width:860px;margin:0 auto}
 @media (min-width:900px){.chat-view:not([hidden]){height:calc(100dvh - var(--ui-top-h) - 44px)}}
 .chat-view .view-head{align-items:center;margin:2px 2px 10px}
@@ -28,7 +29,7 @@
 .chat-list .skeleton{flex:none;width:62%;height:42px;margin:6px 0;border-radius:14px}
 .chat-list .skeleton:nth-child(2){width:44%;align-self:flex-end}
 .chat-list.loading-older{cursor:progress}
-.chat-empty{margin:auto 6px;border:0}
+.chat-list .chat-empty{margin:auto 6px;border:0}
 .chat-day,.chat-start{margin:14px 0 2px;text-align:center;color:var(--ui-faint);font:800 10px/1 var(--ui-mono);letter-spacing:1.4px;text-transform:uppercase}
 .chat-start{margin-bottom:6px}
 

@@ -102,12 +102,14 @@ class Featured {
  arm(ms){clearTimeout(this.timer);clearTimeout(this.demoTimer);this.host.style.setProperty('--feat-ms',ms+'ms');
   if(!reduced()&&this.ids.length>1)this.timer=setTimeout(()=>{if(this.hover||this.host.contains(document.activeElement))this.arm(4000);else this.go(this.at+1);},ms);
   if(this.canDemo())this.demoTimer=setTimeout(()=>this.startDemo(),1100);}
- canDemo(){const id=this.ids[this.at],n=navigator;return !!this.shell.demo&&!this.idle&&!NO_DEMO.includes(id)&&!this.slides[this.at]?.classList.contains('locked')&&innerWidth>=900&&!reduced()&&!n.connection?.saveData&&(n.deviceMemory||8)>=4&&(n.hardwareConcurrency||8)>=4;}
- startDemo(){this.stopDemo();if(!this.canDemo())return;const s=this.slides[this.at];try{this.demo=this.shell.demo(s.querySelector('.feat-demo'),this.ids[this.at]);s.classList.add('live');}catch{this.demo=null;}}
- stopDemo(){clearTimeout(this.demoTimer);try{this.demo?.dispose();}catch{}this.demo=null;for(const s of this.slides||[]){if(s.classList.contains('live')){s.classList.remove('live');s.querySelector('.feat-demo').replaceChildren();}}}
+ canDemo(){const id=this.ids[this.at],n=navigator;return !!this.shell.demo&&!this.idle&&!this.flat?.has(id)&&!NO_DEMO.includes(id)&&!this.slides[this.at]?.classList.contains('locked')&&innerWidth>=900&&!reduced()&&!n.connection?.saveData&&(n.deviceMemory||8)>=4&&(n.hardwareConcurrency||8)>=4;}
+ // The demo fades in over the poster only once its 3D scene has mounted; a flat 2D fallback never replaces the art.
+ startDemo(){this.stopDemo();if(!this.canDemo())return;const s=this.slides[this.at];try{this.demo=this.shell.demo(s.querySelector('.feat-demo'),this.ids[this.at]);this.demoAt=Date.now();}catch{this.demo=null;}}
+ reveal(){if(!this.demo)return;const s=this.slides[this.at];if(s.classList.contains('live'))return;if(s.querySelector('.feat-demo>div'))s.classList.add('live');else if(Date.now()-this.demoAt>9000){(this.flat||=new Set()).add(this.ids[this.at]);this.stopDemo();}}
+ stopDemo(){clearTimeout(this.demoTimer);try{this.demo?.dispose();}catch{}this.demo=null;for(const s of this.slides||[]){s.classList.remove('live');s.querySelector('.feat-demo').replaceChildren();}}
  // Rest while the carousel can't be seen: another view, a dialog, a game session or off screen.
  tick(){const r=this.host.getBoundingClientRect(),idle=document.hidden||this.shell.view!=='play'||!!document.querySelector('dialog[open]')||/\b(pack|mobile)-session\b|story-focus/.test(document.body.className)||r.bottom<80||r.top>innerHeight;
-  if(idle===this.idle)return;this.idle=idle;this.host.classList.toggle('paused',idle);if(idle){clearTimeout(this.timer);this.stopDemo();}else this.go(this.at);}
+  this.reveal();if(idle===this.idle)return;this.idle=idle;this.host.classList.toggle('paused',idle);if(idle){clearTimeout(this.timer);this.stopDemo();}else this.go(this.at);}
 }
 
 export class Shell {

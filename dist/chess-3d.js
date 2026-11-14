@@ -57,7 +57,7 @@ export class ThreeChess {
   this.aim=new T.Vector3(0,.3,0);this.ready=true;return this;}
  teamColor(c){return c==='w'?WHITE:BLACK;}
  // ── The hall ──────────────────────────────────────────────────────────────────────────────
- buildRoom(){const s=this.scene,high=this.quality==='high',stone=pbr({color:0x2c2644,roughness:.62,metalness:.12},this.quality),dark=new T.MeshStandardMaterial({color:0x120e20,roughness:.8,metalness:.1,side:T.BackSide});
+ buildRoom(){this.shafts=[];const s=this.scene,high=this.quality==='high',stone=pbr({color:0x2c2644,roughness:.62,metalness:.12},this.quality),dark=new T.MeshStandardMaterial({color:0x120e20,roughness:.8,metalness:.1,side:T.BackSide});
   const floor=new T.Mesh(new T.CircleGeometry(21,64).rotateX(-Math.PI/2),pbr({map:texture(1024,1024,(c,w)=>{const q=w/16;for(let y=0;y<16;y++)for(let x=0;x<16;x++){c.fillStyle=(x+y)%2?'#1b1530':'#120d20';c.fillRect(x*q,y*q,q,q);}c.strokeStyle='#ffd36b22';c.lineWidth=2;for(let i=0;i<=16;i++){c.strokeRect(i*q,0,0,w);c.strokeRect(0,i*q,w,0);}},{repeat:true}),roughness:.26,metalness:.4,clearcoat:.9,clearcoatRoughness:.1},this.quality));floor.material.map.repeat.set(3,3);floor.position.y=-1.6;floor.receiveShadow=true;s.add(floor);
   // The dais the board stands on: a lacquered drum on two stone steps, with gold inlay.
   const table=new T.Mesh(new T.CylinderGeometry(7.2,7.6,1.5,64),pbr({color:0x1f1530,roughness:.36,metalness:.3,clearcoat:1,clearcoatRoughness:.08,sheen:.3,sheenColor:new T.Color(0x6a4a9a)},this.quality));table.position.y=-.86;table.receiveShadow=true;s.add(table);
@@ -78,8 +78,8 @@ export class ThreeChess {
   const winTex=texture(128,512,(c,w,h)=>{c.clearRect(0,0,w,h);const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#bcd0ff');g.addColorStop(.6,'#6c7fd8');g.addColorStop(1,'#2a2a6a');c.fillStyle=g;c.beginPath();c.moveTo(8,h);c.lineTo(8,w/2);c.arc(w/2,w/2,w/2-8,Math.PI,0);c.lineTo(w-8,h);c.fill();c.fillStyle='#120e20';c.fillRect(w/2-3,0,6,h);for(let y=90;y<h;y+=84)c.fillRect(0,y,w,5);});
   const wins=[];for(let i=0;i<N;i++){const a=i/N*Math.PI*2;wins.push(new T.PlaneGeometry(2.4,8).rotateY(a+Math.PI).translate(Math.sin(a)*20.2,11.4,Math.cos(a)*20.2));}
   s.add(new T.Mesh(merge(wins),new T.MeshBasicMaterial({map:winTex,transparent:true,toneMapped:false,color:new T.Color(1.5,1.5,1.7)})));
-  if(high){for(const a of [.52,2.62,3.66,5.76]){const p=new T.Vector3(Math.sin(a)*19,13,Math.cos(a)*19),b=lightShaft(0xaec4ff,{length:22,radius:3.4,top:.5,opacity:.1});b.position.copy(p);b.lookAt(Math.sin(a)*3,-1,Math.cos(a)*3);b.rotateX(-Math.PI/2);s.add(b);}
-   const beam=lightShaft(0xfff0d8,{length:14,radius:5.4,top:.35,opacity:.07});beam.position.copy(this.key.position);beam.lookAt(0,0,0);beam.rotateX(-Math.PI/2);s.add(beam);}
+  if(high){for(const a of [.52,2.62,3.66,5.76]){const p=new T.Vector3(Math.sin(a)*19,13,Math.cos(a)*19),b=lightShaft(0xaec4ff,{length:22,radius:3.4,top:.5,opacity:.1});b.position.copy(p);b.lookAt(Math.sin(a)*3,-1,Math.cos(a)*3);b.rotateX(-Math.PI/2);s.add(b);this.shafts.push([b,.1]);}
+   const beam=lightShaft(0xfff0d8,{length:14,radius:5.4,top:.35,opacity:.07});beam.position.copy(this.key.position);beam.lookAt(0,0,0);beam.rotateX(-Math.PI/2);s.add(beam);this.shafts.push([beam,.07]);}
   // Banners between the columns: ice blue on white's side of the hall, hot pink on black's.
   const banner=(col,glyph)=>new T.MeshBasicMaterial({map:texture(256,768,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,col[0]);g.addColorStop(1,col[1]);c.fillStyle=g;c.beginPath();c.moveTo(0,0);c.lineTo(w,0);c.lineTo(w,h-90);c.lineTo(w/2,h);c.lineTo(0,h-90);c.fill();c.strokeStyle='#ffd36b';c.lineWidth=12;c.stroke();c.fillStyle='#ffd36b';c.fillRect(0,0,w,26);c.font='180px serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle=col[2];c.fillText(glyph,w/2,h*.36);c.font='900 44px Impact, sans-serif';c.fillText('DAWG',w/2,h*.62);}),transparent:true,side:T.DoubleSide,toneMapped:false,color:new T.Color(.8,.8,.8)});
   const flags={w:[],b:[]};for(let i=0;i<N;i++){const a=i/N*Math.PI*2,z=Math.cos(a),team=Math.abs(z)<.1?(i%2?'w':'b'):z>0?'w':'b';flags[team].push(new T.PlaneGeometry(2.3,6.9).rotateY(a+Math.PI).translate(Math.sin(a)*15.6,7.4,Math.cos(a)*15.6));}
@@ -143,7 +143,7 @@ export class ThreeChess {
  drop(o){o?.removeFromParent();}
  // Fastens a prop to a piece for the length of the scene.
  attach(g,o){g.add(o);this.attached.push(o);return o;}
- puff(p,n,color,o={}){if(this.skipping)return;this.particles.burst(p.x,p.y,p.z,Math.max(1,Math.round(n*(this.lite?.4:1))),color,o);}
+ puff(p,n,color,o={}){if(this.skipping)return;this.particles.burst(p.x,p.y,p.z,Math.max(1,Math.round(n*(this.lite?.3:.6))),color,o);}
  sparks(p,n=24,color=GOLD){this.puff(p,n,color,{speed:7,life:.35,gravity:-9,up:1.5,spread:.3});this.puff(p,Math.ceil(n/3),0xffffff,{speed:4,life:.2,gravity:0,up:.5,spread:.2});}
  dust(p,n=14){this.puff(new T.Vector3(p.x,.06,p.z),n,0x9a8fb0,{speed:1.6,life:.8,gravity:.4,up:.25,spread:1.4});}
  motes(p,n,color){this.puff(p,n,color,{speed:.9,life:1,gravity:1.4,up:.6,spread:1.2});}
@@ -170,7 +170,7 @@ export class ThreeChess {
    const c={m,v,w:new T.Vector3((Math.random()-.5)*14,(Math.random()-.5)*14,(Math.random()-.5)*14),life,max:life,gravity,bounce,delay:typeof delay==='function'?delay(i):delay,s:m.scale.x,floor:size*.4};this.add(m);this.chunks.push(c);out.push(c);}return out;}
  // An impact: hit-stop, shake, a flash of light, sparks, and everyone watching flinches.
  hit(p,power=1,color=0xffffff,{sparks=true}={}){if(this.skipping)return;this.hitstop=Math.max(this.hitstop,.03+.07*power);this.stage.shake(Math.min(1,.2+.42*power));this.stage.flashOnce(0xffffff,Math.min(.4,.04+.14*power),false);
-  this.flashLight.position.set(p.x,p.y+.3,p.z);this.flashLight.color.set(color);this.flashLight.intensity=12*power;if(sparks)this.sparks(p,Math.round(18+26*power),GOLD);this.puff(p,Math.round(20*power),color,{speed:5,life:.5,up:1.5,spread:.4});
+  this.flashLight.position.set(p.x,p.y+.3,p.z);this.flashLight.color.set(color);this.flashLight.intensity=12*power;if(sparks)this.sparks(p,Math.round(10+14*power),GOLD);this.puff(p,Math.round(10*power),color,{speed:5,life:.5,up:1.5,spread:.4});
   this.flinchT=0;this.flinchAmp=.1+.12*power;this.flinchAt=p.clone();if(power>=.9)this.crowdHop=1;}
  title(text,red=false,sub=''){if(this.skipping)return;for(const old of this.host.querySelectorAll('.chess-title'))old.remove();const el=document.createElement('div');el.className='chess-title'+(red?' is-red':'');el.textContent=text;if(sub){const s=document.createElement('small');s.textContent=sub;s.style.cssText='display:block;margin-top:6px;font:700 clamp(9px,1.5vw,13px)/1 var(--ui-mono,monospace);letter-spacing:3px;opacity:.85;text-transform:uppercase';el.append(s);}this.host.append(el);setTimeout(()=>el.remove(),1900);}
  // ── Camera shots ───────────────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ export class ThreeChess {
  async play(m,{battle=true,mode=battle?'full':'off',reduced=false}={}){this.reduced=reduced;this.skipping=false;const g=this.pieces.get(m.from);if(!g)return;if(reduced)mode='off';
   const capSq=m.flag==='e'?m.to+(m.piece==='P'?8:-8):m.to,victim=m.captured?this.pieces.get(capSq):null,castle=m.flag==='k'||m.flag==='q';
   // Whatever a scene does, it ends: a watchdog skips anything that runs long (a hidden tab, a stuck frame).
-  const dog=setTimeout(()=>this.skip(),11000);this.cast.add(g);if(victim)this.cast.add(victim);
+  const dog=setTimeout(()=>this.skip(),this.debug?.freezeAt!=null?240000:11000);this.cast.add(g);if(victim)this.cast.add(victim);
   try{
    if(victim&&mode!=='off')await this.battle(g,victim,m,capSq,mode);
    else{if(victim){this.pieces.delete(capSq);this.shatter(victim);}
@@ -243,9 +243,9 @@ export class ThreeChess {
  breakGuard(D){for(const o of D.guard){if(o.userData.keep)continue;const w=new T.Vector3();o.getWorldPosition(w);this.puff(w,14,D.col,{speed:4,life:.5,up:1.5});o.removeFromParent();}D.guard=D.guard.filter(o=>o.userData.keep);}
  // ── Other scenes ───────────────────────────────────────────────────────────────────────────
  // A check: `from` lists the squares of the pieces giving it.
- async check(s,from=[]){if(this.reduced)return;this.skipping=false;const dog=setTimeout(()=>this.skip(),6000);const g=this.pieces.get(s);if(g)this.cast.add(g);try{await checkScene(this,s,from);}catch(e){console.error('chess scene',e);}finally{clearTimeout(dog);this.cleanup();if(g)this.settle(g,s);}}
+ async check(s,from=[]){if(this.reduced)return;this.skipping=false;const dog=setTimeout(()=>this.skip(),this.debug?.freezeAt!=null?240000:6000);const g=this.pieces.get(s);if(g)this.cast.add(g);try{await checkScene(this,s,from);}catch(e){console.error('chess scene',e);}finally{clearTimeout(dog);this.cleanup();if(g)this.settle(g,s);}}
  // Checkmate: the full finisher on the losing king at square s.
- async checkmate(s,winner,from=[]){this.skipping=false;const dog=setTimeout(()=>this.skip(),14000);const g=this.pieces.get(s);if(g)this.cast.add(g);let crown=null;try{crown=await checkmateScene(this,s,winner,from);}catch(e){console.error('chess scene',e);}finally{clearTimeout(dog);this.cleanup();if(crown&&!this.skippedOut){this.keepsake=crown;this.scene.add(crown);}this.rivalReact(winner===(this.flipped?'w':'b')?'gloat':'despair');}}
+ async checkmate(s,winner,from=[]){this.skipping=false;const dog=setTimeout(()=>this.skip(),this.debug?.freezeAt!=null?240000:14000);const g=this.pieces.get(s);if(g)this.cast.add(g);let crown=null;try{crown=await checkmateScene(this,s,winner,from);}catch(e){console.error('chess scene',e);}finally{clearTimeout(dog);this.cleanup();if(crown&&!this.skippedOut){this.keepsake=crown;this.scene.add(crown);}this.rivalReact(winner===(this.flipped?'w':'b')?'gloat':'despair');}}
  // ── Frame ─────────────────────────────────────────────────────────────────────────────────
  frame(now,{reduced=false}={}){if(!this.ready||this.dead)return false;const dt=Math.min(.05,Math.max(0,(now-this.clock)/1000));this.clock=now;this.reduced=reduced;
   // Fight time: frozen by hit-stop (and the debug freeze), stretched by slow motion, sped up in quick mode.
@@ -256,10 +256,10 @@ export class ThreeChess {
    if(c.m.position.y<c.floor&&c.v.y<0){c.m.position.y=c.floor;c.v.y*=-c.bounce;c.v.x*=.6;c.v.z*=.6;c.w.multiplyScalar(.5);c.onLand?.(c);c.onLand=null;}if(c.life<.3)c.m.scale.setScalar(Math.max(.001,c.s*c.life/.3));if(c.life<=0){c.m.removeFromParent();this.chunks.splice(i,1);}}
   this.stage.resize();const real=now/1000,cam=this.camera,aspect=cam.aspect||1,flip=this.flipped?-1:1;
   // Lights ease between the resting hall and the arena.
-  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.72);this.key.intensity=L.key*(1-d*.8);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*16;this.duelRim.intensity=d*10;
+  this.dim+=(this.dimTarget-this.dim)*Math.min(1,dt*6);const d=this.dim,L=this.lightBase;this.hemi.intensity=L.hemi*(1-d*.72);this.key.intensity=L.key*(1-d*.8);this.rimA.intensity=this.rimB.intensity=L.rim*(1-d*.6);this.duelSpot.intensity=d*10;this.duelRim.intensity=d*10;
   if(this.duelAt&&d>.01){const c=this.cine?cam.position:this.duelAt;this.duelRim.position.set(this.duelAt.x+(this.duelAt.x-c.x)*.4,1.5,this.duelAt.z+(this.duelAt.z-c.z)*.4);}
   this.flashLight.intensity*=Math.max(0,1-dt*9);this.edgeColor.lerp(this.edgeTarget,Math.min(1,dt*5));this.edgeMat.color.copy(this.edgeColor).multiplyScalar(d>.05?1+Math.sin(real*9)*.18:1);
-  if(this.candles)this.candles.material.size=1.5+Math.sin(real*11)*.06+Math.sin(real*23)*.04;
+  for(const [m,o] of this.shafts)m.material.uniforms.uOpacity.value=o*Math.max(0,1-d*1.2);if(this.candles)this.candles.material.size=1.5+Math.sin(real*11)*.06+Math.sin(real*23)*.04;
   if(this.crowd){this.crowdHop=Math.max(0,this.crowdHop-dt*2.2);this.crowd.position.y=4.4+Math.abs(Math.sin(this.crowdHop*Math.PI*2))*.35*this.crowdHop+(reduced?0:Math.sin(real*1.3)*.03);}
   this.frameRival(real,dt,reduced,flip);
   // The resting camera is fitted to the view: far enough back that all eight ranks and both

@@ -108,7 +108,7 @@ export function buildCircuit(t,{quality='high',glowTex}={}){
  add(sweep(t,()=>[[-W,.035],[W,.035]],{from:-1.1,to:1.1,vScale:2.2}),new T.MeshBasicMaterial({map:checker()}));
  add(sweep(t,()=>[[-W,.03],[W,.03]],{from:-22,to:-1,vScale:21}),new T.MeshBasicMaterial({map:gridTex(),transparent:true,opacity:.75,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}));
  const lights=[];{const M=frame(t,3),w=KART.wall+.9;for(const z of [-w,w])put(bag.dark,box(.55,7.4,.55,0,0,z),M);put(bag.dark,box(.7,1.5,w*2+.5,0,6.3,0),M);put(bag.dark,box(.4,.9,5.2,-.5,5.1,0),M);
-  const head=add(new T.PlaneGeometry(w*2-.6,1.2).rotateY(-Math.PI/2).translate(-.37,7.05,0).applyMatrix4(M),new T.MeshBasicMaterial({map:bannerTex(0,'DRIFT DAWGS · '+t.name.toUpperCase()),toneMapped:false}));head.material.map.anisotropy=8;
+  const head=add(new T.PlaneGeometry(w*2-.6,1.2).rotateY(-Math.PI/2).translate(-.37,7.05,0).applyMatrix4(M),new T.MeshBasicMaterial({map:bannerTex(0,'DRIFT DAWGS · '+t.name.toUpperCase()),toneMapped:false}));head.material.map.anisotropy=8;add(new T.PlaneGeometry(w*2-.6,1.2).rotateY(Math.PI/2).translate(.37,7.05,0).applyMatrix4(M),head.material);
   for(let i=0;i<4;i++){const mat=new T.MeshBasicMaterial({color:0x220808});lights.push(mat);g.add(new T.Mesh(new T.SphereGeometry(.34,14,10).translate(-.75,5.55,(i-1.5)*1.15).applyMatrix4(M),mat));}}
  // Boost pads and the arrows up the ramp scroll forward.
  const padMap=chevron('#ffffff'),padMat=new T.MeshBasicMaterial({map:padMap,color:look.night?new T.Color(.5,2.1,2.6):new T.Color(.25,1.05,1.3),transparent:true,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2});
@@ -127,7 +127,7 @@ export function buildCircuit(t,{quality='high',glowTex}={}){
  // Banner arches, floodlights and their glow.
  const banners=[];for(let k=1;k<=6;k++){const s=t.len*k/7+20;if(inTunnel(s-8)||inTunnel(s+8)||nearJump(s,12)||nearStart(s,30))continue;banners.push(s);}
  banners.forEach((s,i)=>{const M=frame(t,s),w=Math.max(wallAt(t,s,1),wallAt(t,s,-1))+.8;for(const z of [-w,w])put(bag.dark,box(.4,6.6,.4,0,0,z),M);put(bag.dark,box(.3,.25,w*2,0,6.5,0),M);
-  const b=add(new T.PlaneGeometry(w*2-.5,1.5).rotateY(-Math.PI/2).translate(-.05,5.6,0).applyMatrix4(M),new T.MeshBasicMaterial({map:bannerTex(i+1+(t.seed&3)),side:T.DoubleSide,toneMapped:!look.night,color:look.night?0xffffff:0xd8d8d8}));b.material.map.anisotropy=4;});
+  const b=add(new T.PlaneGeometry(w*2-.5,1.5).rotateY(-Math.PI/2).translate(-.05,5.6,0).applyMatrix4(M),new T.MeshBasicMaterial({map:bannerTex(i+1+(t.seed&3)),toneMapped:!look.night,color:look.night?0xffffff:0xd8d8d8}));b.material.map.anisotropy=4;add(new T.PlaneGeometry(w*2-.5,1.5).rotateY(Math.PI/2).translate(.05,5.6,0).applyMatrix4(M),b.material);});
  const lamps=[],poles=[];for(let s=18,i=0;s<t.len-8;s+=high?36:54,i++){if(inTunnel(s)||nearJump(s))continue;const side=i%2?1:-1,d=side*(wallAt(t,s,side)+1),p=world(t,s,d);poles.push({x:p.x,y:p.y,z:p.z,ry:trackAt(t,s).ang+(side>0?Math.PI/2:-Math.PI/2)});const q=world(t,s,d-side*1.6,8.6);lamps.push(q);}
  g.add(instances(merge([box(.24,9,.24),box(.2,.2,2,0,8.8,.9),box(.7,.16,1,0,8.6,1.6)]),std({color:0x2a2c3c,metalness:.6,roughness:.4}),poles));
  const glowPos=[];for(const q of lamps)glowPos.push(q.x,q.y,q.z);

@@ -317,7 +317,7 @@ export class DominoGame {
   const q=pv.piece,lv=this.lv,w=this.worldWith([...this.placed,{i:pv.index,gx:this.cursor.gx,gy:this.cursor.gy}]);let v=null;
   const probe=(x,y,vx,vy,n=150)=>{const b={x,y,vx,vy,r:DOMINO.ballR,m:1,e:.35},s={springs:w.springs.map(()=>({cool:0})),gloves:w.gloves.map(()=>({f:1,trig:0})),saws:w.saws.map(sw=>({a:sw.tilt*LIM,av:0})),sw:w.switches.map(()=>0)},pts=[[x,y]];for(let k=1;k<=n;k++){stepBall(b,w,s,lv,NOOP);if(k%6===0)pts.push([b.x,b.y]);}return Math.hypot(b.x-x,b.y-y)>.25?pts:null;};
   if(q.type==='ball')v={pts:probe(q.x,q.y,0,0)};
-  else if(q.type==='plank')v={pts:probe(q.x1+.25*q.dir,q.y1+DOMINO.ballR+.2,0,0)};
+  else if(q.type==='plank')v={pts:probe(q.x1+(q.x2-q.x1)*.3,q.y1+(q.y2-q.y1)*.3+DOMINO.ballR+.12,0,0)};
   else if(q.type==='spring')v={pts:probe(q.x,q.y+.31+DOMINO.ballR,0,0)};
   else if(q.type==='glove')v={pts:probe(q.x+q.dir*.85,q.y+DOMINO.ballR+.02,q.dir*DOMINO.punch,2.2),zone:{x:q.dir>0?q.x+.4:q.x-1.5,y:q.y,w:1.1,h:1}};
   else if(q.type==='fan')v={zone:fanZone(q),dir:q.dir,pts:null};

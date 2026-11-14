@@ -9,13 +9,13 @@ const POSTER={classic:'maze',rush:'maze',daily:'maze'};
 export const posterOf=id=>`assets/posters/${POSTER[id]||id}.jpg`;
 // One line of copy per game for the hero.
 export const BLURBS={
- classic:'A hungry DAWG, a maze full of loot and four rivals who really don’t want you to win. See the whole block from above, or drop into the corridors in first person.',
- rush:'Sixty seconds. Every coin counts, every hit costs. Chase the score, not the exit.',
- daily:'One seeded maze for everyone, every day. Same twist, same rivals: who runs it best?',
+ classic:'A campaign through four neon districts. Every stage adds a twist: teleport tunnels, one-way gates, blackouts, shutter doors and a Warden. Play it as a diorama from above or at street level.',
+ rush:'Sixty seconds and a multiplier that only climbs while you move. Chain treats to buy time; the last ten seconds pay double.',
+ daily:'One maze for everyone, one twist a day (fog, mirrored controls, six rivals, hidden chests, rocket dash) and one scored run. Clear it early for a time bonus.',
  trade:'Buy low, sell high, dodge the debt collector. Build a street empire in thirty nights.',
  flappy:'Jetpack through the sky-gaps of a skyline, from golden hour to fireworks. Burn, dive, ride the thermals.',
  cross:'Hop the traffic, ride the logs, grab the gold. How far can one DAWG get?',
- snake:'Ride the light trail through a neon arena. Grow your pack and don’t bite your tail.',
+ snake:'Ride a ribbon of light around a stadium that keeps changing. Box in the rival riders and don’t bite your tail.',
  runner:'Three lanes, one night, no brakes. Jump, slide and stack gold through the city.',
  turbo:'A 3D speed run through the sky: loops, corkscrews, rails and the high road. Beat the clock.',
  pinball:'One deep table, Dawg City Nights: real flipper physics, two ramps, two orbits, five timed modes, multiball jackpots and a wizard mode. Climb the ladder from Stray to Top Dawg.',

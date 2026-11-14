@@ -227,7 +227,7 @@ test('Every feat can be earned, each is announced once, and feats ride in the sa
 });
 
 test('Leagues are a ladder: your best score picks one, each pays more with faster rivals and a twist, and the result teases the next',()=>{
- assert.deepEqual([0,5999,6000,13999,14000,23999,24000,1e6].map(leagueFor),[0,0,1,1,2,2,3,3]);for(let i=1;i<LEAGUES.length;i++){assert.ok(LEAGUES[i].need>LEAGUES[i-1].need);assert.ok(LEAGUES[i].mult>LEAGUES[i-1].mult);assert.ok(LEAGUES[i].pace>LEAGUES[i-1].pace);assert.ok(LEAGUES[i].name&&LEAGUES[i].twist);}
+ assert.deepEqual([0,11999,12000,24999,25000,44999,45000,1e6].map(leagueFor),[0,0,1,1,2,2,3,3]);for(let i=1;i<LEAGUES.length;i++){assert.ok(LEAGUES[i].need>LEAGUES[i-1].need);assert.ok(LEAGUES[i].mult>LEAGUES[i-1].mult);assert.ok(LEAGUES[i].pace>LEAGUES[i-1].pace);assert.ok(LEAGUES[i].name&&LEAGUES[i].twist);}
  const loopPts=league=>{const g=solo(3);g.setLeague(league);lay(g,g.you,boxTrail(g.city.homes[0]),'left');g.events=[];walk(g,1);return g.events.find(e=>e.type==='claim').pts;};
  assert.equal(loopPts(0),300);assert.equal(loopPts(1),375);assert.equal(loopPts(3),600);
  const a=fresh(2),b=fresh(2);b.league=3;assert.ok(Math.abs(b.speedOf(b.players[1])/a.speedOf(a.players[1])-LEAGUES[3].pace)<1e-9);assert.equal(b.speedOf(b.you),a.speedOf(a.you),'your own pace never changes');

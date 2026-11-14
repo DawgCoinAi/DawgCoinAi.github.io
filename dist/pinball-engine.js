@@ -420,5 +420,3 @@ export function pinballAutopilot(g,mem,dt){
   if(good||wait<=-200&&flip>wait){g.press(side,true);mem[key]=.22;}}
  if(mem.think<=0)mem.think=.03;
 }
-// Names the flat renderer imported from the previous table; kept so nothing fails to link.
-export const HOLE=SCOOP,WALLS=SEGS.map(s=>[s.ax,s.ay,s.bx,s.by,s.kind]);

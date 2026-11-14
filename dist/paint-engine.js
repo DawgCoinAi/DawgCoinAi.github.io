@@ -45,9 +45,9 @@ export const YOU={name:'You',tag:'YOU',color:'#ffd23e'};
 // passes it to setLeague). Each league pays more, has faster rivals, and adds a twist of its own.
 export const LEAGUES=[
  {name:'BACK ALLEY',need:0,pace:1,mult:1,twist:'Rivals take it easy.'},
- {name:'NIGHT MARKET',need:6000,pace:1.06,mult:1.25,twist:'Pickups drop more often.'},
- {name:'NEON HEIGHTS',need:14000,pace:1.12,mult:1.5,twist:'Every crew starts shielded and the hunters never sleep.'},
- {name:'THE CROWN',need:24000,pace:1.18,mult:2,twist:'Double points for the whole last minute.'}];
+ {name:'NIGHT MARKET',need:12000,pace:1.06,mult:1.25,twist:'Pickups drop more often.'},
+ {name:'NEON HEIGHTS',need:25000,pace:1.12,mult:1.5,twist:'Every crew starts shielded and the hunters never sleep.'},
+ {name:'THE CROWN',need:45000,pace:1.18,mult:2,twist:'Double points for the whole last minute.'}];
 export const leagueFor=best=>{let k=0;for(let i=1;i<LEAGUES.length;i++)if(best>=LEAGUES[i].need)k=i;return k;};
 // Today's course: one rule bent for the day, picked by the seed. Applied when game.daily is true.
 export const TWISTS=[

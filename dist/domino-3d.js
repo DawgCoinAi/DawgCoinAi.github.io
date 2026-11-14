@@ -72,9 +72,9 @@ export class ThreeDomino {
   this.mats.frame.map.repeat.set(3,1);
   const back=new T.Mesh(new T.PlaneGeometry(W,Hh),this.mats.board);back.position.set(W/2,Hh/2,BACK);back.receiveShadow=high;shop.add(back);
   // Cabinet: two posts, a header rail with the shop's plaque, and the bench it stands on.
-  for(const x of [-.35,W+.35]){const p=this.box(shop,.7,Hh+1.1,2.4,this.mats.frame,x,Hh/2+.05,BACK+1.1);p.castShadow=p.receiveShadow=high;}
-  const rail=this.box(shop,W+1.4,.8,2.4,this.mats.frame,W/2,Hh+.4,BACK+1.1);rail.castShadow=high;
-  const plaque=new T.Mesh(new T.PlaneGeometry(5.2,.62),new T.MeshBasicMaterial({map:texture(1024,128,(c,w,h)=>{c.clearRect(0,0,w,h);c.font=font(92);c.textAlign='center';c.textBaseline='middle';c.fillStyle=hex(th.trim);c.fillText(WORLDS[wi].name.toUpperCase(),w/2,h/2+4);}),transparent:true,toneMapped:false}));plaque.position.set(W/2,Hh+.4,BACK+2.32);shop.add(plaque);
+  for(const x of [-.3,W+.3]){const p=this.box(shop,.6,Hh+1.1,1.7,this.mats.frame,x,Hh/2+.05,BACK+.75);p.castShadow=p.receiveShadow=high;}
+  const rail=this.box(shop,W+1.2,.8,1.7,this.mats.frame,W/2,Hh+.4,BACK+.75);rail.castShadow=high;
+  const plaque=new T.Mesh(new T.PlaneGeometry(5.2,.62),new T.MeshBasicMaterial({map:texture(1024,128,(c,w,h)=>{c.clearRect(0,0,w,h);c.font=font(92);c.textAlign='center';c.textBaseline='middle';c.fillStyle=hex(th.trim);c.fillText(WORLDS[wi].name.toUpperCase(),w/2,h/2+4);}),transparent:true,toneMapped:false}));plaque.position.set(W/2,Hh+.4,BACK+1.62);shop.add(plaque);
   const bench=this.box(shop,W+60,.5,9,this.mats.frame,W/2,-.25,BACK+3.4);bench.receiveShadow=high;this.box(shop,W+60,.24,.3,this.mats.wood,W/2,-.12,BACK+7.9);
   const drop=new T.Mesh(new T.PlaneGeometry(90,50),new T.MeshBasicMaterial({map:bokehTexture(th),toneMapped:false}));drop.position.set(W/2,Hh/2+3,BACK-9);shop.add(drop);
   // The pendant lamp over the cabinet.
@@ -92,7 +92,7 @@ export class ThreeDomino {
    if(b.kind==='belt'){const gp=new T.Group();gp.position.set(b.x+b.w/2,b.y+b.h/2,0);const mat=this.mats.belt.clone();mat.map=this.mats.belt.map.clone();mat.map.needsUpdate=true;mat.map.repeat.set(b.w/1.2,1);const top=this.box(gp,b.w-.2,b.h,DEPTH,mat,0,0);for(const sx of [-1,1]){const r=new T.Mesh(this.geo.disc,this.mats.steel);r.scale.set(b.h/2,DEPTH+.1,b.h/2);r.rotation.x=Math.PI/2;r.position.set(sx*(b.w/2-.15),0,0);gp.add(r);}castShadows(gp,this.quality);set.add(gp);this.belts.push({b,mat,rollers:gp.children.slice(1)});this.brackets(set,b,this.mats.dark);continue;}
    const m=this.box(set,b.w,b.h,b.kind==='crate'?DEPTH+.1:DEPTH+.25,b.kind==='crate'?this.mats.crate:this.mats.wood,b.x+b.w/2,b.y+b.h/2);castShadows(m,this.quality);if(b.kind==='shelf'){this.box(set,b.w,.06,.05,this.mats.trim,b.x+b.w/2,b.y+b.h-.03,(DEPTH+.25)/2+.02);this.brackets(set,b,this.mats.steel);}}
   // The workbench top inside the cabinet.
-  const fl=this.box(set,lv.W,.5,3.2,this.mats.wood,lv.W/2,.25,BACK+1.6);fl.receiveShadow=high;
+  const fl=this.box(set,lv.W,.5,2,this.mats.wood,lv.W/2,.25,BACK+1);fl.receiveShadow=high;
   for(const d of lv.doors){const hinge=new T.Group();hinge.position.set(d.x,d.y+.15,0);const flap=this.box(hinge,d.w,.3,DEPTH+.2,this.mats.stripe,d.w/2,0);castShadows(flap,this.quality);set.add(hinge);this.doors.push({d,hinge,a:0});}
   lv.switches.forEach(q=>{const gp=new T.Group();gp.position.set(q.x,q.y,0);const base=this.box(gp,.9,.14,.8,this.mats.yellow,0,.07),btn=new T.Mesh(this.geo.disc,this.mats.red);btn.scale.set(.3,.2,.3);btn.position.y=.2;gp.add(btn);castShadows(gp,this.quality);set.add(gp);this.buttons.push({q,btn,base});});
   lv.saws.forEach(sw=>{const base=new T.Mesh(new T.CylinderGeometry(.08,.5,sw.y-.5,3),this.mats.trim);base.rotation.y=Math.PI/6;base.scale.z=1.5;base.position.set(sw.x,.5+(sw.y-.5)/2,0);castShadows(base,this.quality);set.add(base);const arm=new T.Group();arm.position.set(sw.x,sw.y,0);const pl=this.box(arm,DOMINO.sawLen,.13,DEPTH,this.mats.wood,0,0);for(const sx of [-1,1]){const cup=new T.Mesh(new T.TorusGeometry(.36,.06,8,20),this.mats.trim);cup.rotation.x=Math.PI/2;cup.position.set(sx*1.15,.1,0);arm.add(cup);}const pin=new T.Mesh(this.geo.disc,this.mats.brass);pin.scale.set(.1,DEPTH+.2,.1);pin.rotation.x=Math.PI/2;arm.add(pin);castShadows(arm,this.quality);set.add(arm);this.sawMeshes.push({sw,arm});});
@@ -179,7 +179,7 @@ export class ThreeDomino {
   else if(e.type==='over'){st.shake(.3);}}
  // The base camera frames the whole room between the HUD and the dock; picking uses it, so a
  // finger always lands on the same spot of the room however the live camera has zoomed.
- frame(lv){const st=this.stage,vw=st.w||420,vh=st.h||560,now=performance.now();if(now-this.inset.t>400){this.inset.t=now;const vr=this.view.getBoundingClientRect(),dock=this.view.parentElement?.querySelector('.dm-dock:not([hidden])'),top=this.ui.top.getBoundingClientRect();this.inset.top=Math.max(40,Math.min(vh*.3,top.bottom-vr.top+6));this.inset.bottom=dock?Math.min(vh*.35,dock.getBoundingClientRect().height+2):Math.min(120,vh*.16);}
+ frame(lv){const st=this.stage,vw=st.w||420,vh=st.h||560,now=performance.now();if(now-this.inset.t>400){this.inset.t=now;const vr=this.view.getBoundingClientRect(),dock=this.view.parentElement?.querySelector('.dm-dock:not([hidden])'),top=this.ui.top.getBoundingClientRect();const s0=(vh-150)/(lv.H+.7),wide=(vw-lv.W*s0)/2>top.width*.0+Math.min(330,vw*.3);this.inset.top=wide?Math.max(40,top.top-vr.top-4):Math.max(40,Math.min(vh*.3,top.bottom-vr.top+22));this.inset.bottom=dock?Math.min(vh*.35,dock.getBoundingClientRect().height+2):Math.min(120,vh*.16);}
   const top=this.inset.top,bottom=this.inset.bottom,uh=Math.max(120,vh-top-bottom),s=Math.min(vw/(lv.W+.5),uh/(lv.H+.7)),dist=vh/2/(s*Math.tan(FOV*Math.PI/360)),cy=lv.H/2+.1-(vh/2-(top+uh/2))/s;return {s,dist,cx:lv.W/2,cy,vw,vh};}
  pose(cam,f,cx,cy,zoom,roll=0){const d=f.dist/zoom;cam.fov=FOV;cam.aspect=f.vw/f.vh;cam.near=.5;cam.far=400;cam.position.set(cx+d*.05,cy+d*.11,d);cam.up.set(Math.sin(roll),Math.cos(roll),0);cam.lookAt(cx,cy,0);cam.updateProjectionMatrix();cam.updateMatrixWorld();}
  // Where a screen point lands on the play plane, in meters (and as a cell).

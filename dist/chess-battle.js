@@ -25,7 +25,7 @@ function shield(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.Cylinder
 function lance(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.ConeGeometry(.075,1.7,14).rotateX(PI/2).translate(0,0,.6)),metal(S)),new T.Mesh(S.own(new T.CylinderGeometry(.15,.11,.08,16).rotateX(PI/2).translate(0,0,-.2)),lit(S,c,1.8)),new T.Mesh(S.own(new T.ConeGeometry(.03,.3,8).rotateX(PI/2).translate(0,0,1.45)),lit(S,c)));return g;}
 // A blade pointing up from its hilt.
 function blade(S,c,len=.8,w=.06){const g=new T.Group(),b=new T.ConeGeometry(w,len,4).translate(0,len/2+.08,0);b.scale(1,1,.3);g.add(new T.Mesh(S.own(b),lit(S,c,2.6)),new T.Mesh(S.own(new T.BoxGeometry(w*3.4,.035,.05).translate(0,.07,0)),metal(S,GOLD)),new T.Mesh(S.own(new T.CylinderGeometry(.02,.02,.14,8)),metal(S,0x4a3a5a)));return g;}
-function barrel(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.11,.14,.7,18,1,true).rotateX(PI/2).translate(0,0,.35)),S.own(new T.MeshStandardMaterial({color:0x2a2c3a,metalness:.9,roughness:.3,side:T.DoubleSide}))),new T.Mesh(S.own(new T.TorusGeometry(.125,.025,8,20).translate(0,0,.68)),lit(S,c,1.8)),new T.Mesh(S.own(new T.TorusGeometry(.15,.02,8,20).translate(0,0,.12)),metal(S,GOLD)));return g;}
+function barrel(S,c){const g=new T.Group();g.add(new T.Mesh(S.own(new T.CylinderGeometry(.13,.17,1,18).rotateX(PI/2).translate(0,0,.5)),S.own(new T.MeshStandardMaterial({color:0x3a3d52,metalness:.85,roughness:.28,emissive:0x202436}))),new T.Mesh(S.own(new T.TorusGeometry(.14,.03,8,20).translate(0,0,.98)),lit(S,c,1.6)),new T.Mesh(S.own(new T.TorusGeometry(.17,.025,8,20).translate(0,0,.4)),metal(S,GOLD)),new T.Mesh(S.own(new T.CircleGeometry(.1,16).translate(0,0,1.002)),S.own(new T.MeshBasicMaterial({color:0x050308}))));return g;}
 function horseshoe(S,c){return new T.Mesh(S.own(new T.TorusGeometry(.13,.035,8,18,PI*1.35).rotateZ(-PI*.175)),lit(S,c,2.6));}
 function crown(S,k=1){const parts=[new T.CylinderGeometry(.15,.13,.1,20,1,true)];for(let i=0;i<8;i++){const a=i/8*PI*2;parts.push(new T.ConeGeometry(.032,.1,6).translate(Math.sin(a)*.14,.09,Math.cos(a)*.14));}const m=new T.Mesh(S.own(merge(parts)),S.own(new T.MeshStandardMaterial({color:GOLD,metalness:1,roughness:.18,emissive:GOLD,emissiveIntensity:.55,side:T.DoubleSide})));m.scale.setScalar(k);return m;}
 function slab(S,c){return new T.Mesh(S.geo.box,S.own(new T.MeshStandardMaterial({color:c==='w'?0xd8d0ec:0x2a2638,roughness:.5,metalness:.3,emissive:S.teamColor(c),emissiveIntensity:.25})));}
@@ -36,7 +36,7 @@ function crack(S,p,r=1.3){S.crackTex=S.crackTex||texture(256,256,(c,w)=>{c.clear
 export function gearUp(X){const {S,A}=X,g=A.g,c=A.col,G=A.gear;
  if(A.t==='p'){G.spear=S.attach(g,spear(S,c));G.spear.position.set(-.3,.4,.1);G.shield=S.attach(g,shield(S,c));G.shield.position.set(.3,.4,.2);}
  if(A.t==='n'){G.lance=S.attach(g,lance(S,c));G.lance.position.set(-.32,.72,.1);G.lance.visible=false;}
- if(A.t==='r'){G.barrel=S.attach(g,barrel(S,c));G.barrel.position.set(0,.5,.16);G.barrel.scale.set(1,1,.01);G.barrel.visible=false;}
+ if(A.t==='r'){G.barrel=S.attach(g,barrel(S,c));G.barrel.position.set(0,.5,.05);G.barrel.scale.set(1,1,.01);G.barrel.visible=false;}
  if(A.t==='q'){G.blades=[-1,1].map(s=>{const b=S.attach(g,blade(S,c,.75));b.position.set(s*.42,.45,.05);b.rotation.z=-s*.25;return b;});}
  if(A.t==='k'){G.sword=S.attach(g,blade(S,c,1.25,.09));G.sword.position.set(-.48,.25,.1);}}
 const orbOf=F=>F.g.localToWorld(V(.24,1.04,.05));
@@ -128,12 +128,12 @@ export const ATTACK={
   await S.tween(.26,k=>{g.position.lerpVectors(start,s1,k);g.rotation.z=Math.sin(k*20)*.03;if(Math.random()<.5)S.dust(g.position,1);});
   await S.tween(.22,k=>{br.scale.z=.01+.99*back(k);g.rotation.x=-.1*k;});S.sfx('tick');
   const fuse=S.glowBall(0xffa040,.03);S.sfx('charge');
-  await S.tween(.4,k=>{fuse.position.copy(g.localToWorld(V(0,.62,.2)));fuse.scale.setScalar(.03+.08*k*(1+.3*Math.sin(k*50)));squash(g,1-.1*k);if(Math.random()<.5)S.sparks(fuse.position,1,0xffa040);});S.drop(fuse);
-  S.cam({at:up(mid,.6),yaw:1.5,pitch:.12,w:4.8,h:2.9,dur:.07});const muzzle=g.localToWorld(V(0,.5,.9)),ball=S.glowBall(ac,.13),tgt=up(P,.55);ball.position.copy(muzzle);
-  S.hit(muzzle,.55,0xffc070);S.sfx('boom');S.puff(muzzle,26,0x9a94aa,{speed:2.2,life:1.1,gravity:.6,up:.5,spread:.6});S.streak(muzzle,tgt,ac,{w:.1,dur:.35});
+  await S.tween(.4,k=>{fuse.position.copy(g.localToWorld(V(0,.7,.3)));fuse.scale.setScalar(.03+.08*k*(1+.3*Math.sin(k*50)));squash(g,1-.1*k);if(Math.random()<.5)S.sparks(fuse.position,1,0xffa040);});S.drop(fuse);
+  S.cam({at:up(mid,.6),yaw:1.5,pitch:.12,w:4.8,h:2.9,dur:.07});const muzzle=g.localToWorld(V(0,.5,1.1)),ball=S.glowBall(ac,.13),tgt=up(P,.55);ball.position.copy(muzzle);
+  S.hit(muzzle,.55,0xffc070);S.sfx('boom');S.puff(muzzle,14,0x4a4658,{speed:1.8,life:1.1,gravity:.6,up:.5,spread:.6});S.streak(muzzle,tgt,ac,{w:.1,dur:.35});
   const r0=g.position.clone();S.tween(.3,k=>{const e=k<.25?k/.25:1-(k-.25)/.75;g.position.copy(r0).addScaledVector(dir,-.4*easeOut(Math.min(1,k*3)));g.rotation.x=-.1-.3*e;squash(g,1);br.scale.z=1-.25*e;});
   await S.tween(.09,k=>{ball.position.lerpVectors(muzzle,tgt,k);});S.drop(ball);
-  S.finalHit(X,1.15);S.puff(tgt,30,0xffa040,{speed:6,life:.5,up:2});await S.tween(.3,k=>{g.rotation.x=-.1*(1-k);br.scale.z=1-k*.99;});},
+  S.finalHit(X,1.15);S.puff(tgt,12,0xffa040,{speed:6,life:.4,up:2});await S.tween(.3,k=>{g.rotation.x=-.1*(1-k);br.scale.z=1-k*.99;});},
  // Rook: two heavy hops, a crouch, then the whole keep goes up and comes down like a hammer.
  async 'ground-pound'(X){const {S,A,D,P,start,dir,ac}=X,g=A.g,h1=mix(start,P,.22),spot=along(P,dir,-.62);
   S.cam({at:()=>up(mix(g.position,P,.5),.5),yaw:1.3,pitch:.14,w:4,h:2.8,dur:.3});let a=start;

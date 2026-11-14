@@ -5,13 +5,13 @@ import {BLURBS,posterOf,fmt} from './shell.js';
 
 const $=id=>document.getElementById(id);
 export const HOW={
- classic:['Steer with arrows, WASD, a swipe or the D-pad','Eat every pellet; power-ups turn the rivals blue','Dash (Space) straight through a rival to tackle it'],
- rush:['Sixty seconds on the clock','Coins and combos score; hits cost time','Dash (Space) through tight spots'],
- daily:['One maze for everyone today','Same seed, same twist, one shot at the best run','Comes back with a new twist tomorrow'],
+ classic:['Steer with arrows, WASD, a swipe or the D-pad; turn early and the DAWG takes the corner with a burst','Eat every treat without a gap to build a chain; power treats turn the rivals blue','Dash (Shift or E) straight through a rival to tackle it; each stage adds a new twist'],
+ rush:['Sixty seconds on the clock: keep moving to build a ×5 multiplier','Every 20-treat chain and every catch adds time; a hit costs 150 and the multiplier','The last ten seconds pay double'],
+ daily:['One maze and one twist for everyone today','Your first run is the one that scores; clear the maze inside 90 seconds for a time bonus','Later runs are practice, and a new twist arrives tomorrow'],
  trade:['Buy low in one district, sell high in another','Every trip is a night: 30 nights to cash out','Talk to your contact and handle whoever stops you'],
  flappy:['Tap or Space to burn the jet; swipe down or ↓ to dive','Dive through a gate for a bonus, ride thermals, pull the gold lines','Three gold rings in a row earn a shield; a new sky every 8 gates'],
  cross:['Tap or swipe to hop; arrows work too','Dodge traffic, ride the floating decks','Stay ahead of the blackout; gold and close calls pay extra'],
- snake:['Swipe or use arrows to turn','Eat to grow; don’t hit yourself or the crystals','Three direct lines to the gold charge you up to smash a crystal'],
+ snake:['Swipe or use arrows to turn; hold Space or BOOST for speed','Every 5 gold opens a new arena: warping edges, rival riders, closing walls','Trap rivals for 100+, grab power-ups, chain direct lines to smash a crystal'],
  runner:['← → change lanes','↑ jump crates, ↓ slide under arches','Grab gold and power-ups as the city speeds up'],
  turbo:['← → or swipe to change lane; tap or ↑ to jump, ↑ again in the air to flip','↓ rolls under bars and through bots; hold Space (or the screen) to burn turbo','The clock refills only at checkpoints: stay fast, chain tricks, take the high road'],
  pinball:['Hold ← → (or each side of the screen) to flip; hold ↓ or the right side and let go to plunge','Shoot the Dawg House scoop to start a mode, then follow the flashing arrows','Chain ramps and orbits for combos, lock 3 balls for multiball, beat all 5 modes for Top Dawg'],

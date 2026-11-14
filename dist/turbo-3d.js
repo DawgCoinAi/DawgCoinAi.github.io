@@ -2,7 +2,7 @@
 // the seeded course and draws a ribbon of track through four skies from a chase camera that rides
 // the track's own frame, so loops and corkscrews turn the world over. Nothing here changes a rule.
 import {createDawgAsset,setDawgPose,assetKey} from './dawg-graphics-model.js';
-import {T,smooth,quality,fitFov,texture,radial,glowStops,merge,pbr,auraMaterial,Stage,Particles,Hud,AmbientLoop} from './three-kit.js';
+import {T,smooth,quality,fitFov,texture,radial,glowStops,merge,pbr,Stage,Particles,Hud,AmbientLoop} from './three-kit.js';
 import {TURBO,STAGES,FEATS,RIVALS,stageName,kmh,turboChunk,chunkAt,frameIn,crossSection,halfWidthIn,laneX,deckHeight,railHeight,floorIn} from './turbo-engine.js';
 import {hash} from './world.js';
 import {npcDawg} from './npc-dawg.js';
@@ -11,10 +11,10 @@ import {heatLabel} from './difficulty.js';
 const LW=TURBO.lane,AHEAD=4,GROUND=-90,CP=TURBO.checkpoint;
 // Four postcards, one per checkpoint, then round again.
 const ZONES=[
- {name:'SUNSET BOARDWALK',top:'#1d2f7a',mid:'#c8527a',horizon:'#ffab5e',sun:'#ffd9a0',sunDir:[-.35,.16,.92],sunSize:.045,fog:'#8a4f63',fogD:.003,hemiSky:'#ffc9a8',hemiGround:'#3a2a55',hemi:1.25,key:'#ffd2a0',keyI:3,env:.55,clouds:.55,stars:0,aurora:0,ground:[1,0,0],gA:'#12314f',gB:'#ff9d5c',edgeA:'#ff8a3d',edgeB:'#3fe0ff',tints:['#ffd28a','#ff9a6a','#ffe7b8'],lit:.42,density:.5,tall:[-40,6],wall:'#3b3050',exposure:1.02},
- {name:'NEON DOWNTOWN',top:'#04051a',mid:'#1c0f4a',horizon:'#7a2bb8',sun:'#e8ecff',sunDir:[.5,.5,.7],sunSize:.022,fog:'#170b38',fogD:.0034,hemiSky:'#7f8cff',hemiGround:'#3a1048',hemi:.95,key:'#c8d4ff',keyI:2,env:.8,clouds:.18,stars:1,aurora:0,ground:[0,1,0],gA:'#090a1c',gB:'#ffb060',edgeA:'#ff3fc0',edgeB:'#3fe8ff',tints:['#5ee7ff','#ff5fc8','#ffd27a','#b9ff5e'],lit:.5,density:1,tall:[-20,95],wall:'#151a33',exposure:1.05},
+ {name:'SUNSET BOARDWALK',top:'#1d2f7a',mid:'#c8527a',horizon:'#ffab5e',sun:'#ffd9a0',sunDir:[-.35,.13,.92],sunSize:.0035,fog:'#8a4f63',fogD:.003,hemiSky:'#ffc9a8',hemiGround:'#3a2a55',hemi:1.25,key:'#ffd2a0',keyI:3,env:.55,clouds:.55,stars:0,aurora:0,ground:[1,0,0],gA:'#12314f',gB:'#ff9d5c',edgeA:'#ff8a3d',edgeB:'#3fe0ff',tints:['#ffd28a','#ff9a6a','#ffe7b8'],lit:.42,density:.5,tall:[-40,6],wall:'#3b3050',exposure:1.02},
+ {name:'NEON DOWNTOWN',top:'#04051a',mid:'#1c0f4a',horizon:'#7a2bb8',sun:'#e8ecff',sunDir:[.5,.5,.7],sunSize:.0012,fog:'#170b38',fogD:.0034,hemiSky:'#7f8cff',hemiGround:'#3a1048',hemi:.95,key:'#c8d4ff',keyI:2,env:.8,clouds:.18,stars:1,aurora:0,ground:[0,1,0],gA:'#090a1c',gB:'#ffb060',edgeA:'#ff3fc0',edgeB:'#3fe8ff',tints:['#5ee7ff','#ff5fc8','#ffd27a','#b9ff5e'],lit:.5,density:1,tall:[-20,95],wall:'#151a33',exposure:1.05},
  {name:'STORM SKYWAY',top:'#070b16',mid:'#27324a',horizon:'#6f84a8',sun:'#dfe8ff',sunDir:[.2,.3,.93],sunSize:.0,fog:'#2c3649',fogD:.0044,hemiSky:'#a9bedf',hemiGround:'#1b2233',hemi:1.1,key:'#cfe0ff',keyI:1.7,env:.5,clouds:1,stars:0,aurora:0,ground:[0,0,1],gA:'#2c3850',gB:'#93a6c8',edgeA:'#ffe45e',edgeB:'#ffffff',tints:['#dfe8ff','#ffe9a0'],lit:.16,density:.55,tall:[10,130],wall:'#1a2030',exposure:1.05,storm:1},
- {name:'AURORA REACH',top:'#020a14',mid:'#06323a',horizon:'#1f8f86',sun:'#e8fff4',sunDir:[-.5,.42,.75],sunSize:.018,fog:'#082c36',fogD:.0033,hemiSky:'#8fffe0',hemiGround:'#10243a',hemi:.95,key:'#bfffe8',keyI:2.1,env:.7,clouds:.12,stars:1,aurora:1,ground:[1,0,0],gA:'#041a24',gB:'#5effc1',edgeA:'#5effc1',edgeB:'#c78bff',tints:['#5effc1','#8eeaff','#c78bff'],lit:.34,density:.7,tall:[-30,60],wall:'#10222c',exposure:1.05}];
+ {name:'AURORA REACH',top:'#020a14',mid:'#06323a',horizon:'#1f8f86',sun:'#e8fff4',sunDir:[-.5,.42,.75],sunSize:.001,fog:'#082c36',fogD:.0033,hemiSky:'#8fffe0',hemiGround:'#10243a',hemi:.95,key:'#bfffe8',keyI:2.1,env:.7,clouds:.12,stars:1,aurora:1,ground:[1,0,0],gA:'#041a24',gB:'#5effc1',edgeA:'#5effc1',edgeB:'#c78bff',tints:['#5effc1','#8eeaff','#c78bff'],lit:.34,density:.7,tall:[-30,60],wall:'#10222c',exposure:1.05}];
 ZONES.forEach((z,i)=>{z.name=STAGES[i];});
 const zoneAt=s=>ZONES[((Math.floor(Math.max(0,s)/CP)%ZONES.length)+ZONES.length)%ZONES.length];
 const NOISE='float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec2(17.,9.);a*=.5;}return s;}';
@@ -23,7 +23,7 @@ const SKY={uniforms:{uTop:{value:new T.Color()},uMid:{value:new T.Color()},uHori
  vertexShader:'varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
  fragmentShader:`uniform vec3 uTop,uMid,uHorizon,uSun,uSunDir;uniform float uSunSize,uClouds,uStars,uAurora,uFlash,uTime;varying vec3 vDir;${NOISE}
  void main(){vec3 d=normalize(vDir);float y=d.y;vec3 col=mix(uHorizon,uMid,smoothstep(-.02,.22,y));col=mix(col,uTop,smoothstep(.16,.75,y));col=mix(col,uHorizon*.55,smoothstep(0.,-.25,y));
- float sd=max(dot(d,normalize(uSunDir)),0.);col+=uSun*(pow(sd,6.)*.22+pow(sd,48.)*.5);col+=uSun*2.6*smoothstep(1.-uSunSize,1.-uSunSize*.82,sd)*step(.0001,uSunSize);
+ float sd=max(dot(d,normalize(uSunDir)),0.);col+=uSun*(pow(sd,8.)*.16+pow(sd,90.)*.35);col+=uSun*2.2*smoothstep(1.-uSunSize,1.-uSunSize*.8,sd)*step(.0001,uSunSize);
  float st=step(.9972,h21(floor(d.xz/(abs(y)+.35)*150.)))*smoothstep(.02,.3,y);col+=vec3(.9,.92,1.)*st*uStars*(.5+.5*sin(uTime*2.+d.x*80.));
  vec2 cu=d.xz/(max(y,0.)+.16);float c=fbm(cu*1.4+vec2(uTime*.012,0.));float cm=smoothstep(1.02-uClouds*.62,1.25-uClouds*.5,c+.42)*smoothstep(-.02,.12,y);
  vec3 cc=mix(uMid*.55+uHorizon*.25,uHorizon*1.05+uSun*.35*pow(sd,3.),smoothstep(.45,.9,c));col=mix(col,cc*(1.+uFlash*2.5),cm*.92);
@@ -157,12 +157,12 @@ export class ThreeTurbo {
   this.botBody=pbr({color:0x6a2f8c,metalness:.6,roughness:.3,emissive:0x5a1a8c,emissiveIntensity:.9,clearcoat:1,clearcoatRoughness:.1},this.quality);this.botEye=new T.MeshBasicMaterial({color:new T.Color(3,.9,3.4),toneMapped:false});this.bots=[];
   this.glowTex=radial(glowStops);this.particles=new Particles(s,high?700:320,this.glowTex);this.particles.points.material.size=.3;
   // The pup: holder rides the track frame, pivot carries flips and rolls about the pup's middle.
-  this.holder=new T.Group();this.holder.matrixAutoUpdate=false;this.pivot=new T.Group();this.pivot.position.y=TURBO.body;this.holder.add(this.pivot);s.add(this.holder);
-  this.aura=new T.Mesh(new T.SphereGeometry(1.25,20,14),auraMaterial());this.aura.scale.set(1,1,1.6);this.pivot.add(this.aura);
+  this.holder=new T.Group();this.holder.matrixAutoUpdate=false;this.pivot=new T.Group();this.pivot.position.y=TURBO.body;this.scaler=new T.Group();this.scaler.scale.setScalar(1.3);this.scaler.add(this.pivot);this.holder.add(this.scaler);s.add(this.holder);
+  
   this.halo=new T.Sprite(new T.SpriteMaterial({map:this.glowTex,color:new T.Color(.6,1.3,1.5),transparent:true,opacity:.3,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false}));this.halo.scale.set(2.4,2.4,1);this.pivot.add(this.halo);
   this.blob=new T.Mesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:radial([[0,'#000000c0'],[.55,'#00000060'],[1,'#00000000']]),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}));this.blob.matrixAutoUpdate=false;s.add(this.blob);
   // Speed trail in the DAWG's colours.
-  this.TRAIL=26;const tg=new T.BufferGeometry();tg.setAttribute('position',new T.BufferAttribute(new Float32Array(this.TRAIL*6),3).setUsage(T.DynamicDrawUsage));tg.setAttribute('color',new T.BufferAttribute(new Float32Array(this.TRAIL*6),3).setUsage(T.DynamicDrawUsage));const ti=[];for(let i=0;i<this.TRAIL-1;i++){const a=i*2;ti.push(a,a+1,a+2,a+1,a+3,a+2);}tg.setIndex(ti);
+  this.TRAIL=26;const tg=new T.BufferGeometry();tg.setAttribute('position',new T.BufferAttribute(new Float32Array(this.TRAIL*12),3).setUsage(T.DynamicDrawUsage));tg.setAttribute('color',new T.BufferAttribute(new Float32Array(this.TRAIL*12),3).setUsage(T.DynamicDrawUsage));const ti=[];for(let i=0;i<this.TRAIL-1;i++)for(const o of [0,2]){const a=i*4+o;ti.push(a,a+1,a+4,a+1,a+5,a+4);}tg.setIndex(ti);
   this.trailMesh=new T.Mesh(tg,new T.MeshBasicMaterial({vertexColors:true,transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,toneMapped:false}));this.trailMesh.frustumCulled=false;s.add(this.trailMesh);this.trailA=new T.Color(.7,1.6,.4);this.trailB=new T.Color(.3,1.2,1.8);
   // Speed lines ride with the camera.
   this.LINES=high?70:36;this.lines=new T.InstancedMesh(new T.PlaneGeometry(.028,1).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide,toneMapped:false,fog:false}),this.LINES);this.lines.frustumCulled=false;this.lines.renderOrder=5;this.camera.add(this.lines);
@@ -230,7 +230,7 @@ export class ThreeTurbo {
  prepare(d){if(!d||!this.ready)return;const key=assetKey(d);if(key===this.assetKey)return;const next=createDawgAsset(d);next.root.position.y=-TURBO.body;if(this.stage.quality==='high')next.root.traverse(o=>{if(o.isMesh)o.castShadow=true;});if(this.asset){this.asset.root.removeFromParent();this.asset.dispose();}this.asset=next;this.assetKey=key;this.pivot.add(next.root);
   // The trail and aura take the DAWG's own colours.
   const pick=re=>{let c=null;next.root.traverse(o=>{if(!c&&o.isMesh&&re.test(o.material?.name||''))c=o.material.color;});return c;};const a=pick(/Outfit/)||pick(/Accent/),b=pick(/Accent/)||pick(/Footwear/),coat=pick(/Coat/);if(coat)this.ui.cock.style.setProperty('--coat','#'+coat.getHexString(T.SRGBColorSpace));
-  const vivid=(c,fb)=>{if(!c)return fb;const hsl={};c.getHSL(hsl);return new T.Color().setHSL(hsl.h,Math.max(.75,hsl.s),.55).multiplyScalar(2.2);};this.trailA=vivid(a,this.trailA);this.trailB=vivid(b,this.trailB);this.aura.material.uniforms.uColor.value.copy(this.trailA).multiplyScalar(.5);}
+  const vivid=(c,fb)=>{if(!c)return fb;const hsl={};c.getHSL(hsl);return new T.Color().setHSL(hsl.h,Math.max(.75,hsl.s),.55).multiplyScalar(2.2);};this.trailA=vivid(a,this.trailA);this.trailB=vivid(b,this.trailB);}
  pop(text,kind){this.hud.pop(text,kind);}
  event(e,g){
   if(!this.ready)return;const st=this.stage,P=this.P.p,x=P.x,y=P.y+.8,z=P.z,red=this.reduced,part=this.particles,pts=e.points?' +'+e.points:'';
@@ -303,7 +303,7 @@ export class ThreeTurbo {
   this.particles.update(dt,undefined,-1e6);
   this.placeCamera(g,c,f,dt,since,real,fast);this.updateHud(g,zone,now);this.coach(g,c);this.cockpit(g,c,real);
   this.kick=Math.max(0,this.kick-dt*1.6);
-  this.stage.render(dt,real,{reduced,aberration:.0016+fast*.0032+this.kick*.003});
+  this.stage.render(dt,real,{reduced,aberration:.0006+fast*.0014+this.kick*.002});
  }
  showFeat(ft){const ui=this.ui;this.hud.set(ui.featN,'fn',ft.name.toUpperCase());this.hud.set(ui.featT,'ft',ft.text);ui.feat.hidden=false;ui.feat.classList.remove('tp-in');void ui.feat.offsetWidth;ui.feat.classList.add('tp-in');clearTimeout(this.featTimer);this.featTimer=setTimeout(()=>{ui.feat.hidden=true;},3400);}
  // A technique is spelled out the first couple of times the player is about to need it.
@@ -348,7 +348,7 @@ export class ThreeTurbo {
   v.rotation.set(rx,ry,rz);v.scale.set(1,sy,1);v.position.y=TURBO.body*(g.rolling>0?.72:1);
   if(a){a.root.visible=!first;setDawgPose(a,t,pose);}
   this.holder.visible=!(g.invuln>0&&!this.reduced&&playing&&Math.floor(real*18)%2===0);
-  const boost=g.boosting?1:0;this.auraK=(this.auraK||0)+(boost-(this.auraK||0))*Math.min(1,dt*8);this.aura.visible=this.auraK>.02&&!first;const au=this.aura.material.uniforms;au.uAlpha.value=this.auraK*.4;au.uTime.value=real;
+  
   this.halo.material.opacity=first?0:.1*smooth((g.v-34)/20);this.halo.material.color.copy(this.trailB).multiplyScalar(.35);
   // Shadow blob on whatever is underneath; the sun follows the pup.
   const fl=floorIn(c,g.s,g.x,g.h);this.blob.visible=fl!==null;if(fl!==null){const B=at(f,g.x,fl+.04,!c.pipe,this.C),s=1.9/(1+(g.h-fl)*.35);basisMatrix(B,this.blob.matrix);this.blob.matrix.scale(this.v.set(s,1,s));}
@@ -383,9 +383,9 @@ export class ThreeTurbo {
  }
  updateTrail(g,P,fast,dt){
   const N=this.TRAIL,pos=this.trailMesh.geometry.attributes.position,col=this.trailMesh.geometry.attributes.color,show=g.status==='playing'&&!this.reduced&&this.cameraMode!=='first';this.trailMesh.visible=show;if(!show){this.trail.length=0;return;}
-  this.trail.unshift({p:P.p.clone().addScaledVector(P.n,.75),r:P.r.clone()});if(this.trail.length>N)this.trail.length=N;const power=.18+fast*.5+(g.boosting?.45:0);
-  for(let i=0;i<N;i++){const t=this.trail[Math.min(i,this.trail.length-1)],u=i/(N-1),w=.24*(1-u*.7),c=this.tmp.copy(this.trailA).lerp(this.trailB,u).multiplyScalar((1-u)*(1-u)*power*(i<this.trail.length?1:0));
-   pos.setXYZ(i*2,t.p.x-t.r.x*w,t.p.y-t.r.y*w,t.p.z-t.r.z*w);pos.setXYZ(i*2+1,t.p.x+t.r.x*w,t.p.y+t.r.y*w,t.p.z+t.r.z*w);col.setXYZ(i*2,c.r,c.g,c.b);col.setXYZ(i*2+1,c.r,c.g,c.b);}
+  this.trail.unshift({p:P.p.clone().addScaledVector(P.n,.75),r:P.r.clone()});if(this.trail.length>N)this.trail.length=N;const power=.5+fast*.9+(g.boosting?.9:0);
+  for(let i=0;i<N;i++){const t=this.trail[Math.min(i,this.trail.length-1)],u=i/(N-1),w=.07*(1-u*.6),c=this.tmp.copy(this.trailA).lerp(this.trailB,u).multiplyScalar((1-u)*(1-u)*power*(i<this.trail.length?1:0));
+   [-.42-w,-.42+w,.42-w,.42+w].forEach((o,j)=>{pos.setXYZ(i*4+j,t.p.x+t.r.x*o,t.p.y+t.r.y*o,t.p.z+t.r.z*o);col.setXYZ(i*4+j,c.r,c.g,c.b);});}
   pos.needsUpdate=true;col.needsUpdate=true;
  }
  updateLines(speed,dt,g){const k=this.reduced?0:smooth((speed-32)/22)*(g.locked?.6:1)+(g.boosting?.35:0),mat=this.lines.material;mat.opacity+=(Math.min(1,k)*(this.cameraMode==='first'?.42:.26)-mat.opacity)*Math.min(1,dt*5);this.lines.visible=mat.opacity>.01;if(!this.lines.visible)return;

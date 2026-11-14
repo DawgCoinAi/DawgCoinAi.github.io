@@ -8,7 +8,7 @@
 .domino3d .dm-slowmo .dm-bars{box-shadow:inset 0 44px 0 0 #000c,inset 0 -44px 0 0 #000c,inset 0 0 120px 30px #0008}
 .domino3d .d3-banner{top:30%;text-shadow:0 0 22px #ffb52e,0 4px 0 #2a1a10}
 /* The tray: room picker and tries, the star rules, draggable piece chips, take-everything-back, and GO. Lives on the stage so it works over the 3D room and the flat one. */
-.dm-dock{position:absolute;left:0;right:0;bottom:0;z-index:6;display:grid;gap:6px;padding:16px 10px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(#120b0700,#120b07e6 26%);touch-action:none;user-select:none;-webkit-user-select:none}
+.dm-dock{position:absolute;left:0;right:0;bottom:0;z-index:6;display:grid;gap:6px;padding:16px max(10px,calc(50% - 310px)) calc(8px + env(safe-area-inset-bottom));background:linear-gradient(#120b0700,#120b07e6 26%);touch-action:none;user-select:none;-webkit-user-select:none}
 .dm-dock[hidden]{display:none}
 .dm-bar{display:flex;align-items:center;gap:6px;min-height:30px}
 .dm-step{flex:0 0 32px;height:30px;border-radius:10px;border:1px solid #ffffff33;background:#2a1d14;color:#ffe6b8;font:900 18px/1 var(--display)}

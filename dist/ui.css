@@ -795,3 +795,7 @@ body.story-focus>.topbar,body.story-focus>.app-nav,body.story-focus main>:not(#v
 body.story-focus main{margin:0;padding:0;max-width:none}body.story-focus #viewPlay{display:block}body.story-focus .is-focus{display:block!important;margin:0;padding:14px 16px calc(24px + env(safe-area-inset-bottom));min-height:100dvh;max-width:1180px;margin-inline:auto}
 .story-focus-exit{position:fixed;right:14px;top:12px;z-index:40;font:700 10px var(--ui-mono);letter-spacing:.1em;padding:9px 13px;border-radius:999px;border:1px solid var(--volt);background:#0b0c0fe6;color:var(--volt);cursor:pointer;backdrop-filter:blur(6px)}.story-focus-exit[hidden]{display:none}
 @media(max-width:480px){.story-focus-exit{top:auto;bottom:calc(12px + env(safe-area-inset-bottom));right:12px}}
+/* Real full screen toggle for the panel games (chess, After Hours, BITE NIGHT) while they're focused. */
+.story-full-btn{position:fixed;left:14px;top:calc(12px + env(safe-area-inset-top));z-index:40;width:40px;height:40px;border-radius:999px;border:1px solid var(--volt);background:#0b0c0fe6;color:var(--volt);font:700 18px/1 var(--ui-mono,monospace);cursor:pointer;backdrop-filter:blur(6px)}
+body:not(.story-focus) .story-full-btn{display:none!important}
+body.story-focus:has(#fightPanel.is-focus .fight-stage[data-state="fight"]) .story-full-btn,body.story-focus:has(#fightPanel.is-focus .fight-stage[data-state="vs"]) .story-full-btn{display:none!important}

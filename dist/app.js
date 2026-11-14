@@ -6,6 +6,7 @@ import {Hustle} from './hustle-phone.js';
 import {GameSheet} from './game-sheet.js';
 import {Discoveries} from './discoveries.js';
 import {QuestBoard} from './quest-board.js';
+import {immersive} from './immersive.js';
 import {createQuickGame} from './pack-checkpoint.js';
 import {PackRenderer} from './pack-renderer.js';
 import {MazeGame,GOODS,DISTRICTS} from './engine.js';
@@ -380,10 +381,10 @@ function renderProgress(){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-theme]');if(!b||b.disabled)return;const id=b.dataset.theme;if(!(id in THEMES)||profile.rep<THEMES[id].unlock)return;const inLocker=!!b.closest('dialog');profile.theme=id;profileDirty=true;renderer.setTheme(id);renderProgress();saveProfile();sound(660,.12);const match=document.querySelector(`#${inLocker?'lockerThemes':'themeGrid'} [data-theme="${id}"]`);match?.focus({preventScroll:true});});
 $('lockerButton').onclick=()=>{renderProgress();openDialog('lockerDialog');};
 // Full-screen focus for the story games: only the panel stays, the rest of the arcade waits.
-function storyFocus(on,panelId){const panel=panelId&&$(panelId);document.querySelectorAll('.is-focus').forEach(p=>p.classList.remove('is-focus'));document.body.classList.toggle('story-focus',!!on);if(on&&panel)panel.classList.add('is-focus');$('storyFocusExit').hidden=!on;window.scrollTo({top:0,behavior:'instant'});}
-document.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>storyFocus(true,b.dataset.focus));$('storyFocusExit').onclick=()=>storyFocus(false);
+function storyFocus(on,panelId){const panel=panelId&&$(panelId);document.querySelectorAll('.is-focus').forEach(p=>p.classList.remove('is-focus'));document.body.classList.toggle('story-focus',!!on);if(on&&panel)panel.classList.add('is-focus');$('storyFocusExit').hidden=!on;if(on)immersive.enter();else immersive.exit();window.scrollTo({top:0,behavior:'instant'});}
+document.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>storyFocus(true,b.dataset.focus));$('storyFocusExit').onclick=()=>storyFocus(false);immersive.bind($('storyFull'));
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('story-focus')&&!document.querySelector('dialog[open]'))storyFocus(false);});
-function setFocus(on){if(on&&mobile.coarse()){mobile.enter();return;}focused=on;document.body.classList.toggle('focus-mode',on);$('exitFocus').hidden=!on;$('focusButton').setAttribute('aria-label',on?'Exit focused game view':'Enter focused game view');canvas.focus({preventScroll:true});}
+function setFocus(on){if(on&&mobile.coarse()){mobile.enter();return;}focused=on;if(on)immersive.enter();else immersive.exit();document.body.classList.toggle('focus-mode',on);$('exitFocus').hidden=!on;$('focusButton').setAttribute('aria-label',on?'Exit focused game view':'Enter focused game view');canvas.focus({preventScroll:true});}
 $('focusButton').onclick=()=>setFocus(!focused);$('exitFocus').onclick=()=>setFocus(false);
 
 function cancelCountdown(){countdownUntil=0;$('countdownLayer').hidden=true;}
@@ -445,7 +446,7 @@ discoveries.renderList();$('resultsDialog').addEventListener('close',()=>discove
 // Play hero: the selected game with its best, weekly rank and top friend.
 function renderHero(){const id=shell.preview||mode;if(shell.preview&&!wallOf(shell.preview).open){shell.hero(shell.preview,{wall:wallOf(shell.preview),best:records[shell.preview]||0});}else{shell.preview=null;shell.hero(mode,{best:mode==='daily'?(dailyRecords[challenge.day]?.best||0):records[mode]||0,bestLabel:mode==='trade'?(records.trade>0?money(records.trade):'—'):null});}
  shell.heroSocial(rankings.api?'loading':undefined);const want=id;rankings.heroStats(id).then(s=>{if(s&&(shell.preview||mode)===want)shell.heroSocial(s);});}
-$('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade')hustle.enter();else if(mode==='story'||mode==='chess'||mode==='fight')$(mode==='chess'?'chessPanel':mode==='fight'?'fightPanel':'storyPanel').scrollIntoView({behavior:'smooth',block:'start'});else pack.play();};
+$('heroPlay').onclick=()=>{if(shell.preview)return;if(isMaze())play();else if(mode==='trade')hustle.enter();else if(mode==='story'||mode==='chess'||mode==='fight')storyFocus(true,mode==='chess'?'chessPanel':mode==='fight'?'fightPanel':'storyPanel');else pack.play();};
 $('meSettings').onclick=()=>openDialog('settingsDialog');$('meHelp').onclick=()=>openDialog('helpDialog');$('meBackup').onclick=()=>openDialog('backupDialog');$('meDelete').onclick=()=>{renderAccount();openDialog('accountDialog');$('accountDelete').focus();};$('meAccount').onclick=()=>{renderAccount();openDialog('accountDialog');};
 $('meBests').addEventListener('click',e=>{const id=e.target.closest('[data-game]')?.dataset.game;if(id){shell.show('play');if(id===mode)renderHero();else selectMode(id);}});
 function renderMe(){const s=statsOf(arcade);shell.me({level:s.level,xp:arcade.xp,next:xpForLevel(s.level+1),prev:xpForLevel(s.level),minutes:s.minutes,streak:s.streak,runs:records.runs||0,records,stamps:(passport?.stamps?.length||0)+'/'+STAMPS.length,rank:null});rankings.renderIdentity();

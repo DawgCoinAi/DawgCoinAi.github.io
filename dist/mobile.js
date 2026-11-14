@@ -1,4 +1,5 @@
 import {mobileLayout,stickDirection,clampStick,isTimed} from './mobile-core.js';
+import {immersive} from './immersive.js';
 const $=id=>document.getElementById(id);
 export class MobileControls {
  constructor(callbacks,prefs){
@@ -17,8 +18,8 @@ export class MobileControls {
  }
  move(e){const r=$('thumbstick').getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dy=e.clientY-r.top-r.height/2,p=clampStick(dx,dy);$('stickKnob').style.transform=`translate(${p.x}px,${p.y}px)`;const direction=stickDirection(dx,dy,this.lastDirection);if(direction&&direction!==this.lastDirection){this.lastDirection=direction;this.callbacks.direction(direction);}if(!direction)this.lastDirection=null;}
  applyPrefs(){document.body.dataset.touchControls=this.prefs.controls;document.body.dataset.dashSide=this.prefs.hand==='left'?'left':'right';}
- enter(){if(this.active)return;this.scrollY=window.scrollY;this.active=true;document.body.classList.add('mobile-session');document.documentElement.classList.add('mobile-session');this.layout();}
- exit(){this.active=false;document.body.classList.remove('mobile-session','mobile-landscape');document.documentElement.classList.remove('mobile-session');this.pointer=null;this.lastDirection=null;$('stickKnob').style.transform='translate(0,0)';window.scrollTo({top:this.scrollY,behavior:'instant'});}
+ enter(){if(this.active)return;this.scrollY=window.scrollY;this.active=true;immersive.enter();document.body.classList.add('mobile-session');document.documentElement.classList.add('mobile-session');this.layout();}
+ exit(){if(this.active)immersive.exit();this.active=false;document.body.classList.remove('mobile-session','mobile-landscape');document.documentElement.classList.remove('mobile-session');this.pointer=null;this.lastDirection=null;$('stickKnob').style.transform='translate(0,0)';window.scrollTo({top:this.scrollY,behavior:'instant'});}
  layout(){
   if(!this.active)return;const v=window.visualViewport,w=Math.round(v?.width||window.innerWidth),h=Math.round(v?.height||window.innerHeight),s=getComputedStyle($('safeAreaProbe'));
   const safe={top:parseFloat(s.paddingTop)||0,bottom:parseFloat(s.paddingBottom)||0,left:parseFloat(s.paddingLeft)||0,right:parseFloat(s.paddingRight)||0};

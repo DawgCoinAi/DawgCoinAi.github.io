@@ -4,6 +4,7 @@
 // in, back out), the phone's tabs, and turns what happens on the road (pulled up at a dealer,
 // busted, resprayed) into the trade engine's own actions. Without WebGL the phone is the game.
 import {GOODS,DISTRICTS} from './engine.js';
+import {immersive} from './immersive.js';
 import {FEATS,CHAPTERS,dailyContract} from './living-trade.js';
 import {STOPS,NODES,EDGES,ALLEYS,BEACH,XS,ZS,districtAt} from './hustle-world.js';
 import {wantedStars} from './hustle-drive.js';
@@ -28,9 +29,9 @@ export class Hustle {
  info(){const t=this.game(),w=t.world;return {seed:w.seed,day:t.day,heat:t.heat,weather:w.weather,district:t.district,cash:t.cash,used:t.used,capacity:t.capacity,pending:w.pending?.kind||null};}
  get sim(){return this.live?this.world.sim:null;}
  // ── Session: full screen in the car, and back out to the arcade ───────────────────────────
- enter(){const t=this.game();if(!t||this.session)return;this.session=true;this.scroll=globalThis.window?.scrollY||0;document.body.classList.add('hustle-session');document.documentElement.classList.add('hustle-session');
+ enter(){const t=this.game();if(!t||this.session)return;this.session=true;immersive.enter();this.scroll=globalThis.window?.scrollY||0;document.body.classList.add('hustle-session');document.documentElement.classList.add('hustle-session');
   if(this.world){this.world.setSound(this.settings().sound,this.settings().volume);this.world.pause(false);}else this.start();this.refresh();}
- exit(){if(!this.session)return;this.session=false;document.body.classList.remove('hustle-session');document.documentElement.classList.remove('hustle-session');this.park();this.world?.pause(true);try{window.scrollTo(0,this.scroll||0);}catch{}this.refresh();}
+ exit(){if(!this.session)return;this.session=false;immersive.exit();document.body.classList.remove('hustle-session');document.documentElement.classList.remove('hustle-session');this.park();this.world?.pause(true);try{window.scrollTo(0,this.scroll||0);}catch{}this.refresh();}
  start(){const t=this.game();if(!t||this.loading||this.world)return;if(typeof WebGL2RenderingContext==='undefined'){this.setOpen(true);return;}
   this.loading=true;this.setOpen(false);const s=this.settings();
   import('./hustle-world-3d.js').then(m=>{if(this.game()!==t){this.loading=false;return;}const world=this.world=new m.HustleWorld({host:$('hustleStage'),info:this.info(),spot:t.world.spot||null,quality:s.quality,reduced:s.reduced,sound:s.sound,volume:s.volume,on:(type,data)=>this.event(type,data)});
